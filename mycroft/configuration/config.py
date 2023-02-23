@@ -158,54 +158,35 @@ class LocalConf(dict):
 
 
 class RemoteConf(LocalConf):
-    _lock = ComboLock(get_temp_path('remote-conf.lock'))
-    """Config dictionary fetched from mycroft.ai."""
+    # _lock = ComboLock(get_temp_path('remote-conf.lock'))
+    """Config dictionary fetched from local backend"""
 
     def __init__(self, cache=None):
         super(RemoteConf, self).__init__(None)
 
-        cache = cache or join(xdg.BaseDirectory.xdg_cache_home, 'mycroft',
-                              'web_cache.json')
-        from mycroft.api import is_paired
-        if not is_paired():
-            self.load_local(cache)
-            return
-
+        # cache = cache or join(xdg.BaseDirectory.xdg_cache_home, 'mycroft',
+                              # 'web_cache.json')
+    def reload(self):
         try:
-            # Here to avoid cyclic import
-            from mycroft.api import DeviceApi
-            api = DeviceApi()
-            setting = api.get_settings()
+            from ovos_backend_client.pairing import is_paired
+            from ovos_backend_client.config import RemoteConfigManager
 
-            location = None
-            try:
-                location = api.get_location()
-            except RequestException as e:
-                LOG.error("RequestException fetching remote location: {}"
-                          .format(str(e)))
-                if exists(cache) and isfile(cache):
-                    location = load_commented_json(cache).get('location')
+            if not is_paired():
+                self.load_local(self.path)
+                return
 
-            if location:
-                setting["location"] = location
-            # Remove server specific entries
-            config = {}
-            translate_remote(config, setting)
-            for key in config:
-                self.__setitem__(key, config[key])
-            self.store(cache, force=True)
+            remote = RemoteConfigManager()
 
-        except RequestException as e:
-            LOG.error("RequestException fetching remote configuration: {}"
-                      .format(str(e)))
-            self.load_local(cache)
+            remote.download()
+            for key in remote.config:
+                self.__setitem__(key, remote.config[key])
+
+            self.store(self.path)
 
         except Exception as e:
-            LOG.error("Failed to fetch remote configuration: %s" % repr(e),
-                      exc_info=True)
-            self.load_local(cache)
-
-
+            LOG.error(f"Exception fetching remote configuration: {e}")
+            self.load_local(self.path)
+    
 def _log_old_location_deprecation():
     LOG.warning("\n ===============================================\n"
                 " ==             DEPRECATION WARNING           ==\n"
