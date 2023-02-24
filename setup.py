@@ -53,17 +53,11 @@ def required(requirements_file):
 
 
 setup(
-    name='mycroft-core',
+    name='trevor-core',
     version=get_version(),
-    license='Apache-2.0',
-    author='Mycroft A.I.',
-    author_email='devs@mycroft.ai',
-    url='https://github.com/MycroftAI/mycroft-core',
-    description='Mycroft Core',
     install_requires=required('requirements/requirements.txt'),
     extras_require={
         'audio-backend': required('requirements/extra-audiobackend.txt'),
-        'mark1': required('requirements/extra-mark1.txt'),
         'stt': required('requirements/extra-stt.txt')
     },
     packages=find_packages(include=['mycroft*']),

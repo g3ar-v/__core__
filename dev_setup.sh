@@ -1,20 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright 2017 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-##########################################################################
-
 # Set a default locale to handle output from commands reliably
 export LANG=C.UTF-8
 export LANGUAGE=en
@@ -69,9 +53,6 @@ Options:
     -r, --allow-root        Allow to be run as root (e.g. sudo)
     -sm                     Skip mimic build
 
-Need more help? Please visit:
-Mycroft Chat (https://chat.mycroft.ai/)
-Mycroft Forums (https://community.mycroft.ai/)
 '
 }
 
@@ -185,7 +166,7 @@ fi
 # Run a setup wizard the very first time that guides the user through some decisions
 if [[ ! -f .dev_opts.json && -z $CI ]] ; then
     echo "
-$CYAN                    Welcome to Mycroft!  $RESET"
+$CYAN                    Trevor!  $RESET"
     sleep 0.5
     echo '
 This script is designed to make working with Mycroft easy.  During this
@@ -218,61 +199,10 @@ in mycroft.conf.
         fi
         echo
     fi
-    echo "
-Do you want to run on 'master' or against a dev branch?  Unless you are
-a developer modifying mycroft-core itself, you should run on the
-'master' branch.  It is updated bi-weekly with a stable release.
-  Y)es, run on the stable 'master' branch
-  N)o, I want to run unstable branches"
-    if get_YN ; then
-        echo -e "$HIGHLIGHT Y - using 'master' branch $RESET" | tee -a /var/log/mycroft/setup.log
-        branch=master
-        git checkout ${branch}
-    else
-        echo -e "$HIGHLIGHT N - using an unstable branch $RESET" | tee -a /var/log/mycroft/setup.log
-        branch=dev
-    fi
 
-    sleep 0.5
-    echo "
-Mycroft is actively developed and constantly evolving.  It is recommended
-that you update regularly.  Would you like to automatically update
-whenever launching Mycroft?  This is highly recommended, especially for
-those running against the 'master' branch.
-  Y)es, automatically check for updates
-  N)o, I will be responsible for keeping Mycroft updated."
-    if get_YN ; then
-        echo -e "$HIGHLIGHT Y - update automatically $RESET" | tee -a /var/log/mycroft/setup.log
-        autoupdate=true
-    else
-        echo -e "$HIGHLIGHT N - update manually using 'git pull' $RESET" | tee -a /var/log/mycroft/setup.log
-        autoupdate=false
-    fi
-
-    #  Pull down mimic source?  Most will be happy with just the package
-    if [[ $opt_forcemimicbuild == false && $opt_skipmimicbuild == false ]] ; then
-        sleep 0.5
-        echo '
-Mycroft uses its Mimic technology to speak to you.  Mimic can run both
-locally and from a server.  The local Mimic is more robotic, but always
-available regardless of network connectivity.  It will act as a fallback
-if unable to contact the Mimic server.
-
-However, building the local Mimic is time consuming -- it can take hours
-on slower machines.  This can be skipped, but Mycroft will be unable to
-talk if you lose network connectivity.  Would you like to build Mimic
-locally?'
-        if get_YN ; then
-            echo -e "$HIGHLIGHT Y - Mimic will be built $RESET" | tee -a /var/log/mycroft/setup.log
-        else
-            echo -e "$HIGHLIGHT N - skip Mimic build $RESET" | tee -a /var/log/mycroft/setup.log
-            opt_skipmimicbuild=true
-        fi
-    fi
-
-    echo
     # Add mycroft-core/bin to the .bashrc PATH?
     sleep 0.5
+
     echo '
 There are several Mycroft helper commands in the bin folder.  These
 can be added to your system PATH, making it simpler to use Mycroft.
@@ -283,6 +213,8 @@ Would you like this to be added to your PATH in the .profile?'
         if [[ ! -f ~/.profile_mycroft ]] ; then
             # Only add the following to the .profile if .profile_mycroft
             # doesn't exist, indicating this script has not been run before
+            # Looking to make this available for zsh
+            # Atm I'd have to manually add it to .zprofile
             {
                 echo ''
                 echo '# include Mycroft commands'

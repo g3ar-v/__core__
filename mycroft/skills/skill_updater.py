@@ -21,7 +21,9 @@ import xdg.BaseDirectory
 
 from msm import MsmException
 
-from mycroft.api import DeviceApi, is_paired
+from ovos_backend_client.api import DeviceApi
+from ovos_backend_client.pairing import is_paired
+# from mycroft.api import DeviceApi, is_paired
 from mycroft.configuration import Configuration
 from mycroft.util import connected
 from mycroft.util.combo_lock import ComboLock
@@ -99,7 +101,7 @@ class SkillUpdater:
                 )
             else:
                 self._installed_skills_file_path = os.path.join(
-                    xdg.BaseDirectory.save_data_path('mycroft'),
+                    xdg.BaseDirectory.save_data_path('trevor'),
                     '.mycroft-skills')
 
         return self._installed_skills_file_path
