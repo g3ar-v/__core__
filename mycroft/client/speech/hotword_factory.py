@@ -32,7 +32,7 @@ from petact import install_package
 import requests
 
 from mycroft.configuration import Configuration, LocalConf
-from mycroft.configuration.locations import OLD_USER_CONFIG
+# from mycroft.configuration.locations import OLD_USER_CONFIG
 from mycroft.util.log import LOG
 from mycroft.util.monotonic_event import MonotonicEvent
 from mycroft.util.plugins import load_plugin
@@ -214,8 +214,8 @@ class PreciseHotword(HotWordEngine):
 
         # If the key is not found yet, it might still exist on the old
         # (deprecated) location
-        if local_conf.get('precise', None) is None:
-            local_conf = LocalConf(OLD_USER_CONFIG)
+        # if local_conf.get('precise', None) is None:
+            # local_conf = LocalConf(OLD_USER_CONFIG)
 
         if not local_conf.get('precise', {}).get('use_precise', True):
             raise PreciseUnavailable
