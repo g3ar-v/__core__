@@ -15,7 +15,6 @@
 from threading import Lock
 
 from mycroft import dialog
-from mycroft.enclosure.api import EnclosureAPI
 from mycroft.client.speech.listener import RecognizerLoop
 from mycroft.configuration import Configuration
 from mycroft.identity import IdentityManager
@@ -167,12 +166,6 @@ def handle_audio_end(event):
 def handle_stop(event):
     """Handler for mycroft.stop, i.e. button press."""
     loop.force_unmute()
-
-
-def handle_open():
-    # TODO: Move this into the Enclosure (not speech client)
-    # Reset the UI to indicate ready for speech processing
-    EnclosureAPI(bus).reset()
 
 
 def on_ready():
