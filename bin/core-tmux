@@ -1,0 +1,37 @@
+#! /usr/bin/sh
+
+# tmux send-keys 'echo "new-session"' C-m
+tmux new-session -d -s trevor 
+# tmux attach-session -c ~/Documents/trevor-core/ -t trevor 
+#
+# setup core
+tmux rename-window 'core'
+tmux send-keys 'echo "pane 1"' C-m
+tmux send-keys "cd $HOME/Documents/trevor-core/" C-m
+tmux send-keys 'nvim setup.py' C-m
+tmux select-window -t trevor:0
+tmux split-window -h -l 27%
+tmux send-keys "cd $HOME/Documents/trevor-core/" C-m
+tmux select-pane -t 0.1
+tmux split-window -v -l 50%
+# tmux send-keys "cd $HOME/Documents/trevor-core/" C-m
+
+# setup backend window
+tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
+tmux split-window -h -l 60%
+tmux send-keys 'ovos-local-backend' C-m
+
+# setup skills window
+tmux new-window -c /opt/mycroft/skills/ -n skills
+tmux split-window -h -l 27%
+ttmux select-pane -t 0.1
+tmux split-window -v -l 50%
+mux send-keys 'cd /opt/mycroft/skills' C-m
+# tmux select-window -t trevor:2.1
+
+#attach to new-session
+# tmux send-keys 'echo ' C-m
+tmux select-window -t trevor:0
+tmux select-pane -t 0.1
+tmux send-keys './start-mycroft.sh debug cli' C-m
+tmux attach-session -t trevor

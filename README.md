@@ -1,17 +1,22 @@
-## Trevor-core
+## Trevor
 
 A modular AI based on mycroft AI
 
 ## Components
 
-- Skill
-- STT (Mycroft precise)
-- TTS (Mimic 3)
-- Listener
+- Skill (Main processing unit)
+- Intent parser (Adapt and Padatious)
+- Automatic Speech Recognition/STT (Mycroft precise)
+- TTS/Speech Synthesis (Mimic 3)
+- Wakeword Listener (precise)
 
 ## Goal
 
-Just like car parts. You would remove a part and replace with a similar part.
+Just like car parts. You would remove a part and replace with a similar part. To run
+both Mycroft and OVOS skills.
+
+- modularity
+- compatibility with both MycroftAI and OVOS skills
 
 ## Links
 
