@@ -5,10 +5,10 @@ A modular AI based on mycroft AI
 ## Components
 
 - Skill (Main processing unit)
-- Intent parser (Adapt and Padatious)
-- Automatic Speech Recognition/STT (Mycroft precise)
+- NLU/Intent parser (Adapt,Padatious)
+- Automatic Speech Recognition/STT (Precise/Whisper)
 - TTS/Speech Synthesis (Mimic 3)
-- Wakeword Listener (precise)
+- Wakeword Listener (precise/snowboy)
 
 ## Goal
 
