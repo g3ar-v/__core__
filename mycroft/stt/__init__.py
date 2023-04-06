@@ -1,8 +1,66 @@
-from ovos_plugin_manager.templates.stt import STT
-from ovos_plugin_manager.stt import load_stt_plugin
+import re
+import json
+from abc import ABCMeta, abstractmethod
+from requests import post, put, exceptions
+from speech_recognition import Recognizer
+from queue import Queue
+from threading import Thread
+
 from mycroft.api import STTApi, HTTPError
-from mycroft.util.log import LOG
 from mycroft.configuration import Configuration
+from mycroft.util.log import LOG
+from mycroft.util.plugins import load_plugin
+
+
+class STT(metaclass=ABCMeta):
+    """STT Base class, all STT backends derive from this one. """
+    def __init__(self):
+        config_core = Configuration.get()
+        self.lang = str(self.init_language(config_core))
+        config_stt = config_core.get("stt", {})
+        self.config = config_stt.get(config_stt.get("module"), {})
+        self.credential = self.config.get("credential", {})
+        self.recognizer = Recognizer()
+        self.can_stream = False
+
+    @property
+    def available_languages(self) -> set:
+        """Return languages supported by this STT implementation in this state
+
+        This property should be overridden by the derived class to advertise
+        what languages that engine supports.
+
+        Returns:
+            set: supported languages
+        """
+        return set()
+
+    @staticmethod
+    def init_language(config_core):
+        """Helper method to get language code from Mycroft config."""
+        lang = config_core.get("lang", "en-US")
+        langs = lang.split("-")
+        if len(langs) == 2:
+            return langs[0].lower() + "-" + langs[1].upper()
+        return lang
+
+    @abstractmethod
+    def execute(self, audio, language=None):
+        """Implementation of STT functionallity.
+
+        This method needs to be implemented by the derived class to implement
+        the specific STT engine connection.
+
+        The method gets passed audio and optionally a language code and is
+        expected to return a text string.
+
+        Args:
+            audio (AudioData): audio recorded by mycroft.
+            language (str): optional language code
+
+        Returns:
+            str: parsed text
+        """
 
 
 def requires_pairing(func):
@@ -39,6 +97,17 @@ class MycroftSTT(STT):
                                 self.lang, 1)[0]
         except Exception:
             return self.api.stt(audio.get_flac_data(), self.lang, 1)[0]
+
+
+def load_stt_plugin(module_name):
+    """Wrapper function for loading stt plugin.
+
+    Args:
+        module_name (str): Mycroft stt module name from config
+    Returns:
+        class: STT plugin class
+    """
+    return load_plugin('mycroft.plugin.stt', module_name)
 
 
 class STTFactory:
