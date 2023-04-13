@@ -24,9 +24,9 @@ tmux send-keys 'ovos-local-backend' C-m
 # setup skills window
 tmux new-window -c /opt/mycroft/skills/ -n skills
 tmux split-window -h -l 27%
-ttmux select-pane -t 0.1
+tmux select-pane -t 0.1
 tmux split-window -v -l 50%
-mux send-keys 'cd /opt/mycroft/skills' C-m
+tmux send-keys 'cd /opt/mycroft/skills' C-m
 # tmux select-window -t trevor:2.1
 
 #attach to new-session
@@ -36,7 +36,7 @@ tmux select-pane -t 0.1
 tmux send-keys './start-mycroft.sh debug cli' C-m
 tmux select-window -t trevor:2
 # create monitor for activity in Skills window
-tmux select-pane -t 0.1
+tmux select-pane -t 2.1
 tmux send-keys 'htop' C-m
 
 #attach to new-session
