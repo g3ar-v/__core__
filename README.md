@@ -1,22 +1,21 @@
-## Trevor
+## T.R.E.V.O.R
 
-A modular AI based on mycroft AI
 
 ## Components
 
-- Skill (Main processing unit)
-- NLU/Intent parser (Adapt,Padatious)
-- Automatic Speech Recognition/STT (Precise/Whisper)
-- TTS/Speech Synthesis (Mimic 3)
 - Wakeword Listener (precise/snowboy)
+- Automatic Speech Recognition/STT (Precise/Whisper)
+- NLU/Intent parser (Adapt/Padatious)
+- Skill (Main processing unit)
+- TTS/Speech Synthesis (Mimic 3/ElevenLabs)
 
-## Goal
+## Aim
 
-Just like car parts. You would remove a part and replace with a similar part. To run
-both Mycroft and OVOS skills.
-
+- Interact with the environment (realworld)
+- Knowledge and deep analysis on user-provided data with environment
+- Remember the interactions with user-provided data 
 - modularity
-- compatibility with both MycroftAI and OVOS skills
+
 
 ## Links
 

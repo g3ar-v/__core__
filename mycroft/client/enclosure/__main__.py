@@ -19,7 +19,7 @@ control over the Mark-1 Faceplate.
 """
 from mycroft.configuration import Configuration
 from mycroft.util.log import LOG
-from mycroft.util import wait_for_exit_signal, reset_sigint_handler
+from mycroft.util import wait_for_exit_signal, reset_sigint_handler, get_enclosure
 
 
 def on_ready():
@@ -36,6 +36,8 @@ def on_error(e='Unknown'):
 
 def create_enclosure(platform):
     """Create an enclosure based on the provided platform string.
+        Circa 2023 there's Linux and Raspberry Pi
+        difference: so that pi can access GPio pins
 
     Args:
         platform (str): platform name string
@@ -43,20 +45,16 @@ def create_enclosure(platform):
     Returns:
         Enclosure object
     """
-    if platform == "mycroft_mark_1":
-        LOG.info("Creating Mark I Enclosure")
-        from mycroft.client.enclosure.mark1 import EnclosureMark1
-        enclosure = EnclosureMark1()
-    elif platform == "mycroft_mark_2":
-        LOG.info("Creating Mark II Enclosure")
-        from mycroft.client.enclosure.mark2 import EnclosureMark2
-        enclosure = EnclosureMark2()
+    if platform == "raspberry pi":
+        LOG.info("Creating Pi Enclosure")
+        from mycroft.client.enclosure.pi import EnclosurePi
+        enclosure = EnclosurePi()
     else:
-        LOG.info("Creating generic enclosure, platform='{}'".format(platform))
+        LOG.info("Creating generic linux enclosure, platform='{}'".format(platform))
 
         # TODO: Mechanism to load from elsewhere.  E.g. read a script path from
         # the mycroft.conf, then load/launch that script.
-        from mycroft.client.enclosure.generic import EnclosureGeneric
+        from mycroft.client.enclosure.linux import EnclosureGeneric
         enclosure = EnclosureGeneric()
 
     return enclosure
@@ -71,7 +69,7 @@ def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping):
     """
     # Read the system configuration
     config = Configuration.get(remote=False)
-    platform = config.get("enclosure", {}).get("platform")
+    platform = get_enclosure() or config.get("enclosure", {}).get("platform")
 
     enclosure = create_enclosure(platform)
     if enclosure:

@@ -41,4 +41,4 @@ from .process_utils import (reset_sigint_handler, create_daemon,
 from .log import LOG
 from .parse import extract_datetime, extract_number, normalize
 from .signal import check_for_signal, create_signal, get_ipc_directory
-from .platform import get_arch
+from .platform import get_arch, get_enclosure
