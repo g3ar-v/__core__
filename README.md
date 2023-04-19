@@ -1,5 +1,7 @@
-## T.R.E.V.O.R
+## core 
 
+A middleware to integrate AI technology for automation, management, research and other 
+purposes
 
 ## Components
 

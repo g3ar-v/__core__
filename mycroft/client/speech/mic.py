@@ -655,7 +655,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                 said_wake_word = \
                     self.wake_word_recognizer.found_wake_word(audio_data)
 
-        self._listen_triggered = False
         return WakeWordData(audio_data, said_wake_word,
                             self._stop_signaled, ww_frames)
 
@@ -668,8 +667,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         return AudioData(raw_data, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
 
     def mute_and_confirm_listening(self, source):
-        audio_file = resolve_resource_file(
-            self.config.get('sounds').get('start_listening'))
+        if self._skip_wake_word():
+            audio_file = resolve_resource_file(
+                self.config.get('sounds').get('activation_sound'))
+            self._listen_triggered = False
+        else:
+            audio_file = resolve_resource_file(
+                self.config.get('sounds').get('start_listening'))
+        LOG.info(audio_file)
         if audio_file:
             source.mute()
             play_wav(audio_file).wait()
