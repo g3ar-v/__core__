@@ -1,17 +1,3 @@
-# Copyright 2019 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 """Periodically run by skill manager to update skills and post the manifest."""
 import os
 import sys
@@ -23,12 +9,12 @@ from msm import MsmException
 
 from ovos_backend_client.api import DeviceApi
 from ovos_backend_client.pairing import is_paired
-from mycroft.configuration import Configuration
-from mycroft.util import connected
-from mycroft.util.combo_lock import ComboLock
-from mycroft.util.log import LOG
+from core.configuration import Configuration
+from core.util import connected
+from core.util.combo_lock import ComboLock
+from core.util.log import LOG
 from .msm_wrapper import build_msm_config, create_msm
-from mycroft.util.file_utils import get_temp_path
+from core.util.file_utils import get_temp_path
 
 ONE_HOUR = 3600
 FIVE_MINUTES = 300  # number of seconds in a minute

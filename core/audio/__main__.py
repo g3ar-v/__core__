@@ -12,7 +12,7 @@ from core.util.log import LOG
 from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
 import core.audio.speech as speech
-from .audioservice import AudioService
+from core.audio.audioservice import AudioService
 
 
 def on_ready():

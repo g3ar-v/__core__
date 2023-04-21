@@ -88,7 +88,7 @@ def play_wav(uri, environment=None):
 
     Returns: subprocess.Popen object or None if operation failed
     """
-    config = mycroft.configuration.Configuration.get()
+    config = core.configuration.Configuration.get()
     play_wav_cmd = config['play_wav_cmdline']
     try:
         return _play_cmd(play_wav_cmd, uri, config, environment)
@@ -113,7 +113,7 @@ def play_mp3(uri, environment=None):
 
     Returns: subprocess.Popen object or None if operation failed
     """
-    config = mycroft.configuration.Configuration.get()
+    config = core.configuration.Configuration.get()
     play_mp3_cmd = config.get("play_mp3_cmdline")
     try:
         return _play_cmd(play_mp3_cmd, uri, config, environment)
@@ -138,7 +138,7 @@ def play_ogg(uri, environment=None):
 
     Returns: subprocess.Popen object, or None if operation failed
     """
-    config = mycroft.configuration.Configuration.get()
+    config = core.configuration.Configuration.get()
     play_ogg_cmd = config.get("play_ogg_cmdline")
     try:
         return _play_cmd(play_ogg_cmd, uri, config, environment)

@@ -185,7 +185,7 @@ function signal_reload_config() {
     source "$DIR/../venv-activate.sh" -q
 
     # Post a messagebus notification to reload the config file
-    python -m mycroft.messagebus.send "configuration.updated"  "{}" > /dev/null
+    python -m core.messagebus.send "configuration.updated"  "{}" > /dev/null
 }
 
 function show_config() {

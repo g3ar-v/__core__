@@ -10,7 +10,7 @@ import subprocess
 from threading import Thread
 from time import sleep
 
-from core import MYCROFT_ROOT_PATH
+from core import CORE_ROOT_PATH
 from core.api import DeviceApi
 from core.configuration import Configuration
 from core.util.download import download
@@ -28,7 +28,7 @@ def get_mimic_binary():
     config = Configuration.get().get("tts", {}).get("mimic")
 
     bin_ = config.get("path",
-                      os.path.join(MYCROFT_ROOT_PATH, 'mimic', 'bin', 'mimic'))
+                      os.path.join(CORE_ROOT_PATH, 'mimic', 'bin', 'mimic'))
 
     if not os.path.isfile(bin_):
         # Search for mimic on the path

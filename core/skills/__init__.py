@@ -3,7 +3,7 @@
 These classes, decorators and functions are used to build skills for Mycroft.
 """
 
-
+# import core.
 from .mycroft_skill import (MycroftSkill, intent_handler, intent_file_handler,
                             resting_screen_handler, skill_api_method)
 from .intent_service import AdaptIntent

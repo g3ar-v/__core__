@@ -1,5 +1,3 @@
-# Main entry point to run the stt module including the wakeword
-
 from threading import Lock
 
 from core import dialog

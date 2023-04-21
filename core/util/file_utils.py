@@ -224,7 +224,7 @@ def get_cache_directory(domain=None):
     Returns:
         (str) a path to the directory where you can cache data
     """
-    config = mycroft.configuration.Configuration.get()
+    config = core.configuration.Configuration.get()
     directory = config.get("cache_path")
     if not directory:
         # If not defined, use /tmp/mycroft/cache

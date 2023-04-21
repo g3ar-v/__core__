@@ -1,17 +1,3 @@
-# Copyright 2017 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 """Load, update and manage skills on this device."""
 import os
 from glob import glob
@@ -19,11 +5,11 @@ from threading import Thread, Event, Lock
 from time import sleep, time, monotonic
 from inspect import signature
 
-from mycroft.api import is_paired
-from mycroft.enclosure.api import EnclosureAPI
-from mycroft.configuration import Configuration
-from mycroft.messagebus.message import Message
-from mycroft.util.log import LOG
+from core.api import is_paired
+from core.enclosure.api import EnclosureAPI
+from core.configuration import Configuration
+from core.messagebus.message import Message
+from core.util.log import LOG
 from .msm_wrapper import create_msm as msm_creator, build_msm_config
 from .settings import SkillSettingsDownloader
 from .skill_loader import SkillLoader
