@@ -1,17 +1,3 @@
-# Copyright 2017 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 from setuptools import setup, find_packages
 import os
 import os.path
@@ -22,7 +8,7 @@ BASEDIR = os.path.abspath(os.path.dirname(__file__))
 def get_version():
     """ Find the version of mycroft-core"""
     version = None
-    version_file = os.path.join(BASEDIR, 'mycroft', 'version', '__init__.py')
+    version_file = os.path.join(BASEDIR, 'core', 'version', '__init__.py')
     major, minor, build = (None, None, None)
     with open(version_file) as f:
         for line in f:
@@ -53,26 +39,26 @@ def required(requirements_file):
 
 
 setup(
-    name='trevor-core',
+    name='core',
     version=get_version(),
     install_requires=required('requirements/requirements.txt'),
     extras_require={
         'audio-backend': required('requirements/extra-audiobackend.txt'),
         'stt': required('requirements/extra-stt.txt')
     },
-    packages=find_packages(include=['mycroft*']),
+    packages=find_packages(include=['core*']),
     include_package_data=True,
 
     entry_points={
         'console_scripts': [
-            'mycroft-speech-client=mycroft.client.speech.__main__:main',
-            'mycroft-messagebus=mycroft.messagebus.service.__main__:main',
-            'mycroft-skills=mycroft.skills.__main__:main',
-            'mycroft-audio=mycroft.audio.__main__:main',
-            'mycroft-echo-observer=mycroft.messagebus.client.ws:echo',
-            'mycroft-audio-test=mycroft.util.audio_test:main',
-            'mycroft-enclosure-client=mycroft.client.enclosure.__main__:main',
-            'mycroft-cli-client=mycroft.client.text.__main__:main'
+            'mycroft-speech-client=core.client.speech.__main__:main',  # SPEECH
+            'mycroft-messagebus=core.messagebus.service.__main__:main',  # MESSAGEBUS
+            'mycroft-skills=core.skills.__main__:main',  # SKILLS
+            'mycroft-audio=core.audio.__main__:main',  # VOICE
+            'mycroft-echo-observer=core.messagebus.client.ws:echo',
+            'mycroft-audio-test=core.util.audio_test:main',
+            'mycroft-enclosure-client=core.client.enclosure.__main__:main',  # ENCLOSURE
+            'mycroft-cli-client=core.client.text.__main__:main'  # CORE contact with MB
         ]
     }
 )

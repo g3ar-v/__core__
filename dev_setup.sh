@@ -166,11 +166,9 @@ fi
 # Run a setup wizard the very first time that guides the user through some decisions
 if [[ ! -f .dev_opts.json && -z $CI ]] ; then
     echo "
-$CYAN                    Trevor!  $RESET"
+$CYAN                    core!  $RESET"
     sleep 0.5
-    echo '
-This script is designed to make working with Mycroft easy.  During this
-first run of dev_setup we will ask you a few questions to help setup
+    echo 'During this first run of dev_setup we will ask you a few questions to help setup
 your environment.'
     sleep 0.5
     # The AVX instruction set is an x86 construct
