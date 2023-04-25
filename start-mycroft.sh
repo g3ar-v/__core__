@@ -127,7 +127,7 @@ launch_background() {
 }
 
 launch_all() {
-    echo "Starting all mycroft-core services"
+    echo "Starting all core services"
     launch_background bus
     launch_background audio
     launch_background voice

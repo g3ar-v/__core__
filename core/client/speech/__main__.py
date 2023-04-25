@@ -87,7 +87,7 @@ def handle_speak(event):
 def handle_complete_intent_failure(event):
     """Extreme backup for answering completely unhandled intent requests."""
     LOG.info("Failed to find intent.")
-    data = {'utterance': dialog.get('not.loaded')}
+    data = {'utterance': dialog.get('cant.intent')}
     context = {'client_name': 'mycroft_listener',
                'source': 'audio'}
     bus.emit(Message('speak', data, context))

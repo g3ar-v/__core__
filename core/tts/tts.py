@@ -637,36 +637,16 @@ class TTSFactory:
     The factory can select between a range of built-in TTS engines and also
     from TTS engine plugins.
     """
-    from core.tts.festival_tts import Festival
-    from core.tts.espeak_tts import ESpeak
-    from core.tts.fa_tts import FATTS
     from core.tts.google_tts import GoogleTTS
     from core.tts.mary_tts import MaryTTS
-    from core.tts.mimic_tts import Mimic
-    from core.tts.spdsay_tts import SpdSay
-    from core.tts.bing_tts import BingTTS
-    from core.tts.ibm_tts import WatsonTTS
     from core.tts.mimic2_tts import Mimic2
-    from core.tts.yandex_tts import YandexTTS
-    from core.tts.dummy_tts import DummyTTS
-    from core.tts.polly_tts import PollyTTS
-    from core.tts.mozilla_tts import MozillaTTS
+    from core.tts.mimic3_tts import Mimic3
 
     CLASSES = {
-        "mimic": Mimic,
         "mimic2": Mimic2,
+        "mimic3": Mimic3,
         "google": GoogleTTS,
         "marytts": MaryTTS,
-        "fatts": FATTS,
-        "festival": Festival,
-        "espeak": ESpeak,
-        "spdsay": SpdSay,
-        "watson": WatsonTTS,
-        "bing": BingTTS,
-        "yandex": YandexTTS,
-        "polly": PollyTTS,
-        "mozilla": MozillaTTS,
-        "dummy": DummyTTS
     }
 
     @staticmethod
