@@ -5,14 +5,13 @@ import re
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from threading import Thread
-from time import time
 from warnings import warn
 
 import os.path
 from os.path import dirname, exists, isdir, join
 
 import core.util
-from core.enclosure.api import EnclosureAPI
+# from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.metrics import report_timing
@@ -39,7 +38,7 @@ SENTENCE_DELIMITERS = re.compile(
 
 
 def default_preprocess_utterance(utterance):
-    """Default method for preprocessing Mycroft utterances for TTS.
+    """Default method for preprocessing core utterances for TTS.
 
     Args:
         utteance (str): Input utterance
@@ -65,7 +64,7 @@ class PlaybackThread(Thread):
 
         self._terminated = False
         self._processing_queue = False
-        self.enclosure = None
+        # self.enclosure = None
         self.p = None
         # Check if the tts shall have a ducking role set
         if Configuration.get().get('tts', {}).get('pulse_duck'):
@@ -126,7 +125,7 @@ class PlaybackThread(Thread):
             try:
                 (snd_type, data,
                  visemes, ident, listen) = self.queue.get(timeout=2)
-                self.blink(0.5)
+                # self.blink(0.5)
                 if not self._processing_queue:
                     self._processing_queue = True
                     self.begin_audio()
@@ -137,8 +136,6 @@ class PlaybackThread(Thread):
                         self.p = play_wav(data, environment=self.pulse_env)
                     elif snd_type == 'mp3':
                         self.p = play_mp3(data, environment=self.pulse_env)
-                    if visemes:
-                        self.show_visemes(visemes)
                     if self.p:
                         self.p.communicate()
                         self.p.wait()
@@ -147,7 +144,7 @@ class PlaybackThread(Thread):
                 if self.queue.empty():
                     self.end_audio(listen)
                     self._processing_queue = False
-                self.blink(0.2)
+                # self.blink(0.2)
             except Empty:
                 pass
             except Exception as e:
@@ -177,7 +174,7 @@ class PlaybackThread(Thread):
             # Send end of speech signals to the system
             self.bus.emit(Message("recognizer_loop:audio_output_end"))
             if listen:
-                self.bus.emit(Message('mycroft.mic.listen'))
+                self.bus.emit(Message('core.mic.listen'))
 
             # Clear cache for all attached tts objects
             # This is basically the only safe time
@@ -189,26 +186,9 @@ class PlaybackThread(Thread):
         else:
             LOG.warning("Speech started before bus was attached.")
 
-    def show_visemes(self, pairs):
-        """Send viseme data to enclosure
-
-        Args:
-            pairs (list): Visime and timing pair
-
-        Returns:
-            bool: True if button has been pressed.
-        """
-        if self.enclosure:
-            self.enclosure.mouth_viseme(time(), pairs)
-
     def clear(self):
         """Clear all pending actions for the TTS playback thread."""
         self.clear_queue()
-
-    def blink(self, rate=1.0):
-        """Blink mycroft's eyes"""
-        if self.enclosure and random.random() < rate:
-            self.enclosure.eyes_blink("b")
 
     def stop(self):
         """Stop thread"""
@@ -306,7 +286,7 @@ class TTS(metaclass=ABCMeta):
 
         self.bus.emit(Message("recognizer_loop:audio_output_end"))
         if listen:
-            self.bus.emit(Message('mycroft.mic.listen'))
+            self.bus.emit(Message('core.mic.listen'))
 
         self.cache.curate()
         # This check will clear the "signal"
@@ -316,13 +296,13 @@ class TTS(metaclass=ABCMeta):
         """Performs intial setup of TTS object.
 
         Args:
-            bus:    Mycroft messagebus connection
+            bus:    messagebus connection
         """
         self.bus = bus
         TTS.playback.set_bus(bus)
         TTS.playback.attach_tts(self)
-        self.enclosure = EnclosureAPI(self.bus)
-        TTS.playback.enclosure = self.enclosure
+        # self.enclosure = EnclosureAPI(self.bus)
+        # TTS.playback.enclosure = self.enclosure
 
     def get_tts(self, sentence, wav_file):
         """Abstract method that a tts implementation needs to implement.
@@ -502,7 +482,7 @@ class TTS(metaclass=ABCMeta):
     def viseme(self, phonemes):
         """Create visemes from phonemes.
 
-        May be implemented to convert TTS phonemes into Mycroft mouth
+        May be implemented to convert TTS phonemes into mouth
         visuals.
 
         Args:
@@ -624,11 +604,11 @@ def load_tts_plugin(module_name):
     """Wrapper function for loading tts plugin.
 
     Args:
-        (str) Mycroft tts module name from config
+        (str) tts module name from config
     Returns:
         class: found tts plugin class
     """
-    return load_plugin('mycroft.plugin.tts', module_name)
+    return load_plugin('core.plugin.tts', module_name)
 
 
 class TTSFactory:

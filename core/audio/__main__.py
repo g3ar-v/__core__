@@ -1,4 +1,4 @@
-"""Mycroft audio service.
+"""core audio service.
 
     This handles playback of audio and speech
 """
@@ -33,7 +33,7 @@ def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping):
     try:
         reset_sigint_handler()
         check_for_signal("isSpeaking")
-        whitelist = ['mycroft.audio.service']
+        whitelist = ['core.audio.service']
         bus = start_message_bus_client("AUDIO", whitelist=whitelist)
         callbacks = StatusCallbackMap(on_ready=ready_hook, on_error=error_hook,
                                       on_stopping=stopping_hook)

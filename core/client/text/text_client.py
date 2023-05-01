@@ -202,7 +202,7 @@ def load_settings():
             max_log_lines = config["max_log_lines"]
         if "show_meter" in config:
             show_meter = config["show_meter"]
-    except Exception as e:
+    except Exception:
         LOG.info("Ignoring failed load of settings file")
 
 
@@ -642,7 +642,7 @@ def _do_meter(height):
 
 
 def _do_gui(gui_width):
-    clr = curses.color_pair(2)  # dark red
+    curses.color_pair(2)  # dark red
     x = curses.COLS - gui_width
     y = 3
     draw(
@@ -1224,13 +1224,13 @@ def handle_cmd(cmd):
         # Control logging behavior in all Mycroft processes
         if "level" in cmd:
             level = _get_cmd_param(cmd, ["log", "level"])
-            bus.emit(Message("mycroft.debug.log", data={'level': level}))
+            bus.emit(Message("core.debug.log", data={'level': level}))
         elif "bus" in cmd:
             state = _get_cmd_param(cmd, ["log", "bus"]).lower()
             if state in ["on", "true", "yes"]:
-                bus.emit(Message("mycroft.debug.log", data={'bus': True}))
+                bus.emit(Message("core.debug.log", data={'bus': True}))
             elif state in ["off", "false", "no"]:
-                bus.emit(Message("mycroft.debug.log", data={'bus': False}))
+                bus.emit(Message("core.debug.log", data={'bus': False}))
     elif "history" in cmd:
         # extract last word(s)
         lines = int(_get_cmd_param(cmd, "history"))
@@ -1243,7 +1243,7 @@ def handle_cmd(cmd):
     elif "skills" in cmd:
         # List loaded skill
         message = bus.wait_for_response(
-            Message('skillmanager.list'), reply_type='mycroft.skills.list')
+            Message('skillmanager.list'), reply_type='core.skills.list')
 
         if message:
             show_skills(message.data)
@@ -1321,7 +1321,7 @@ def gui_main(stdscr):
     bus.on('connected', handle_is_connected)
     bus.on('reconnecting', handle_reconnecting)
 
-    add_log_message("Establishing Mycroft Messagebus connection...")
+    add_log_message("Establishing Messagebus connection...")
 
     gui_thread = ScreenDrawThread()
     gui_thread.setDaemon(True)  # this thread won't prevent prog from exiting
@@ -1534,7 +1534,7 @@ def simple_cli():
                              {'client_name': 'mycroft_simple_cli',
                               'source': 'debug_cli',
                               'destination': ["skills"]}))
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         # User hit Ctrl+C to quit
         print("")
     except KeyboardInterrupt as e:

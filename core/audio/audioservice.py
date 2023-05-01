@@ -52,11 +52,11 @@ def get_services(services_folder):
     for i in possible_services:
         location = join(services_folder, i)
         if (isdir(location) and
-                not MAINMODULE + ".py" in listdir(location)):
+                MAINMODULE + '.py' not in listdir(location)):
             for j in listdir(location):
                 name = join(location, j)
                 if (not isdir(name) or
-                        not MAINMODULE + ".py" in listdir(name)):
+                        MAINMODULE + '.py' not in listdir(name)):
                     continue
                 try:
                     services.append(create_service_spec(name))
@@ -64,7 +64,7 @@ def get_services(services_folder):
                     LOG.error('Failed to create service from ' + name,
                               exc_info=True)
         if (not isdir(location) or
-                not MAINMODULE + ".py" in listdir(location)):
+                MAINMODULE + '.py' not in listdir(location)):
             continue
         try:
             services.append(create_service_spec(location))
@@ -147,7 +147,7 @@ def load_plugins(config, bus):
         List of started services
     """
     plugin_services = []
-    found_plugins = find_plugins('mycroft.plugin.audioservice')
+    found_plugins = find_plugins('core.plugin.audioservice')
     for plugin_name, plugin_module in found_plugins.items():
         LOG.info(f'Loading audio service plugin: {plugin_name}')
         service = setup_service(plugin_module, config, bus)
@@ -161,7 +161,7 @@ def load_services(config, bus, path=None):
 
     The builtin service folder is scanned (or a folder indicated by the path
     parameter) for services and plugins registered with the
-    "mycroft.plugin.audioservice" entrypoint group.
+    "core.plugin.audioservice" entrypoint group.
 
     Args:
         config: configuration dict for the audio backends.
@@ -229,17 +229,17 @@ class AudioService:
             LOG.info('no default found')
 
         # Setup event handlers
-        self.bus.on('mycroft.audio.service.play', self._play)
-        self.bus.on('mycroft.audio.service.queue', self._queue)
-        self.bus.on('mycroft.audio.service.pause', self._pause)
-        self.bus.on('mycroft.audio.service.resume', self._resume)
-        self.bus.on('mycroft.audio.service.stop', self._stop)
-        self.bus.on('mycroft.audio.service.next', self._next)
-        self.bus.on('mycroft.audio.service.prev', self._prev)
-        self.bus.on('mycroft.audio.service.track_info', self._track_info)
-        self.bus.on('mycroft.audio.service.list_backends', self._list_backends)
-        self.bus.on('mycroft.audio.service.seek_forward', self._seek_forward)
-        self.bus.on('mycroft.audio.service.seek_backward', self._seek_backward)
+        self.bus.on('core.audio.service.play', self._play)
+        self.bus.on('core.audio.service.queue', self._queue)
+        self.bus.on('core.audio.service.pause', self._pause)
+        self.bus.on('core.audio.service.resume', self._resume)
+        self.bus.on('core.audio.service.stop', self._stop)
+        self.bus.on('core.audio.service.next', self._next)
+        self.bus.on('core.audio.service.prev', self._prev)
+        self.bus.on('core.audio.service.track_info', self._track_info)
+        self.bus.on('core.audio.service.list_backends', self._list_backends)
+        self.bus.on('core.audio.service.seek_forward', self._seek_forward)
+        self.bus.on('core.audio.service.seek_backward', self._seek_backward)
         self.bus.on('recognizer_loop:audio_output_start', self._lower_volume)
         self.bus.on('recognizer_loop:record_begin', self._lower_volume)
         self.bus.on('recognizer_loop:audio_output_end', self._restore_volume)
@@ -265,17 +265,17 @@ class AudioService:
         if track:
             # Inform about the track about to start.
             LOG.debug('New track coming up!')
-            self.bus.emit(Message('mycroft.audio.playing_track',
+            self.bus.emit(Message('core.audio.playing_track',
                                   data={'track': track}))
         else:
             # If no track is about to start last track of the queue has been
             # played.
             LOG.debug('End of playlist!')
-            self.bus.emit(Message('mycroft.audio.queue_end'))
+            self.bus.emit(Message('core.audio.queue_end'))
 
     def _pause(self, message=None):
         """
-            Handler for mycroft.audio.service.pause. Pauses the current audio
+            Handler for core.audio.service.pause. Pauses the current audio
             service.
 
             Args:
@@ -286,7 +286,7 @@ class AudioService:
 
     def _resume(self, message=None):
         """
-            Handler for mycroft.audio.service.resume.
+            Handler for core.audio.service.resume.
 
             Args:
                 message: message bus message, not used but required
@@ -296,7 +296,7 @@ class AudioService:
 
     def _next(self, message=None):
         """
-            Handler for mycroft.audio.service.next. Skips current track and
+            Handler for core.audio.service.next. Skips current track and
             starts playing the next.
 
             Args:
@@ -307,7 +307,7 @@ class AudioService:
 
     def _prev(self, message=None):
         """
-            Handler for mycroft.audio.service.prev. Starts playing the previous
+            Handler for core.audio.service.prev. Starts playing the previous
             track.
 
             Args:
@@ -321,14 +321,14 @@ class AudioService:
         if self.current:
             name = self.current.name
             if self.current.stop():
-                self.bus.emit(Message("mycroft.stop.handled",
+                self.bus.emit(Message("core.stop.handled",
                                       {"by": "audio:" + name}))
 
         self.current = None
 
     def _stop(self, message=None):
         """
-            Handler for mycroft.stop. Stops any playing service.
+            Handler for core.stop. Stops any playing service.
 
             Args:
                 message: message bus message, not used but required
@@ -341,7 +341,7 @@ class AudioService:
 
     def _lower_volume(self, message=None):
         """
-            Is triggered when mycroft starts to speak and reduces the volume.
+            Is triggered when core starts to speak and reduces the volume.
 
             Args:
                 message: message bus message, not used but required
@@ -361,7 +361,7 @@ class AudioService:
 
     def _restore_volume_after_record(self, message=None):
         """
-            Restores the volume when Mycroft is done recording.
+            Restores the volume when core is done recording.
             If no utterance detected, restore immediately.
             If no response is made in reasonable time, then also restore.
 
@@ -437,7 +437,7 @@ class AudioService:
 
     def _play(self, message):
         """
-            Handler for mycroft.audio.service.play. Starts playback of a
+            Handler for core.audio.service.play. Starts playback of a
             tracklist. Also  determines if the user requested a special
             service.
 
@@ -470,7 +470,7 @@ class AudioService:
             track_info = self.current.track_info()
         else:
             track_info = {}
-        self.bus.emit(Message('mycroft.audio.service.track_info_reply',
+        self.bus.emit(Message('core.audio.service.track_info_reply',
                               data=track_info))
 
     def _list_backends(self, message):
@@ -516,17 +516,17 @@ class AudioService:
                 LOG.error('shutdown of ' + s.name + ' failed: ' + repr(e))
 
         # remove listeners
-        self.bus.remove('mycroft.audio.service.play', self._play)
-        self.bus.remove('mycroft.audio.service.queue', self._queue)
-        self.bus.remove('mycroft.audio.service.pause', self._pause)
-        self.bus.remove('mycroft.audio.service.resume', self._resume)
-        self.bus.remove('mycroft.audio.service.stop', self._stop)
-        self.bus.remove('mycroft.audio.service.next', self._next)
-        self.bus.remove('mycroft.audio.service.prev', self._prev)
-        self.bus.remove('mycroft.audio.service.track_info', self._track_info)
-        self.bus.remove('mycroft.audio.service.seek_forward',
+        self.bus.remove('core.audio.service.play', self._play)
+        self.bus.remove('core.audio.service.queue', self._queue)
+        self.bus.remove('core.audio.service.pause', self._pause)
+        self.bus.remove('core.audio.service.resume', self._resume)
+        self.bus.remove('core.audio.service.stop', self._stop)
+        self.bus.remove('core.audio.service.next', self._next)
+        self.bus.remove('core.audio.service.prev', self._prev)
+        self.bus.remove('core.audio.service.track_info', self._track_info)
+        self.bus.remove('core.audio.service.seek_forward',
                         self._seek_forward)
-        self.bus.remove('mycroft.audio.service.seek_backward',
+        self.bus.remove('core.audio.service.seek_backward',
                         self._seek_backward)
         self.bus.remove('recognizer_loop:audio_output_start',
                         self._lower_volume)

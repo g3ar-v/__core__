@@ -1,6 +1,6 @@
 from enum import IntEnum
 from abc import ABC, abstractmethod
-from .mycroft_skill import MycroftSkill
+from .skill import Skill
 
 from core.util.file_utils import resolve_resource_file
 
@@ -35,7 +35,7 @@ MAX_ANSWER_LEN_FOR_CONFIDENCE = 50
 WORD_COUNT_DIVISOR = 100
 
 
-class CommonQuerySkill(MycroftSkill, ABC):
+class CommonQuerySkill(Skill, ABC):
     """Question answering skills should be based on this class.
 
     The skill author needs to implement `CQS_match_query_phrase` returning an
@@ -70,7 +70,7 @@ class CommonQuerySkill(MycroftSkill, ABC):
         }
 
     def bind(self, bus):
-        """Overrides the default bind method of MycroftSkill.
+        """Overrides the default bind method of Skill.
 
         This registers messagebus handlers for the skill during startup
         but is nothing the skill author needs to consider.

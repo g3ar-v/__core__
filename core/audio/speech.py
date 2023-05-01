@@ -11,7 +11,7 @@ from core.messagebus.message import Message
 from core.tts.remote_tts import RemoteTTSException
 from core.tts.mimic_tts import Mimic
 
-bus = None  # Mycroft messagebus connection
+bus = None  # messagebus connection
 config = None
 tts = None
 tts_hash = None
@@ -150,14 +150,14 @@ def handle_stop(event):
     if check_for_signal("isSpeaking", -1):
         _last_stop_signal = time.time()
         tts.playback.clear()  # Clear here to get instant stop
-        bus.emit(Message("mycroft.stop.handled", {"by": "TTS"}))
+        bus.emit(Message("core.stop.handled", {"by": "TTS"}))
 
 
 def init(messagebus):
     """Start speech related handlers.
 
     Args:
-        messagebus: Connection to the Mycroft messagebus
+        messagebus: Connection to the messagebus
     """
 
     global bus
@@ -168,8 +168,8 @@ def init(messagebus):
     bus = messagebus
     Configuration.set_config_update_handlers(bus)
     config = Configuration.get()
-    bus.on('mycroft.stop', handle_stop)
-    bus.on('mycroft.audio.speech.stop', handle_stop)
+    bus.on('core.stop', handle_stop)
+    bus.on('core.audio.speech.stop', handle_stop)
     bus.on('speak', handle_speak)
 
     tts = TTSFactory.create()

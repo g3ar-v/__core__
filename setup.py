@@ -5,8 +5,8 @@ import os.path
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
-def get_version():
-    """ Find the version of mycroft-core"""
+def get_version() -> str:
+    """ Find the version of core"""
     version = None
     version_file = os.path.join(BASEDIR, 'core', 'version', '__init__.py')
     major, minor, build = (None, None, None)
@@ -51,14 +51,14 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'mycroft-speech-client=core.client.speech.__main__:main',  # SPEECH
-            'mycroft-messagebus=core.messagebus.service.__main__:main',  # MESSAGEBUS
-            'mycroft-skills=core.skills.__main__:main',  # SKILLS
-            'mycroft-audio=core.audio.__main__:main',  # VOICE
-            'mycroft-echo-observer=core.messagebus.client.ws:echo',
-            'mycroft-audio-test=core.util.audio_test:main',
-            'mycroft-enclosure-client=core.client.enclosure.__main__:main',  # ENCLOSURE
-            'mycroft-cli-client=core.client.text.__main__:main'  # CORE contact with MB
+            'core-speech-client=core.client.speech.__main__:main',  # SPEECH
+            'core-messagebus=core.messagebus.service.__main__:main',  # MESSAGEBUS
+            'core-skills=core.skills.__main__:main',  # SKILLS
+            'core-audio=core.audio.__main__:main',  # VOICE
+            'core-echo-observer=core.messagebus.client.ws:echo',
+            'core-audio-test=core.util.audio_test:main',
+            'core-enclosure-client=core.client.enclosure.__main__:main',  # ENCLOSURE
+            'core-cli-client=core.client.text.__main__:main'  # CORE contact with MB
         ]
     }
 )

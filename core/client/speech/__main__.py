@@ -16,7 +16,7 @@ from core.util import (
 from core.util.log import LOG
 from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
-bus = None  # Mycroft messagebus connection
+bus = None  # messagebus connection
 lock = Lock()
 loop = None
 config = None
@@ -46,11 +46,11 @@ def handle_no_internet():
 
 
 def handle_awoken():
-    """Forward mycroft.awoken to the messagebus."""
+    """Forward core.awoken to the messagebus."""
     LOG.info("Listener is now Awake: ")
     context = {'client_name': 'mycroft_listener',
                'source': 'audio'}
-    bus.emit(Message('mycroft.awoken', context=context))
+    bus.emit(Message('core.awoken', context=context))
 
 
 def handle_wakeword(event):
@@ -72,7 +72,7 @@ def handle_utterance(event):
 def handle_unknown():
     context = {'client_name': 'mycroft_listener',
                'source': 'audio'}
-    bus.emit(Message('mycroft.speech.recognition.unknown', context=context))
+    bus.emit(Message('core.speech.recognition.unknown', context=context))
 
 
 def handle_speak(event):
@@ -114,7 +114,7 @@ def handle_mic_unmute(event):
 
 
 def handle_mic_listen(_):
-    """Handler for mycroft.mic.listen.
+    """Handler for core.mic.listen.
 
     Starts listening as if wakeword was spoken.
     """
@@ -151,7 +151,7 @@ def handle_audio_end(event):
 
 
 def handle_stop(event):
-    """Handler for mycroft.stop, i.e. button press."""
+    """Handler for core.stop, i.e. button press."""
     loop.force_unmute()
 
 
@@ -184,19 +184,19 @@ def connect_loop_events(loop):
 
 
 def connect_bus_events(bus):
-    # Register handlers for events on main Mycroft messagebus
+    # Register handlers for events on main messagebus
     bus.on('open', handle_open)
     bus.on('complete_intent_failure', handle_complete_intent_failure)
     bus.on('recognizer_loop:sleep', handle_sleep)
     bus.on('recognizer_loop:wake_up', handle_wake_up)
-    bus.on('mycroft.mic.mute', handle_mic_mute)
-    bus.on('mycroft.mic.unmute', handle_mic_unmute)
-    bus.on('mycroft.mic.get_status', handle_mic_get_status)
-    bus.on('mycroft.mic.listen', handle_mic_listen)
-    bus.on("mycroft.paired", handle_paired)
+    bus.on('core.mic.mute', handle_mic_mute)
+    bus.on('core.mic.unmute', handle_mic_unmute)
+    bus.on('core.mic.get_status', handle_mic_get_status)
+    bus.on('core.mic.listen', handle_mic_listen)
+    bus.on("core.paired", handle_paired)
     bus.on('recognizer_loop:audio_output_start', handle_audio_start)
     bus.on('recognizer_loop:audio_output_end', handle_audio_end)
-    bus.on('mycroft.stop', handle_stop)
+    bus.on('core.stop', handle_stop)
 
 
 def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping,

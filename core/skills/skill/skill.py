@@ -1,4 +1,4 @@
-"""Common functionality relating to the implementation of mycroft skills."""
+"""Common functionality relating to the implementation of skills."""
 
 from copy import deepcopy
 import sys
@@ -18,7 +18,7 @@ from core import dialog
 from core.api import DeviceApi
 from core.audio import wait_while_speaking
 from core.enclosure.api import EnclosureAPI
-from core.enclosure.gui import SkillGUI
+# from core.enclosure.gui import SkillGUI
 from core.configuration import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
@@ -68,7 +68,7 @@ def simple_trace(stack_trace):
 def get_non_properties(obj):
     """Get attibutes that are not properties from object.
 
-    Will return members of object class along with bases down to MycroftSkill.
+    Will return members of object class along with bases down to Skill.
 
     Args:
         obj: object to scan
@@ -82,20 +82,17 @@ def get_non_properties(obj):
         # Current class
         d = cls.__dict__
         np = [k for k in d if not isinstance(d[k], property)]
-        # Recurse through base classes excluding MycroftSkill and object
-        for b in [b for b in cls.__bases__ if b not in (object, MycroftSkill)]:
+        # Recurse through base classes excluding Skill and object
+        for b in [b for b in cls.__bases__ if b not in (object, Skill)]:
             np += check_class(b)
         return np
 
     return set(check_class(obj.__class__))
 
 
-class MycroftSkill:
+class Skill:
     """Base class for mycroft skills providing common behaviour and parameters
     to all Skill implementations.
-
-    For information on how to get started with creating mycroft skills see
-    https://mycroft.ai/documentation/skills/introduction-developing-skills/
 
     Args:
         name (str): skill name
@@ -113,7 +110,7 @@ class MycroftSkill:
         #: directory. E.g. /opt/mycroft/skills/my-skill.me/
         self.root_dir = dirname(abspath(sys.modules[self.__module__].__file__))
 
-        self.gui = SkillGUI(self)
+        # self.gui = SkillGUI(self)
 
         self._bus = None
         self._enclosure = None
@@ -191,7 +188,7 @@ class MycroftSkill:
             LOG.error('Skill not fully initialized. Move code ' +
                       'from  __init__() to initialize() to correct this.')
             LOG.error(simple_trace(traceback.format_stack()))
-            raise Exception('Accessed MycroftSkill.enclosure in __init__')
+            raise Exception('Accessed Skill.enclosure in __init__')
 
     @property
     def bus(self):
@@ -201,7 +198,7 @@ class MycroftSkill:
             LOG.error('Skill not fully initialized. Move code ' +
                       'from __init__() to initialize() to correct this.')
             LOG.error(simple_trace(traceback.format_stack()))
-            raise Exception('Accessed MycroftSkill.bus in __init__')
+            raise Exception('Accessed Skill.bus in __init__')
 
     @property
     def location(self):
@@ -246,7 +243,7 @@ class MycroftSkill:
             self._enclosure = EnclosureAPI(bus, self.name)
             self._register_system_event_handlers()
             # Initialize the SkillGui
-            self.gui.setup_default_handlers()
+            # self.gui.setup_default_handlers()
 
             self._register_public_api()
 
@@ -302,30 +299,30 @@ class MycroftSkill:
         system.
         """
         def stop_is_implemented():
-            return self.__class__.stop is not MycroftSkill.stop
+            return self.__class__.stop is not Skill.stop
 
         # Only register stop if it's been implemented
         if stop_is_implemented():
-            self.add_event('mycroft.stop', self.__handle_stop)
+            self.add_event('core.stop', self.__handle_stop)
 
         self.add_event(
-            'mycroft.skill.enable_intent',
+            'core.skill.enable_intent',
             self.handle_enable_intent
         )
         self.add_event(
-            'mycroft.skill.disable_intent',
+            'core.skill.disable_intent',
             self.handle_disable_intent
         )
         self.add_event(
-            'mycroft.skill.set_cross_context',
+            'core.skill.set_cross_context',
             self.handle_set_cross_context
         )
         self.add_event(
-            'mycroft.skill.remove_cross_context',
+            'core.skill.remove_cross_context',
             self.handle_remove_cross_context
         )
         self.events.add(
-            'mycroft.skills.settings.changed',
+            'core.skills.settings.changed',
             self.handle_settings_change
         )
 
@@ -489,7 +486,7 @@ class MycroftSkill:
         if dialog_exists:
             self.speak_dialog(dialog, data, expect_response=True, wait=True)
         else:
-            self.bus.emit(Message('mycroft.mic.listen'))
+            self.bus.emit(Message('core.mic.listen'))
         return self._wait_response(is_cancel, validator, on_fail_fn,
                                    num_retries)
 
@@ -528,7 +525,7 @@ class MycroftSkill:
             if line:
                 self.speak(line, expect_response=True)
             else:
-                self.bus.emit(Message('mycroft.mic.listen'))
+                self.bus.emit(Message('core.mic.listen'))
 
     def ask_yesno(self, prompt, data=None):
         """Read prompt and wait for a yes/no answer
@@ -970,7 +967,7 @@ class MycroftSkill:
 
         if handler:
             self.add_event(intent_parser.name, handler,
-                           'mycroft.skill.handler')
+                           'core.skill.handler')
 
     def register_intent(self, intent_parser, handler):
         """Register an Intent with the intent service.
@@ -1035,7 +1032,7 @@ class MycroftSkill:
 
         self.intent_service.register_padatious_intent(name, filename)
         if handler:
-            self.add_event(name, handler, 'mycroft.skill.handler')
+            self.add_event(name, handler, 'core.skill.handler')
 
     def register_entity_file(self, entity_file):
         """Register an Entity file with the intent service.
@@ -1342,13 +1339,13 @@ class MycroftSkill:
         """
         def __stop_timeout():
             # The self.stop() call took more than 100ms, assume it handled Stop
-            self.bus.emit(Message('mycroft.stop.handled',
+            self.bus.emit(Message('core.stop.handled',
                                   {'skill_id': str(self.skill_id) + ':'}))
 
         timer = Timer(0.1, __stop_timeout)  # set timer for 100ms
         try:
             if self.stop():
-                self.bus.emit(Message("mycroft.stop.handled",
+                self.bus.emit(Message("core.stop.handled",
                                       {"by": "skill:" + self.skill_id}))
             timer.cancel()
         except Exception:
@@ -1391,7 +1388,7 @@ class MycroftSkill:
             self.settings_meta.stop()
 
         # Clear skill from gui
-        self.gui.shutdown()
+        # self.gui.shutdown()
 
         # removing events
         self.event_scheduler.shutdown()

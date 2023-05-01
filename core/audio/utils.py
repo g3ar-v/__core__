@@ -31,7 +31,7 @@ def stop_speaking():
     """
     if is_speaking():
         from core.messagebus.send import send
-        send('mycroft.audio.speech.stop')
+        send('core.audio.speech.stop')
 
         # Block until stopped
         while check_for_signal("isSpeaking", -1):

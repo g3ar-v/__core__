@@ -79,7 +79,7 @@ def _shutdown_skill(instance):
     the shutdown process takes longer than 1 second.
 
     Args:
-        instance (MycroftSkill): Skill instance to shutdown
+        instance (Skill): Skill instance to shutdown
     """
     try:
         ref_time = monotonic()
@@ -102,7 +102,7 @@ class SkillManager(Thread):
         """Constructor
 
         Args:
-            bus (event emitter): Mycroft messagebus connection
+            bus (event emitter): messagebus connection
             watchdog (callable): optional watchdog function
         """
         super(SkillManager, self).__init__()
@@ -137,7 +137,7 @@ class SkillManager(Thread):
 
         # Update on initial connection
         self.bus.on(
-            'mycroft.internet.connected',
+            'core.internet.connected',
             lambda x: self._connected_event.set()
         )
 
@@ -147,9 +147,9 @@ class SkillManager(Thread):
         self.bus.on('skillmanager.deactivate', self.deactivate_skill)
         self.bus.on('skillmanager.keep', self.deactivate_except)
         self.bus.on('skillmanager.activate', self.activate_skill)
-        self.bus.on('mycroft.paired', self.handle_paired)
+        self.bus.on('core.paired', self.handle_paired)
         self.bus.on(
-            'mycroft.skills.settings.update',
+            'core.skills.settings.update',
             self.settings_downloader.download
         )
 
@@ -259,7 +259,7 @@ class SkillManager(Thread):
         LOG.info('Loading installed skills...')
         self._load_new_skills()
         LOG.info("Skills all loaded!")
-        self.bus.emit(Message('mycroft.skills.initialized'))
+        self.bus.emit(Message('core.skills.initialized'))
         self._loaded_status = True
 
     def _reload_modified_skills(self):
@@ -331,7 +331,7 @@ class SkillManager(Thread):
             del self.skill_loaders[skill_dir]
 
         # If skills were removed make sure to update the manifest on the
-        # mycroft backend.
+        # core backend.
         if removed_skills:
             self.skill_updater.post_manifest(reload_skills_manifest=True)
 
@@ -361,7 +361,7 @@ class SkillManager(Thread):
                     active=skill_loader.active and skill_loader.loaded,
                     id=skill_loader.skill_id
                 )
-            self.bus.emit(Message('mycroft.skills.list', data=message_data))
+            self.bus.emit(Message('core.skills.list', data=message_data))
         except Exception:
             LOG.exception('Failed to send skill list')
 

@@ -2,7 +2,7 @@ import re
 from enum import Enum, IntEnum
 from abc import ABC, abstractmethod
 from core.messagebus.message import Message
-from .mycroft_skill import MycroftSkill
+from .skill import Skill 
 from .audioservice import AudioService
 
 
@@ -31,7 +31,7 @@ class CPSTrackStatus(IntEnum):
     END_OF_MEDIA = 90  # playback finished, is the default state when CPS loads
 
 
-class CommonPlaySkill(MycroftSkill, ABC):
+class CommonPlaySkill(Skill, ABC):
     """ To integrate with the common play infrastructure of Mycroft
     skills should use this base class and override the two methods
     `CPS_match_query_phrase` (for checking if the skill can play the

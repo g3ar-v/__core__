@@ -5,8 +5,6 @@ directory.  The executable gets added to the bin directory when installed
 (see setup.py)
 """
 import time
-from threading import Event
-
 from msm.exceptions import MsmException
 from lingua_franca import load_languages
 
@@ -26,13 +24,13 @@ from core.util import (
 from core.util.log import LOG
 from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
-from .api import SkillApi
-from .core import FallbackSkill
-from .event_scheduler import EventScheduler
-from .intent_service import IntentService
-from .skill_manager import SkillManager
+from core.skills.api import SkillApi
+from core.skills.fallback_skill import FallbackSkill
+from core.skills.event_scheduler import EventScheduler
+from core.skills.intent_service import IntentService
+from core.skills.skill_manager import SkillManager
 
-RASPBERRY_PI_PLATFORMS = ('mycroft_mark_1', 'picroft', 'mycroft_mark_2pi')
+RASPBERRY_PI_PLATFORMS = ('picroft')
 
 
 class DevicePrimer(object):
@@ -40,7 +38,7 @@ class DevicePrimer(object):
 
     Args:
         message_bus_client: Bus client used to interact with the system
-        config (dict): Mycroft configuration
+        config (dict): Core configuration
     """
     def __init__(self, message_bus_client, config):
         self.bus = message_bus_client
@@ -61,7 +59,7 @@ class DevicePrimer(object):
         if self.backend_down:
             self._notify_backend_down()
         else:
-            self.bus.emit(Message('mycroft.internet.connected'))
+            self.bus.emit(Message('core.internet.connected'))
             self._ensure_device_is_paired()
             self._update_device_attributes_on_backend()
 
@@ -227,7 +225,7 @@ def _register_intent_services(bus):
     service = IntentService(bus)
     # Register handler to trigger fallback system
     bus.on(
-        'mycroft.skills.fallback',
+        'core.skills.fallback',
         FallbackSkill.make_intent_failure_handler(bus)
     )
     return service

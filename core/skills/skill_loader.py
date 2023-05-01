@@ -2,7 +2,6 @@
 import gc
 import importlib
 import os
-from os.path import dirname
 import sys
 from time import time
 
@@ -216,7 +215,7 @@ class SkillLoader:
 
     def _emit_skill_shutdown_event(self):
         message = Message(
-            "mycroft.skills.shutdown",
+            "core.skills.shutdown",
             data=dict(path=self.skill_directory, id=self.skill_id)
         )
         self.bus.emit(message)
@@ -318,7 +317,7 @@ class SkillLoader:
     def _communicate_load_status(self):
         if self.loaded:
             message = Message(
-                'mycroft.skills.loaded',
+                'core.skills.loaded',
                 data=dict(
                     path=self.skill_directory,
                     id=self.skill_id,
@@ -330,7 +329,7 @@ class SkillLoader:
             LOG.info('Skill {} loaded successfully'.format(self.skill_id))
         else:
             message = Message(
-                'mycroft.skills.loading_failure',
+                'core.skills.loading_failure',
                 data=dict(path=self.skill_directory, id=self.skill_id)
             )
             self.bus.emit(message)

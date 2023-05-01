@@ -162,7 +162,7 @@ class AudioConsumer(Thread):
             SessionManager.touch()
             self.state.sleeping = False
             self.emitter.emit('recognizer_loop:awoken')
-            self.metrics.increment("mycroft.wakeup")
+            self.metrics.increment("core.wakeup")
 
     @staticmethod
     def _audio_length(audio):
@@ -210,8 +210,6 @@ class AudioConsumer(Thread):
                 LOG.debug("STT: " + text)
             else:
                 send_unknown_intent()
-                dialog_name = 'i didn\'t catch that'
-                self.emitter.emit('speak', {'utterance': dialog.get(dialog_name)})
                 LOG.info('no words were transcribed')
             return text
         except sr.RequestError as e:

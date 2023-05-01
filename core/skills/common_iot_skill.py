@@ -9,7 +9,7 @@ from enum import Enum, unique
 from functools import total_ordering, wraps
 from itertools import count
 
-from .mycroft_skill import MycroftSkill
+from .skill import Skill
 from core.messagebus.message import Message, dig_for_message
 
 ENTITY = "ENTITY"
@@ -309,7 +309,7 @@ def _track_request(func):
     return tracking_function
 
 
-class CommonIoTSkill(MycroftSkill, ABC):
+class CommonIoTSkill(Skill, ABC):
     """
     Skills that want to work with the CommonIoT system should
     extend this class. Subclasses will be expected to implement
@@ -334,7 +334,7 @@ class CommonIoTSkill(MycroftSkill, ABC):
     step on each other.
     """
 
-    @wraps(MycroftSkill.__init__)
+    @wraps(Skill.__init__)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._current_iot_request = None

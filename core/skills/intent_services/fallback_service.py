@@ -38,7 +38,7 @@ class FallbackService:
             IntentMatch or None
         """
         msg = message.reply(
-            'mycroft.skills.fallback',
+            'core.skills.fallback',
             data={'utterance': utterances[0][0],
                   'lang': lang,
                   'fallback_range': (fb_range.start, fb_range.stop)}

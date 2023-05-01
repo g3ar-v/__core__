@@ -12,7 +12,7 @@ import xdg.BaseDirectory
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util.log import LOG
-from .mycroft_skill.event_container import EventContainer, create_basic_wrapper
+from .skill.event_container import EventContainer, create_basic_wrapper
 
 
 def repeat_time(sched_time, repeat):

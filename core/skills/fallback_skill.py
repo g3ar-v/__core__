@@ -6,10 +6,10 @@ from core.metrics import report_timing, Stopwatch
 from core.util.log import LOG
 
 
-from .mycroft_skill import MycroftSkill, get_handler_name
+from .skill import Skill, get_handler_name
 
 
-class FallbackSkill(MycroftSkill):
+class FallbackSkill(Skill):
     """Fallbacks come into play when no skill matches an Adapt or closely with
     a Padatious intent.  All Fallback skills work together to give them a
     view of the user's utterance.  Fallback handlers are called in an order
@@ -51,7 +51,7 @@ class FallbackSkill(MycroftSkill):
             # indicate fallback handling start
             LOG.debug('Checking fallbacks in range '
                       '{} - {}'.format(start, stop))
-            bus.emit(message.forward("mycroft.skill.handler.start",
+            bus.emit(message.forward("core.skill.handler.start",
                                      data={'handler': "fallback"}))
 
             stopwatch = Stopwatch()
@@ -68,7 +68,7 @@ class FallbackSkill(MycroftSkill):
                             status = True
                             handler_name = get_handler_name(handler)
                             bus.emit(message.forward(
-                                     'mycroft.skill.handler.complete',
+                                     'core.skill.handler.complete',
                                      data={'handler': "fallback",
                                            "fallback_handler": handler_name}))
                             break
@@ -78,7 +78,7 @@ class FallbackSkill(MycroftSkill):
                     status = False
                     #  indicate completion with exception
                     warning = 'No fallback could handle intent.'
-                    bus.emit(message.forward('mycroft.skill.handler.complete',
+                    bus.emit(message.forward('core.skill.handler.complete',
                                              data={'handler': "fallback",
                                                    'exception': warning}))
 

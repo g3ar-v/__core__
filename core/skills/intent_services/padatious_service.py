@@ -1,5 +1,4 @@
 """Intent service wrapping padatious."""
-from functools import lru_cache
 from subprocess import call
 from threading import Event
 from time import time as get_time, sleep
@@ -107,7 +106,7 @@ class PadatiousService:
         self.bus.on('padatious:register_entity', self.register_entity)
         self.bus.on('detach_intent', self.handle_detach_intent)
         self.bus.on('detach_skill', self.handle_detach_skill)
-        self.bus.on('mycroft.skills.initialized', self.train)
+        self.bus.on('core.skills.initialized', self.train)
 
         self.finished_training_event = Event()
         self.finished_initial_train = False
@@ -140,7 +139,7 @@ class PadatiousService:
 
         self.finished_training_event.set()
         if not self.finished_initial_train:
-            self.bus.emit(Message('mycroft.skills.trained'))
+            self.bus.emit(Message('core.skills.trained'))
             self.finished_initial_train = True
 
     def wait_and_train(self):

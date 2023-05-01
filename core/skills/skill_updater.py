@@ -86,7 +86,7 @@ class SkillUpdater:
                 )
             else:
                 self._installed_skills_file_path = os.path.join(
-                    xdg.BaseDirectory.save_data_path('trevor'),
+                    xdg.BaseDirectory.save_data_path('core'),
                     '.mycroft-skills')
 
         return self._installed_skills_file_path
