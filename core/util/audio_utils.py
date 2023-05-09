@@ -35,6 +35,7 @@ def play_audio_file(uri: str, environment=None):
     if play_function:
         return play_function(uri, environment)
     else:
+        return play_function(uri, environment)
         LOG.error("Could not find a function capable of playing {uri}."
                   " Supported formats are {keys}."
                   .format(uri=uri, keys=list(extension_to_function.keys())))
@@ -97,6 +98,18 @@ def play_wav(uri, environment=None):
                                                          repr(e)))
     except Exception:
         LOG.exception("Failed to launch WAV: {}".format(play_wav_cmd))
+    # else:
+    #     if not is_installed("ffplay"):
+    #         raise ValueError("ffplay from ffmpeg not found, necessary to play audio.")
+    #     args = ["ffplay", "-autoexit", "-", "-nodisp"]
+    #     proc = subprocess.Popen(
+    #         args=args,
+    #         stdout=subprocess.PIPE,
+    #         stdin=subprocess.PIPE,
+    #         stderr=subprocess.PIPE,
+    #     )
+    #     out, err = proc.communicate(input=uri)
+    #     proc.poll()
     return None
 
 
@@ -148,6 +161,7 @@ def play_ogg(uri, environment=None):
     except Exception:
         LOG.exception("Failed to launch OGG: {}".format(play_ogg_cmd))
     return None
+
 
 
 def record(file_path, duration, rate, channels):

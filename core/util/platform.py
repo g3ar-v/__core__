@@ -1,6 +1,8 @@
 """Utilities checking for platform features."""
 import platform
 import os
+import shutil
+from pathlib import Path
 
 
 def get_arch():
@@ -15,3 +17,11 @@ def get_enclosure():
         return "raspberry pi"
     else:
         return "linux"
+
+def is_installed(lib_name: str) -> bool:
+    lib = shutil.which(lib_name)
+    if lib is None:
+        return False
+    global_path = Path(lib)
+    # else check if path is valid and has the correct access rights
+    return global_path.exists() and os.access(global_path, os.X_OK)

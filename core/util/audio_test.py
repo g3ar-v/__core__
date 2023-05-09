@@ -19,12 +19,12 @@ from contextlib import contextmanager
 
 from speech_recognition import Recognizer
 
-from mycroft.client.speech.mic import MutableMicrophone
-from mycroft.configuration import Configuration
-from mycroft.util.audio_utils import play_wav
-from mycroft.util.log import LOG
+from core.client.speech.mic import MutableMicrophone
+from core.configuration import Configuration
+from core.util.audio_utils import play_wav
+from core.util.log import LOG
 import logging
-from mycroft.util.file_utils import get_temp_path
+from core.util.file_utils import get_temp_path
 
 """
 Audio Test

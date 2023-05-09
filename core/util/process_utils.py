@@ -110,7 +110,7 @@ def create_echo_function(name, whitelist=None):
 
     # Make sure whitelisting doesn't remove the log level setting command
     if whitelist:
-        whitelist.append('mycroft.debug.log')
+        whitelist.append('core.debug.log')
 
     def echo(message):
         global _log_all_bus_messages
@@ -127,7 +127,7 @@ def create_echo_function(name, whitelist=None):
             if blacklist and msg_type in blacklist:
                 return
 
-            if msg_type == "mycroft.debug.log":
+            if msg_type == "core.debug.log":
                 _update_log_level(msg, name)
             elif msg_type == "registration":
                 # do not log tokens from registration messages
@@ -237,13 +237,13 @@ class ProcessStatus:
 
     def _register_handlers(self):
         """Register messagebus handlers for status queries."""
-        self.bus.on('mycroft.{}.is_alive'.format(self.name), self.check_alive)
-        self.bus.on('mycroft.{}.is_ready'.format(self.name),
+        self.bus.on('core.{}.is_alive'.format(self.name), self.check_alive)
+        self.bus.on('core.{}.is_ready'.format(self.name),
                     self.check_ready)
         # The next one is for backwards compatibility
         # TODO: remove in 21.02
         self.bus.on(
-            'mycroft.{}.all_loaded'.format(self.name), self.check_ready
+            'core.{}.all_loaded'.format(self.name), self.check_ready
         )
 
     def check_alive(self, message=None):

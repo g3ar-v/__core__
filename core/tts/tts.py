@@ -621,12 +621,14 @@ class TTSFactory:
     from core.tts.mary_tts import MaryTTS
     from core.tts.mimic2_tts import Mimic2
     from core.tts.mimic3_tts import Mimic3
+    from core.tts.elevenlabs_tts import ElevenLabsTTS
 
     CLASSES = {
         "mimic2": Mimic2,
         "mimic3": Mimic3,
         "google": GoogleTTS,
         "marytts": MaryTTS,
+        "elevenlabs": ElevenLabsTTS
     }
 
     @staticmethod
