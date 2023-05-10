@@ -1,7 +1,5 @@
-import subprocess
 import time
-import sys
-from threading import Thread, Timer
+from threading import Timer
 
 import core.dialog
 from core.client.enclosure.base import Enclosure
@@ -30,7 +28,7 @@ class EnclosureGeneric(Enclosure):
         self.bus.on('enclosure.notify.no_internet', self.on_no_internet)
         # TODO: this requires the Enclosure to be up and running before the
         # training is complete.
-        self.bus.on('mycroft.skills.trained', self.is_device_ready)
+        self.bus.on('core.skills.trained', self.is_device_ready)
 
         # initiates the web sockets on display manager
         # NOTE: this is a temporary place to connect the display manager
@@ -61,7 +59,7 @@ class EnclosureGeneric(Enclosure):
 
         if is_ready:
             LOG.info("Mycroft is all loaded and ready to roll!")
-            self.bus.emit(Message('mycroft.ready'))
+            self.bus.emit(Message('core.ready'))
 
         return is_ready
 
@@ -73,7 +71,7 @@ class EnclosureGeneric(Enclosure):
         for ser in services:
             services[ser] = False
             response = self.bus.wait_for_response(Message(
-                                'mycroft.{}.is_ready'.format(ser)))
+                                'core.{}.is_ready'.format(ser)))
             if response and response.data['status']:
                 services[ser] = True
         return all([services[ser] for ser in services])
@@ -105,10 +103,10 @@ class EnclosureGeneric(Enclosure):
 
     def _handle_pairing_complete(self, _):
         """
-        Handler for 'mycroft.paired', unmutes the mic after the pairing is
+        Handler for 'core.paired', unmutes the mic after the pairing is
         complete.
         """
-        self.bus.emit(Message("mycroft.mic.unmute"))
+        self.bus.emit(Message("core.mic.unmute"))
 
     def _do_net_check(self):
         # TODO: This should live in the derived Enclosure, e.g. EnclosureMark1
@@ -127,12 +125,12 @@ class EnclosureGeneric(Enclosure):
                 # TODO: Enclosure/localization
 
                 # Don't listen to mic during this out-of-box experience
-                self.bus.emit(Message("mycroft.mic.mute"))
+                self.bus.emit(Message("core.mic.mute"))
                 # Setup handler to unmute mic at the end of on boarding
                 # i.e. after pairing is complete
-                self.bus.once('mycroft.paired', self._handle_pairing_complete)
+                self.bus.once('core.paired', self._handle_pairing_complete)
 
-                self.speak(core.dialog.get('mycroft.intro'))
+                self.speak(core.dialog.get('core.intro'))
                 wait_while_speaking()
                 time.sleep(2)  # a pause sounds better than just jumping in
 

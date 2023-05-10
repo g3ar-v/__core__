@@ -4,7 +4,6 @@ import re
 from os.path import exists, isfile, join, dirname
 
 import xdg.BaseDirectory
-from requests import RequestException
 
 from core.util.combo_lock import ComboLock
 from core.util.file_utils import get_temp_path
@@ -14,8 +13,7 @@ from core.util.log import LOG
 
 from .locations import (
     DEFAULT_CONFIG,
-    SYSTEM_CONFIG,
-    USER_CONFIG
+    SYSTEM_CONFIG
 )
 
 
@@ -173,15 +171,15 @@ class RemoteConf(LocalConf):
             self.load_local(self.path)
 
 
-def _log_old_location_deprecation():
-    LOG.warning("\n ===============================================\n"
-                " ==             DEPRECATION WARNING           ==\n"
-                " ===============================================\n"
-                f" You still have a config file at {OLD_USER_CONFIG}\n"
-                " Note that this location is deprecated and will"
-                " not be used in the future\n"
-                " Please move it to "
-                f"{join(xdg.BaseDirectory.xdg_config_home, 'mycroft')}")
+# def _log_old_location_deprecation():
+#     LOG.warning("\n ===============================================\n"
+#                 " ==             DEPRECATION WARNING           ==\n"
+#                 " ===============================================\n"
+#                 f" You still have a config file at {OLD_USER_CONFIG}\n"
+#                 " Note that this location is deprecated and will"
+#                 " not be used in the future\n"
+#                 " Please move it to "
+#                 f"{join(xdg.BaseDirectory.xdg_config_home, 'mycroft')}")
 
 
 class Configuration:

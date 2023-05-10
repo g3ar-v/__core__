@@ -434,7 +434,7 @@ ${YELLOW}Make sure to manually install:$BLUE git python3 python-setuptools pytho
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${TOP}/.venv"}
 
 function install_venv() {
-    $opt_python -m venv "${VIRTUALENV_ROOT}/" --without-pip
+    $opt_python -m venv "${VIRTUALENV_ROOT}/" 
 
     # Check if old script for python 3.6 is needed
     if "${VIRTUALENV_ROOT}/bin/${opt_python}" --version | grep " 3.6" > /dev/null; then
@@ -464,32 +464,6 @@ fi
 git config commit.template .gitmessage
 
 # Check whether to build mimic (it takes a really long time!)
-build_mimic='n'
-if [[ $opt_forcemimicbuild == true ]] ; then
-    build_mimic='y'
-else
-    # first, look for a build of mimic in the folder
-    has_mimic=''
-    if [[ -f ${TOP}/mimic/bin/mimic ]] ; then
-        has_mimic=$("${TOP}"/mimic/bin/mimic -lv | grep Voice) || true
-    fi
-
-    # in not, check the system path
-    if [[ -z $has_mimic ]] ; then
-        if [[ -x $(command -v mimic) ]] ; then
-            has_mimic=$(mimic -lv | grep Voice) || true
-        fi
-    fi
-
-    if [[ -z $has_mimic ]]; then
-        if [[ $opt_skipmimicbuild == true ]] ; then
-            build_mimic='n'
-        else
-            build_mimic='y'
-        fi
-    fi
-fi
-
 if [[ ! -x ${VIRTUALENV_ROOT}/bin/activate ]] ; then
     if ! install_venv ; then
         echo 'Failed to set up virtualenv for mycroft, exiting setup.' | tee -a /var/log/mycroft/setup.log
@@ -541,8 +515,7 @@ fi
 
 # install optional python modules
 if [[ ! $(pip install -r requirements/extra-audiobackend.txt) ||
-    ! $(pip install -r requirements/extra-stt.txt) ||
-    ! $(pip install -r requirements/extra-mark1.txt) ]] ; then
+    ! $(pip install -r requirements/extra-stt.txt) ]] ; then
     echo 'Warning: Failed to install some optional dependencies. Continue? y/N' | tee -a /var/log/mycroft/setup.log
     read -rn1 continue
     if [[ $continue != 'y' ]] ; then
@@ -577,14 +550,7 @@ echo "Building with $CORES cores." | tee -a /var/log/mycroft/setup.log
 #build and install pocketsphinx
 #build and install mimic
 
-# cd "$TOP"
-
-# if [[ $build_mimic == 'y' || $build_mimic == 'Y' ]] ; then
-#     echo 'WARNING: The following can take a long time to run!' | tee -a /var/log/mycroft/setup.log
-#     "${TOP}/scripts/install-mimic.sh" "$CORES"
-# else
-#     echo 'Skipping mimic build.' | tee -a /var/log/mycroft/setup.log
-# fi
+cd "$TOP"
 
 # set permissions for common scripts
 chmod +x start-mycroft.sh
@@ -600,6 +566,6 @@ chmod +x bin/mycroft-skill-testrunner
 chmod +x bin/mycroft-speak
 
 #Store a fingerprint of setup
-md5sum requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/extra-mark1.txt requirements/tests.txt dev_setup.sh > .installed
+md5sum requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt dev_setup.sh > .installed
 
 echo 'Mycroft setup complete! Logs can be found at /var/log/mycroft/setup.log' | tee -a /var/log/mycroft/setup.log
