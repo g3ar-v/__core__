@@ -113,6 +113,16 @@ def handle_mic_unmute(event):
     loop.unmute()
 
 
+def handle_info_taking_too_long(event):
+    """Core is taking too long to process information"""
+    LOG.info("Info taking too long")
+    data = {'utterance': dialog.get('taking_too_long')}
+    context = {'client_name': 'mycroft_listener',
+               'source': 'audio'}
+    bus.emit(Message('speak', data, context))
+    # bus.emit(Message('recognizer_loop:audio_output_timeout'))
+
+
 def handle_mic_listen(_):
     """Handler for core.mic.listen.
 
@@ -195,6 +205,7 @@ def connect_bus_events(bus):
     bus.on('core.mic.listen', handle_mic_listen)
     bus.on("core.paired", handle_paired)
     bus.on('recognizer_loop:audio_output_start', handle_audio_start)
+    bus.on('recognizer_loop:audio_output_timeout', handle_info_taking_too_long)
     bus.on('recognizer_loop:audio_output_end', handle_audio_end)
     bus.on('core.stop', handle_stop)
 
