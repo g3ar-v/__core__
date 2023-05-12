@@ -19,7 +19,7 @@ def required(requirements_file):
 
 setup(
     name='core',
-    version="1.0.3",
+    version="1.1.0",
     install_requires=required('requirements/requirements.txt'),
     extras_require={
         'audio-backend': required('requirements/extra-audiobackend.txt'),

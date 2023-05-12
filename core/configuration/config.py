@@ -13,6 +13,7 @@ from core.util.log import LOG
 
 from .locations import (
     DEFAULT_CONFIG,
+    USER_CONFIG,
     SYSTEM_CONFIG
 )
 
