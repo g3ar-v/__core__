@@ -1,46 +1,48 @@
 #! /usr/bin/sh
 
-# tmux send-keys 'echo "new-session"' C-m
+tmux send-keys 'echo "new-session"' C-m
 tmux new-session -d -s trevor 
 # tmux attach-session -c ~/Documents/trevor-core/ -t trevor 
-#
+
 # setup core
 tmux rename-window 'core'
 tmux send-keys 'echo "pane 1"' C-m
 tmux send-keys "cd $HOME/Documents/__core__/" C-m
 tmux send-keys 'nvim setup.py' C-m
-tmux select-window -t trevor:0
+tmux select-window -t @0
 tmux split-window -h -l 25%
 tmux send-keys "cd $HOME/Documents/__core__/" C-m
-tmux select-pane -t 0.1
+tmux select-pane -t %1
+tmux send-keys './start-core.sh debug cli' C-m
 tmux split-window -v -l 50%
-# tmux send-keys "cd $HOME/Documents/trevor-core/" C-m
 
 # setup skills window
-tmux new-window -c /opt/mycroft/skills/ -n skills
+tmux new-window -c /opt/core/skills/ -n skills
+# tmux send-keys 'cd /opt/core/skills' C-m
 tmux split-window -h -l 27%
-tmux select-pane -t 0.1
+tmux select-pane -t %2
+tmux send-keys 'core-start cli' C-m
 tmux split-window -v -l 50%
 tmux send-keys 'cd /opt/core/skills' C-m
-# tmux select-window -t trevor:2.1
 
 # setup backend window
 tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
 tmux split-window -h -l 27%
-tmux select-pane -t 0.1
-tmux split-window -v -l 50%
+tmux select-pane -t %2
 tmux send-keys 'ovos-local-backend' C-m
-
-
-#attach to new-session
-# tmux send-keys 'echo ' C-m
-tmux select-window -t trevor:0
-tmux select-pane -t 0.1
-tmux send-keys './start-core.sh debug cli' C-m
-tmux select-window -t trevor:2
-# create monitor for activity in Skills window
-tmux select-pane -t 2.1
+tmux split-window -v -l 50%
 tmux send-keys 'ovos-backend-manager' C-m
+
+
+# setup test window
+# create monitor for activity in Skills window
+tmux new-window -c ~/Documents/__core__/test/ -n test
+tmux split-window -h -l 27%
+tmux select-pane -t %2
+tmux send-keys 'htop' C-m
+tmux split-window -v -l 50%
+
+tmux select-window -t trevor:0
 
 #attach to new-session
 tmux attach-session -t trevor

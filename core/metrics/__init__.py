@@ -11,7 +11,7 @@ from core.configuration import Configuration
 from core.session import SessionManager
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
-from core.version import CORE_VERSION_STR
+from core.version import __version__
 from copy import copy
 
 
@@ -85,7 +85,7 @@ class MetricsAggregator:
         self._timers = {}
         self._levels = {}
         self._attributes = {}
-        self.attr("version", CORE_VERSION_STR)
+        self.attr("version", __version__)
 
     def increment(self, name, value=1):
         cur = self._counters.get(name, 0)
@@ -106,7 +106,7 @@ class MetricsAggregator:
         self._timers = {}
         self._levels = {}
         self._attributes = {}
-        self.attr("version", CORE_VERSION_STR)
+        self.attr("version", __version__)
 
     def attr(self, name, value):
         self._attributes[name] = value

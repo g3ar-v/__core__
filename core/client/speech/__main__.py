@@ -2,7 +2,6 @@ from threading import Lock
 
 from core import dialog
 from core.client.speech.listener import RecognizerLoop
-from ovos_utils.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.identity import IdentityManager
 from core.lock import Lock as PIDLock  # Create/Support PID locking file
@@ -167,7 +166,8 @@ def handle_stop(event):
 
 def handle_open(event):
     """ Reset UI to indicate ready for speech processing"""
-    EnclosureAPI(bus).reset
+    # EnclosureAPI(bus).reset
+    pass
 
 
 def on_ready():
