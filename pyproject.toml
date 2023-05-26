@@ -1,6 +1,6 @@
 [tool.commitizen]
 # name = "cz_customize"
-version = "1.2.0"
+version = "1.2.1"
 version_files = [
     "setup.py","core/version/__init__.py"
 ]
