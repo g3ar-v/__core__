@@ -115,7 +115,7 @@ class Skill:
         self._bus = None
         self._enclosure = None
         self.bind(bus)
-        #: Mycroft global configuration. (dict)
+        # global configuration. (dict)
         self.config_core = Configuration.get()
 
         self.settings = None
@@ -159,7 +159,7 @@ class Skill:
         # Otherwise save to XDG_CONFIG_DIR
         if not self.settings_write_path.joinpath('settings.json').exists():
             self.settings_write_path = Path(BaseDirectory.save_config_path(
-                'mycroft', 'skills', basename(self.root_dir)))
+                'core', 'skills', basename(self.root_dir)))
 
         # To not break existing setups,
         # read from skill directory if the settings file exists there
@@ -167,7 +167,7 @@ class Skill:
 
         # Then, check XDG_CONFIG_DIR
         if not settings_read_path.joinpath('settings.json').exists():
-            for dir in BaseDirectory.load_config_paths('mycroft',
+            for dir in BaseDirectory.load_config_paths('core',
                                                        'skills',
                                                        basename(
                                                            self.root_dir)):
@@ -232,7 +232,7 @@ class Skill:
         """Register messagebus emitter with skill.
 
         Args:
-            bus: Mycroft messagebus connection
+            bus: messagebus connection
         """
         if bus:
             self._bus = bus
@@ -242,9 +242,6 @@ class Skill:
             self.event_scheduler.set_id(self.skill_id)
             self._enclosure = EnclosureAPI(bus, self.name)
             self._register_system_event_handlers()
-            # Initialize the SkillGui
-            # self.gui.setup_default_handlers()
-
             self._register_public_api()
 
     def _register_public_api(self):
@@ -295,8 +292,7 @@ class Skill:
                            self._send_public_api)
 
     def _register_system_event_handlers(self):
-        """Add all events allowing the standard interaction with the Mycroft
-        system.
+        """Add all events allowing the standard interaction with the system.
         """
         def stop_is_implemented():
             return self.__class__.stop is not Skill.stop
@@ -331,7 +327,7 @@ class Skill:
 
         The skill settings downloader uses a single API call to retrieve the
         settings for all skills.  This is done to limit the number API calls.
-        A "mycroft.skills.settings.changed" event is emitted for each skill
+        A "core.skills.settings.changed" event is emitted for each skill
         that had their settings changed.  Only update this skill's settings
         if its remote settings were among those changed
         """
@@ -614,7 +610,7 @@ class Skill:
         requested.
 
         The method first checks in the current Skill's .voc files and secondly
-        in the "res/text" folder of mycroft-core. The result is cached to
+        in the "res/text" folder of core. The result is cached to
         avoid hitting the disk each time the method is called.
 
         Args:
@@ -630,9 +626,9 @@ class Skill:
         lang = lang or self.lang
         cache_key = lang + voc_filename
         if cache_key not in self.voc_match_cache:
-            # Check for both skill resources and mycroft-core resources
+            # Check for both skill resources and core's resources
             voc = self.find_resource(voc_filename + '.voc', 'vocab')
-            if not voc:  # Check for vocab in mycroft core resources
+            if not voc:  # Check for vocab in core's resources
                 voc = resolve_resource_file(join('text', lang,
                                                  voc_filename + '.voc'))
 
@@ -1156,7 +1152,7 @@ class Skill:
             context:    Keyword
             word:       word connected to keyword
         """
-        self.bus.emit(Message('mycroft.skill.set_cross_context',
+        self.bus.emit(Message('core.skill.set_cross_context',
                               {'context': context, 'word': word,
                                'origin': self.skill_id}))
 
@@ -1164,7 +1160,7 @@ class Skill:
         """Tell all skills to remove a keyword from the context manager."""
         if not isinstance(context, str):
             raise ValueError('context should be a string')
-        self.bus.emit(Message('mycroft.skill.remove_cross_context',
+        self.bus.emit(Message('core.skill.remove_cross_context',
                               {'context': context}))
 
     def remove_context(self, context):
@@ -1200,8 +1196,8 @@ class Skill:
         """Speak a sentence.
 
         Args:
-            utterance (str):        sentence mycroft should speak
-            expect_response (bool): set to True if Mycroft should listen
+            utterance (str):        sentence core should speak
+            expect_response (bool): set to True if should listen
                                     for a response immediately after
                                     speaking the utterance.
             wait (bool):            set to True to block while the text

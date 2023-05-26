@@ -24,8 +24,8 @@ def get_ipc_directory(domain=None):
     config = core.configuration.Configuration.get()
     dir = config.get("ipc_path")
     if not dir:
-        # If not defined, use /tmp/mycroft/ipc
-        dir = os.path.join(tempfile.gettempdir(), "mycroft", "ipc")
+        # If not defined, use /tmp/core/ipc
+        dir = os.path.join(tempfile.gettempdir(), "core", "ipc")
     return ensure_directory_exists(dir, domain)
 
 

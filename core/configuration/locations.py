@@ -1,14 +1,14 @@
 import os
-from os.path import join, dirname, expanduser
+from os.path import join, dirname
 
 import xdg.BaseDirectory
 
-DEFAULT_CONFIG = join(dirname(__file__), 'mycroft.conf')
+DEFAULT_CONFIG = join(dirname(__file__), 'core.conf')
 SYSTEM_CONFIG = os.environ.get('MYCROFT_SYSTEM_CONFIG',
-                               '/etc/mycroft/mycroft.conf')
+                               '/etc/core/core.conf')
 USER_CONFIG = join(xdg.BaseDirectory.xdg_config_home,
-                   'mycroft',
-                   'mycroft.conf'
+                   'core',
+                   'core.conf'
                    )
 
 REMOTE_CONFIG = "mycroft.ai"

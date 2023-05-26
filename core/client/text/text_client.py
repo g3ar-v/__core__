@@ -27,8 +27,8 @@ locale.setlocale(locale.LC_ALL, "")  # Set LC_ALL to user default
 preferred_encoding = locale.getpreferredencoding()
 
 bSimple = False
-bus = None  # Mycroft messagebus connection
-config = {}  # Will be populated by the Mycroft configuration
+bus = None  # core messagebus connection
+config = {}  # Will be populated by the core configuration
 event_thread = None
 history = []
 chat = []   # chat history, oldest at the lowest index
@@ -130,7 +130,7 @@ def handleNonAscii(text):
 ##############################################################################
 # Settings
 
-filename = "mycroft_cli.conf"
+filename = "core_cli.conf"
 
 
 def load_mycroft_config(bus):
@@ -140,8 +140,8 @@ def load_mycroft_config(bus):
     return Configuration.get()
 
 
-def connect_to_mycroft():
-    """ Connect to the mycroft messagebus and load and register config
+def connect_to_core():
+    """ Connect to the messagebus and load and register config
         on the bus.
 
         Sets the bus and config global variables
@@ -162,23 +162,23 @@ def load_settings():
     config_file = None
 
     # Old location
-    path = os.path.join(os.path.expanduser("~"), ".mycroft_cli.conf")
-    if os.path.isfile(path):
-        LOG.warning(" ===============================================")
-        LOG.warning(" ==             DEPRECATION WARNING           ==")
-        LOG.warning(" ===============================================")
-        LOG.warning(" You still have a config file at " +
-                    path)
-        LOG.warning(" Note that this location is deprecated and will" +
-                    " not be used in the future")
-        LOG.warning(" Please move it to " +
-                    os.path.join(xdg.BaseDirectory.xdg_config_home, 'mycroft',
-                                 filename))
-        config_file = path
+    # path = os.path.join(os.path.expanduser("~"), ".mycroft_cli.conf")
+    # if os.path.isfile(path):
+    #     LOG.warning(" ===============================================")
+    #     LOG.warning(" ==             DEPRECATION WARNING           ==")
+    #     LOG.warning(" ===============================================")
+    #     LOG.warning(" You still have a config file at " +
+    #                 path)
+    #     LOG.warning(" Note that this location is deprecated and will" +
+    #                 " not be used in the future")
+    #     LOG.warning(" Please move it to " +
+    #                 os.path.join(xdg.BaseDirectory.xdg_config_home, 'mycroft',
+    #                              filename))
+    #     config_file = path
 
     # Check XDG_CONFIG_DIR
     if config_file is None:
-        for conf_dir in xdg.BaseDirectory.load_config_paths('mycroft'):
+        for conf_dir in xdg.BaseDirectory.load_config_paths('core'):
             xdg_file = os.path.join(conf_dir, filename)
             if os.path.isfile(xdg_file):
                 config_file = xdg_file
@@ -186,7 +186,7 @@ def load_settings():
 
     # Check /etc/mycroft
     if config_file is None:
-        config_file = os.path.join("/etc/mycroft", filename)
+        config_file = os.path.join("/etc/core", filename)
 
     try:
         with io.open(config_file, 'r') as f:
@@ -215,7 +215,7 @@ def save_settings():
     config["show_meter"] = show_meter
 
     config_file = os.path.join(
-        xdg.BaseDirectory.save_config_path("mycroft"), filename)
+        xdg.BaseDirectory.save_config_path("core"), filename)
 
     with io.open(config_file, 'w') as f:
         f.write(str(json.dumps(config, ensure_ascii=False)))
@@ -433,7 +433,7 @@ def rebuild_filtered_log():
 
 
 ##############################################################################
-# Capturing output from Mycroft
+# Capturing output from Core
 
 def handle_speak(event):
     global chat
@@ -456,10 +456,10 @@ def handle_utterance(event):
 
 
 def connect(bus):
-    """ Run the mycroft messagebus referenced by bus.
+    """ Run the Core messagebus referenced by bus.
 
         Args:
-            bus:    Mycroft messagebus instance
+            bus:    Core messagebus instance
     """
     bus.run_forever()
 
@@ -935,7 +935,7 @@ def num_help_pages():
 def do_draw_help(scr):
 
     def render_header():
-        scr.addstr(0, 0, center(25) + "Mycroft Command Line Help", CLR_HEADING)
+        scr.addstr(0, 0, center(25) + "Core Command Line Help", CLR_HEADING)
         scr.addstr(1, 0, "=" * (curses.COLS - 1), CLR_HEADING)
 
     def render_help(txt, y_pos, i, first_line, last_line, clr):
@@ -1221,7 +1221,7 @@ def handle_cmd(cmd):
     elif "clear" in cmd:
         clear_log()
     elif "log" in cmd:
-        # Control logging behavior in all Mycroft processes
+        # Control logging behavior in all Core processes
         if "level" in cmd:
             level = _get_cmd_param(cmd, ["log", "level"])
             bus.emit(Message("core.debug.log", data={'level': level}))
@@ -1424,7 +1424,7 @@ def gui_main(stdscr):
                 show_next_help()
                 continue
             elif c == '\n' or code == 10 or code == 13 or code == 343:
-                # ENTER sends the typed line to be processed by Mycroft
+                # ENTER sends the typed line to be processed by Core
                 if line == "":
                     continue
 
@@ -1437,7 +1437,7 @@ def gui_main(stdscr):
                     bus.emit(Message("recognizer_loop:utterance",
                                      {'utterances': [line.strip()],
                                       'lang': config.get('lang', 'en-us')},
-                                     {'client_name': 'mycroft_cli',
+                                     {'client_name': 'cor_cli',
                                       'source': 'debug_cli',
                                       'destination': ["skills"]}
                                      ))
@@ -1531,7 +1531,7 @@ def simple_cli():
             line = sys.stdin.readline()
             bus.emit(Message("recognizer_loop:utterance",
                              {'utterances': [line.strip()]},
-                             {'client_name': 'mycroft_simple_cli',
+                             {'client_name': 'core_simple_cli',
                               'source': 'debug_cli',
                               'destination': ["skills"]}))
     except KeyboardInterrupt:
@@ -1544,12 +1544,12 @@ def simple_cli():
 
 
 def connect_to_messagebus():
-    """ Connect to the mycroft messagebus and launch a thread handling the
+    """ Connect to the core messagebus and launch a thread handling the
         connection.
 
         Returns: WebsocketClient
     """
-    bus = MessageBusClient()  # Mycroft messagebus connection
+    bus = MessageBusClient()  # core messagebus connection
 
     event_thread = Thread(target=connect, args=[bus])
     event_thread.setDaemon(True)

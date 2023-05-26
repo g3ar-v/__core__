@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mycroft_root_dir="/opt/mycroft"  # Also change in configuration
-skills_dir="${mycroft_root_dir}"/skills
+core_root_dir="/opt/core"  # Also change in configuration
+skills_dir="${core_root_dir}"/skills
 # exit on any error
 set -Ee
 
@@ -42,8 +42,8 @@ fi
 
 # change ownership of ${mycroft_root_dir} to ${setup_user } recursively
 function change_ownership {
-    echo "Changing ownership of" ${mycroft_root_dir} "to user:" "${setup_user}" "with group:" "${setup_group}"
-    $SUDO chown -Rf "${setup_user}:${setup_group}" ${mycroft_root_dir}
+    echo "Changing ownership of" ${core_root_dir} "to user:" "${setup_user}" "with group:" "${setup_group}"
+    $SUDO chown -Rf "${setup_user}:${setup_group}" ${core_root_dir}
 }
 
 
@@ -60,6 +60,6 @@ if [[ ${CI} != true ]] ; then
 fi
 
 # fix ownership of ${mycroft_root_dir} if it is not owned by the ${setup_user}
-if [[ $( stat -c "%U:%G" ${mycroft_root_dir} ) != "${setup_user}:${setup_group}" ]] ; then
+if [[ $( stat -c "%U:%G" ${core_root_dir} ) != "${setup_user}:${setup_group}" ]] ; then
     change_ownership
 fi

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+SOURCE="${BASH_SOURCE[0]}"
+cd -P "$( dirname "$SOURCE" )"/.. || exit
+DIR="$( pwd )"
+
+. "$DIR/start-core.sh" "$@"

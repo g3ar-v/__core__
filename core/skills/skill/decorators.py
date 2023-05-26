@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Decorators for use with MycroftSkill methods"""
+"""Decorators for use with Skill methods"""
 
 
 def intent_handler(intent_parser):

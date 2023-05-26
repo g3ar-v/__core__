@@ -229,8 +229,8 @@ class Configuration:
             # Then use XDG config
             # This includes both the user config and
             # /etc/xdg/mycroft/mycroft.conf
-            for conf_dir in xdg.BaseDirectory.load_config_paths('mycroft'):
-                configs.append(LocalConf(join(conf_dir, 'mycroft.conf')))
+            for conf_dir in xdg.BaseDirectory.load_config_paths('core'):
+                configs.append(LocalConf(join(conf_dir, 'core.conf')))
 
             # Then check the old user config
             # if isfile(OLD_USER_CONFIG):

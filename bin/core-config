@@ -1,19 +1,5 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 SOURCE="${BASH_SOURCE[0]}"
 cd -P "$( dirname "$SOURCE" )" || exit
 DIR="$( pwd )"
@@ -21,7 +7,7 @@ script=${0}
 script=${script##*/}
 
 function help() {
-    echo "${script}:  Mycroft configuration manager"
+    echo "${script}:  configuration manager"
     echo "usage: ${script} [COMMAND] [params]"
     echo
     echo "COMMANDs:"
@@ -101,12 +87,12 @@ function validate_config_file() {
     return $result
 }
 
-_conf_file="${XDG_CONFIG_HOME:-$HOME/.config}/mycroft/mycroft.conf"
+_conf_file="${XDG_CONFIG_HOME:-$HOME/.config}/core/core.conf"
 function name_to_path() {
     case ${1} in
-        "system")     _conf_file="/etc/mycroft/mycroft.conf" ;;
-        "user")       _conf_file=$(readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/mycroft/mycroft.conf") ;;
-        "default")    _conf_file="$DIR/../mycroft/configuration/mycroft.conf" ;;
+        "system")     _conf_file="/etc/core/core.conf" ;;
+        "user")       _conf_file=$(readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/core/core.conf") ;;
+        "default")    _conf_file="$DIR/../core/configuration/core.conf" ;;
         "remote")     _conf_file="$HOME/.cache/mycroft/web_cache.json" ;;
 
         *)
@@ -128,27 +114,27 @@ function edit_config() {
     fi
 
     if [ -f "${_conf_file}" ] ; then
-        cp "${_conf_file}" "${TEMP}/mycroft.json"
+        cp "${_conf_file}" "${TEMP}/core.json"
     else
-        echo "{" > "${TEMP}/mycroft.json"
-        echo "}" >> "${TEMP}/mycroft.json"
+        echo "{" > "${TEMP}/core.json"
+        echo "}" >> "${TEMP}/core.json"
     fi
 
     while true ; do
         case $1 in
         system | user)
             # Allow user to edit
-            $EDITOR $TEMP/mycroft.json
+            $EDITOR $TEMP/core.json
             ;;
         default | remote)
             # View-only
             echo "The default config shouldn't be changed, opening in View mode"
             sleep 2
-            $VIEWER $TEMP/mycroft.json
+            $VIEWER $TEMP/core.json
             ;;
         esac
 
-        cmp --quiet "${_conf_file}" "${TEMP}/mycroft.json"
+        cmp --quiet "${_conf_file}" "${TEMP}/core.json"
         rc=$?
         if [ $rc -eq 0 ] ; then
             echo "Configuration unchanged."
@@ -156,7 +142,7 @@ function edit_config() {
         fi
 
         # file was changed, validate changes
-        if validate_config_file $TEMP/mycroft.json > /dev/null ; then
+        if validate_config_file $TEMP/core.json > /dev/null ; then
             key="S"
         else
             echo "${YELLOW}WARNING: ${RESET}Configuration file does not pass validation, see errors above."
@@ -167,7 +153,7 @@ function edit_config() {
         case $key in
         [Ss])
             echo "Saving..."
-            mv $TEMP/mycroft.json "$_conf_file"
+            mv $TEMP/core.json "$_conf_file"
             signal_reload_config
             break
             ;;
@@ -181,7 +167,7 @@ function edit_config() {
 }
 
 function signal_reload_config() {
-    # Enter the Mycroft venv
+    # Enter the venv
     source "$DIR/../venv-activate.sh" -q
 
     # Post a messagebus notification to reload the config file
@@ -203,7 +189,7 @@ function get_config() {
     fi
 
     # Load all the configuration(s)
-    json_config=$( source "$DIR/../venv-activate.sh" -q && python -c "import json; from mycroft.configuration import Configuration; print(json.dumps(Configuration.get()))" )
+    json_config=$( source "$DIR/../venv-activate.sh" -q && python -c "import json; from core.configuration import Configuration; print(json.dumps(Configuration.get()))" )
 
     # Read the given variable from the mix
     echo "${json_config}" | jq -r "${value}"
@@ -217,9 +203,9 @@ function set_config() {
         value=".${value}"
     fi
 
-    if jq "${value} = \"$2\"" "$_conf_file" > "${TEMP}/~mycroft.conf" ; then
+    if jq "${value} = \"$2\"" "$_conf_file" > "${TEMP}/~core.conf" ; then
         # Successful update, replace the config file
-        mv "${TEMP}/~mycroft.conf" "$_conf_file"
+        mv "${TEMP}/~core.conf" "$_conf_file"
         signal_reload_config
     fi
 }

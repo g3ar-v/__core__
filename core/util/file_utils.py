@@ -1,7 +1,7 @@
-"""Mycroft file utils.
+"""file utils.
 
-This module contains functions handling mycroft resource files and things like
-accessing and curating mycroft's cache.
+This module contains functions handling core's resource files and things like
+accessing and curating core's cache.
 """
 
 import os
@@ -20,19 +20,19 @@ def resolve_resource_file(res_name):
     Resource names are in the form: 'filename.ext'
     or 'path/filename.ext'
 
-    The system wil look for $XDG_DATA_DIRS/mycroft/res_name first
-    (defaults to ~/.local/share/mycroft/res_name), and if not found will
-    look at /opt/mycroft/res_name, then finally it will look for res_name
-    in the 'mycroft/res' folder of the source code package.
+    The system wil look for $XDG_DATA_DIRS/core/res_name first
+    (defaults to ~/.local/share/core/res_name), and if not found will
+    look at /opt/core/res_name, then finally it will look for res_name
+    in the 'core/res' folder of the source code package.
 
     Example:
-        With mycroft running as the user 'bob', if you called
+        With mycore running as the user 'bob', if you called
         ``resolve_resource_file('snd/beep.wav')``
         it would return either:
-        '$XDG_DATA_DIRS/mycroft/beep.wav',
-        '/home/bob/.mycroft/snd/beep.wav' or
-        '/opt/mycroft/snd/beep.wav' or
-        '.../mycroft/res/snd/beep.wav'
+        '$XDG_DATA_DIRS/core/beep.wav',
+        '/home/bob/.core/snd/beep.wav' or
+        '/opt/core/snd/beep.wav' or
+        '.../core/res/snd/beep.wav'
         where the '...' is replaced by the path
         where the package has been installed.
 
@@ -49,17 +49,17 @@ def resolve_resource_file(res_name):
         return res_name
 
     # Now look for XDG_DATA_DIRS
-    for conf_dir in xdg.BaseDirectory.load_data_paths('mycroft'):
+    for conf_dir in xdg.BaseDirectory.load_data_paths('core'):
         filename = os.path.join(conf_dir, res_name)
         if os.path.isfile(filename):
             return filename
 
     # Now look in the old user location
-    filename = os.path.join(os.path.expanduser('~'), '.mycroft', res_name)
+    filename = os.path.join(os.path.expanduser('~'), '.core', res_name)
     if os.path.isfile(filename):
         return filename
 
-    # Next look for /opt/mycroft/res/res_name
+    # Next look for /opt/core/res/res_name
     data_dir = os.path.join(os.path.expanduser(config['data_dir']), 'res')
     filename = os.path.expanduser(os.path.join(data_dir, res_name))
     if os.path.isfile(filename):
@@ -227,8 +227,8 @@ def get_cache_directory(domain=None):
     config = core.configuration.Configuration.get()
     directory = config.get("cache_path")
     if not directory:
-        # If not defined, use /tmp/mycroft/cache
-        directory = get_temp_path('mycroft', 'cache')
+        # If not defined, use /tmp/core/cache
+        directory = get_temp_path('core', 'cache')
     return ensure_directory_exists(directory, domain)
 
 
@@ -281,8 +281,8 @@ def get_temp_path(*args):
     joined and returned as a complete path inside the systems temp directory.
     Importantly, this will not create any directories or files.
 
-    Example usage: get_temp_path('mycroft', 'audio', 'example.wav')
-    Will return the equivalent of: '/tmp/mycroft/audio/example.wav'
+    Example usage: get_temp_path('core', 'audio', 'example.wav')
+    Will return the equivalent of: '/tmp/core/audio/example.wav'
 
     Args:
         path_element (str): directories and/or filename

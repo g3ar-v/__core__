@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Time utils for getting and converting datetime objects for the Mycroft
-system. This time is based on the setting in the Mycroft config and may or
+"""Time utils for getting and converting datetime objects for the __core__
+system. This time is based on the setting in the __core__ config and may or
 may not match the system locale.
 """
 from datetime import datetime
@@ -35,7 +35,7 @@ def default_timezone():
         #   location.timezone.code (e.g. "America/Chicago")
         #   location.timezone.name (e.g. "Central Standard Time")
         #   location.timezone.offset (e.g. -21600000)
-        from mycroft.configuration import Configuration
+        from core.configuration import Configuration
         config = Configuration.get()
         code = config["location"]["timezone"]["code"]
 

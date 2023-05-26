@@ -86,10 +86,11 @@ class DevicePrimer(object):
         if self.platform in RASPBERRY_PI_PLATFORMS:
             LOG.info('Updating the system clock via NTP...')
             if self.is_paired:
+                pass
                 # Only display time sync message when paired because the prompt
                 # to go to home.mycroft.ai will be displayed by the pairing
                 # skill when pairing
-                self.enclosure.mouth_text(dialog.get("message_synching.clock"))
+                # self.enclosure.mouth_text(dialog.get("message_synching.clock"))
             self.bus.wait_for_response(
                 Message('system.ntp.sync'),
                 'system.ntp.sync.complete',

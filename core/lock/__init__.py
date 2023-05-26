@@ -1,4 +1,4 @@
-from signal import getsignal, signal, SIGKILL, SIGINT, SIGTERM, \
+from signal import signal, SIGKILL, SIGINT, SIGTERM, \
     SIG_DFL, default_int_handler, SIG_IGN  # signals
 
 import os  # Operating System functions
@@ -7,7 +7,6 @@ import os  # Operating System functions
 #
 # Wrapper around chain of handler functions for a specific system level signal.
 # Often used to trap Ctrl-C for specific application purposes.
-from core.util import LOG
 from core.util.file_utils import get_temp_path
 
 
@@ -78,14 +77,14 @@ class Lock:  # python 3+ 'class Lock'
 
     """
     Create and maintains the PID lock file for this application process.
-    The PID lock file is located in /tmp/mycroft/*.pid.  If another process
+    The PID lock file is located in /tmp/core/*.pid.  If another process
     of the same type is started, this class will 'attempt' to stop the
     previously running process and then change the process ID in the lock file.
     """
 
     #
     # Class constants
-    DIRECTORY = get_temp_path('mycroft')
+    DIRECTORY = get_temp_path('core')
     FILE = '/{}.pid'
 
     #
@@ -130,7 +129,7 @@ class Lock:  # python 3+ 'class Lock'
         with open(self.path, 'r') as L:
             try:
                 os.kill(int(L.read()), SIGKILL)
-            except Exception as E:
+            except Exception:
                 pass
 
     #

@@ -272,7 +272,7 @@ class TTS(metaclass=ABCMeta):
         # Create signals informing start of speech
         self.bus.emit(Message("recognizer_loop:audio_output_start"))
 
-    def end_audio(self, listen=False):
+    def end_audio(self, listen=True):
         """Helper function for child classes to call in execute().
 
         Sends the recognizer_loop:audio_output_end message (indicating
@@ -395,7 +395,7 @@ class TTS(metaclass=ABCMeta):
         """
         return [sentence]
 
-    def execute(self, sentence, ident=None, listen=False):
+    def execute(self, sentence, ident=None, listen=True):
         """Convert sentence to speech, preprocessing out unsupported ssml
 
         The method caches results if possible using the hash of the

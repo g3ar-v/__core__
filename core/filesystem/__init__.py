@@ -19,7 +19,7 @@ import xdg.BaseDirectory
 
 
 class FileSystemAccess:
-    """A class for providing access to the mycroft FS sandbox.
+    """A class for providing access to the core FS sandbox.
 
     Intended to be attached to skills at initialization time to provide a
     skill-specific namespace.
@@ -34,8 +34,8 @@ class FileSystemAccess:
         if not isinstance(path, str) or len(path) == 0:
             raise ValueError("path must be initialized as a non empty string")
 
-        old_path = join(expanduser('~'), '.mycroft', path)
-        path = join(xdg.BaseDirectory.save_config_path('mycroft'), path)
+        old_path = join(expanduser('~'), '.core', path)
+        path = join(xdg.BaseDirectory.save_config_path('core'), path)
 
         # Migrate from the old location if it still exists
         # TODO: remove in 22.02

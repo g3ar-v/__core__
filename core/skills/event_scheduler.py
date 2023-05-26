@@ -37,9 +37,10 @@ class EventScheduler(Thread):
      predetermined time to the registered targets.
 
     Args:
-        bus:            Mycroft messagebus (mycroft.messagebus)
+        bus:            messagebus (core.messagebus)
         schedule_file:  File to store pending events to on shutdown
     """
+
     def __init__(self, bus, schedule_file='schedule.json'):
         super().__init__()
 
@@ -51,7 +52,7 @@ class EventScheduler(Thread):
         old_schedule_path = join(expanduser(Configuration.get()['data_dir']),
                                  schedule_file)
         new_schedule_path = join(
-            xdg.BaseDirectory.load_first_config('mycroft'), schedule_file
+            xdg.BaseDirectory.load_first_config('core'), schedule_file
         )
         if isfile(old_schedule_path):
             shutil.move(old_schedule_path, new_schedule_path)
@@ -59,13 +60,13 @@ class EventScheduler(Thread):
         if self.schedule_file:
             self.load()
 
-        self.bus.on('mycroft.scheduler.schedule_event',
+        self.bus.on('core.scheduler.schedule_event',
                     self.schedule_event_handler)
-        self.bus.on('mycroft.scheduler.remove_event',
+        self.bus.on('core.scheduler.remove_event',
                     self.remove_event_handler)
-        self.bus.on('mycroft.scheduler.update_event',
+        self.bus.on('core.scheduler.update_event',
                     self.update_event_handler)
-        self.bus.on('mycroft.scheduler.get_event',
+        self.bus.on('core.scheduler.get_event',
                     self.get_event_handler)
         self.start()
 
@@ -218,7 +219,7 @@ class EventScheduler(Thread):
         with self.event_lock:
             if event_name in self.events:
                 event = self.events[event_name]
-        emitter_name = 'mycroft.event_status.callback.{}'.format(event_name)
+        emitter_name = 'core.event_status.callback.{}'.format(event_name)
         self.bus.emit(message.reply(emitter_name, data=event))
 
     def store(self):
@@ -243,9 +244,9 @@ class EventScheduler(Thread):
         """Stop the running thread."""
         self.is_running = False
         # Remove listeners
-        self.bus.remove_all_listeners('mycroft.scheduler.schedule_event')
-        self.bus.remove_all_listeners('mycroft.scheduler.remove_event')
-        self.bus.remove_all_listeners('mycroft.scheduler.update_event')
+        self.bus.remove_all_listeners('core.scheduler.schedule_event')
+        self.bus.remove_all_listeners('core.scheduler.remove_event')
+        self.bus.remove_all_listeners('core.scheduler.update_event')
         # Wait for thread to finish
         self.join()
         # Prune event list in preparation for saving
@@ -257,6 +258,7 @@ class EventScheduler(Thread):
 
 class EventSchedulerInterface:
     """Interface for accessing the event scheduler over the message bus."""
+
     def __init__(self, name, sched_id=None, bus=None):
         self.name = name
         self.sched_id = sched_id
@@ -322,7 +324,7 @@ class EventSchedulerInterface:
                       'event': unique_name,
                       'repeat': repeat_interval,
                       'data': data}
-        self.bus.emit(Message('mycroft.scheduler.schedule_event',
+        self.bus.emit(Message('core.scheduler.schedule_event',
                               data=event_data, context=context))
 
     def schedule_event(self, handler, when, data=None, name=None,
@@ -383,7 +385,7 @@ class EventSchedulerInterface:
             'event': self._create_unique_name(name),
             'data': data
         }
-        self.bus.emit(Message('mycroft.schedule.update_event',
+        self.bus.emit(Message('core.schedule.update_event',
                               data=data))
 
     def cancel_scheduled_event(self, name):
@@ -398,7 +400,7 @@ class EventSchedulerInterface:
         if name in self.scheduled_repeats:
             self.scheduled_repeats.remove(name)
         if self.events.remove(unique_name):
-            self.bus.emit(Message('mycroft.scheduler.remove_event',
+            self.bus.emit(Message('core.scheduler.remove_event',
                                   data=data))
 
     def get_scheduled_event_status(self, name):
@@ -416,8 +418,8 @@ class EventSchedulerInterface:
         event_name = self._create_unique_name(name)
         data = {'name': event_name}
 
-        reply_name = 'mycroft.event_status.callback.{}'.format(event_name)
-        msg = Message('mycroft.scheduler.get_event', data=data)
+        reply_name = 'core.event_status.callback.{}'.format(event_name)
+        msg = Message('core.scheduler.get_event', data=data)
         status = self.bus.wait_for_response(msg, reply_type=reply_name)
 
         if status:

@@ -23,12 +23,12 @@ Do you wish to continue? (y/n)'
         read -rN1 -s key
         case $key in
         [Yy])
-            sudo rm -rf /var/log/mycroft
+            sudo rm -rf /var/log/core
             rm -f /var/tmp/mycroft_web_cache.json
-            rm -rf "${TMPDIR:-/tmp}/mycroft"
-            rm -rf "$HOME/.mycroft"
+            rm -rf "${TMPDIR:-/tmp}/core"
+            rm -rf "$HOME/.core"
             rm -f "skills"  # The Skills directory symlink
-            sudo rm -rf "/opt/mycroft"
+            sudo rm -rf "/opt/core"
             exit 0
             ;;
         [Nn])
@@ -78,13 +78,13 @@ elif [[ $opt_allowroot != true ]]; then
 fi
 
 # create and set permissions for logging
-if [[ ! -w /var/log/mycroft/ ]] ; then
+if [[ ! -w /var/log/core/ ]] ; then
     # Creating and setting permissions
-    echo 'Creating /var/log/mycroft/ directory'
-    if [[ ! -d /var/log/mycroft/ ]] ; then
-        $SUDO mkdir /var/log/mycroft/
+    echo 'Creating /var/log/core/ directory'
+    if [[ ! -d /var/log/core/ ]] ; then
+        $SUDO mkdir /var/log/core/
     fi
-    $SUDO chmod 777 /var/log/mycroft/
+    $SUDO chmod 777 /var/log/core/
 fi
 
 for var in "$@" ; do
@@ -130,8 +130,8 @@ for var in "$@" ; do
 done
 
 if [[ $(id -u) -eq 0 && $opt_allowroot != true ]] ; then
-    echo 'This script should not be run as root or with sudo.' | tee -a /var/log/mycroft/setup.log
-    echo 'If you really need to for this, rerun with --allow-root' | tee -a /var/log/mycroft/setup.log
+    echo 'This script should not be run as root or with sudo.' | tee -a /var/log/core/setup.log
+    echo 'If you really need to for this, rerun with --allow-root' | tee -a /var/log/core/setup.log
     exit 1
 fi
 
@@ -183,16 +183,16 @@ in mycroft.conf.
   Y)es, I want to use the PocketSphinx engine or my own.
   N)o, stop the installation."
         if get_YN ; then
-            if [[ ! -f /etc/mycroft/mycroft.conf ]]; then
-                $SUDO mkdir -p /etc/mycroft
-                $SUDO touch /etc/mycroft/mycroft.conf
-                $SUDO bash -c 'echo "{ \"use_precise\": false }" > /etc/mycroft/mycroft.conf'
+            if [[ ! -f /etc/core/core.conf ]]; then
+                $SUDO mkdir -p /etc/core
+                $SUDO touch /etc/core/core.conf
+                $SUDO bash -c 'echo "{ \"use_precise\": false }" > /etc/core/core.conf'
             else
                 # Ensure dependency installed to merge configs
                 disable_precise_later=true
             fi
         else
-            echo -e "$HIGHLIGHT N - quit the installation $RESET" | tee -a /var/log/mycroft/setup.log
+            echo -e "$HIGHLIGHT N - quit the installation $RESET" | tee -a /var/log/core/setup.log
             exit 1
         fi
         echo
@@ -202,52 +202,52 @@ in mycroft.conf.
     sleep 0.5
 
     echo '
-There are several Mycroft helper commands in the bin folder.  These
-can be added to your system PATH, making it simpler to use Mycroft.
+There are several helper commands in the bin folder.  These
+can be added to your system PATH, making it simpler to use core.
 Would you like this to be added to your PATH in the .profile?'
     if get_YN ; then
-        echo -e "$HIGHLIGHT Y - Adding Mycroft commands to your PATH $RESET" | tee -a /var/log/mycroft/setup.log
+        echo -e "$HIGHLIGHT Y - Adding core commands to your PATH $RESET" | tee -a /var/log/core/setup.log
 
-        if [[ ! -f ~/.profile_mycroft ]] ; then
-            # Only add the following to the .profile if .profile_mycroft
+        if [[ ! -f ~/.profile_core ]] ; then
+            # Only add the following to the .profile if .profile_core
             # doesn't exist, indicating this script has not been run before
             # Looking to make this available for zsh
             # Atm I'd have to manually add it to .zprofile
             {
                 echo ''
-                echo '# include Mycroft commands'
-                echo 'source ~/.profile_mycroft'
+                echo '# include core commands'
+                echo 'source ~/.profile_core'
             } >> ~/.profile
         fi
 
         echo "
 # WARNING: This file may be replaced in future, do not customize.
-# set path so it includes Mycroft utilities
+# set path so it includes Core utilities
 if [ -d \"${TOP}/bin\" ] ; then
     PATH=\"\$PATH:${TOP}/bin\"
-fi" > ~/.profile_mycroft
+fi" > ~/.profile_core
         echo -e "Type ${CYAN}mycroft-help$RESET to see available commands."
     else
-        echo -e "$HIGHLIGHT N - PATH left unchanged $RESET" | tee -a /var/log/mycroft/setup.log
+        echo -e "$HIGHLIGHT N - PATH left unchanged $RESET" | tee -a /var/log/core/setup.log
     fi
 
     # Create a link to the 'skills' folder.
     sleep 0.5
     echo
-    echo 'The standard location for Mycroft skills is under /opt/mycroft/skills.'
-    if [[ ! -d /opt/mycroft/skills ]] ; then
+    echo 'The standard location for core skills is under /opt/core/skills.'
+    if [[ ! -d /opt/core/skills ]] ; then
         echo 'This script will create that folder for you.  This requires sudo'
         echo 'permission and might ask you for a password...'
         setup_user=$USER
         setup_group=$(id -gn "$USER")
-        $SUDO mkdir -p /opt/mycroft/skills
-        $SUDO chown -R "${setup_user}":"${setup_group}" /opt/mycroft
+        $SUDO mkdir -p /opt/core/skills
+        $SUDO chown -R "${setup_user}":"${setup_group}" /opt/core
         echo 'Created!'
     fi
     if [[ ! -d skills ]] ; then
-        ln -s /opt/mycroft/skills skills
+        ln -s /opt/core/skills skills
         echo "For convenience, a soft link has been created called 'skills' which leads"
-        echo 'to /opt/mycroft/skills.'
+        echo 'to /opt/core/skills.'
     fi
 
     # Add PEP8 pre-commit hook
@@ -257,14 +257,14 @@ fi" > ~/.profile_mycroft
 If unsure answer yes.
 '
     if get_YN ; then
-        echo 'Will install PEP8 pre-commit hook...' | tee -a /var/log/mycroft/setup.log
+        echo 'Will install PEP8 pre-commit hook...' | tee -a /var/log/core/setup.log
         INSTALL_PRECOMMIT_HOOK=true
     fi
 
     # Save options
     echo '{"use_branch": "'$branch'", "auto_update": '$autoupdate'}' > .dev_opts.json
 
-    echo -e '\nInteractive portion complete, now installing dependencies...\n' | tee -a /var/log/mycroft/setup.log
+    echo -e '\nInteractive portion complete, now installing dependencies...\n' | tee -a /var/log/core/setup.log
     sleep 5
 fi
 
@@ -274,18 +274,6 @@ function os_is() {
 
 function os_is_like() {
     grep "^ID_LIKE=" /etc/os-release | awk -F'=' '/^ID_LIKE/ {print $2}' | sed 's/\"//g' | grep -q "\\b$1\\b"
-}
-
-function redhat_common_install() {
-    $SUDO yum install -y cmake gcc-c++ git python3-devel libtool libffi-devel openssl-devel autoconf automake bison swig portaudio-devel mpg123 flac curl libicu-devel libjpeg-devel fann-devel pulseaudio
-    git clone https://github.com/libfann/fann.git
-    cd fann
-    git checkout b211dc3db3a6a2540a34fbe8995bf2df63fc9939
-    cmake .
-    $SUDO make install
-    cd "$TOP"
-    rm -rf fann
-
 }
 
 
@@ -299,7 +287,7 @@ function debian_install() {
     if dpkg -V libjack-jackd2-0 > /dev/null 2>&1 && [[ -z ${CI} ]] ; then
         echo "
 We have detected that your computer has the libjack-jackd2-0 package installed.
-Mycroft requires a conflicting package, and will likely uninstall this package.
+core requires a conflicting package, and will likely uninstall this package.
 On some systems, this can cause other programs to be marked for removal.
 Please review the following package changes carefully."
         read -rp "Press enter to continue"
@@ -309,120 +297,19 @@ Please review the following package changes carefully."
     fi
 }
 
-
-function open_suse_install() {
-    $SUDO zypper install -y git python3 python3-devel libtool libffi-devel libopenssl-devel autoconf automake bison swig portaudio-devel mpg123 flac curl libicu-devel pkg-config libjpeg-devel libfann-devel python3-curses pulseaudio
-    $SUDO zypper install -y -t pattern devel_C_C++
-}
-
-
-function fedora_install() {
-    $SUDO dnf install -y git python3 python3-devel python3-pip python3-setuptools python3-virtualenv pygobject3-devel libtool libffi-devel openssl-devel autoconf bison swig glib2-devel portaudio-devel mpg123 mpg123-plugins-pulseaudio screen curl pkgconfig libicu-devel automake libjpeg-turbo-devel fann-devel gcc-c++ redhat-rpm-config jq make pulseaudio-utils
-}
-
-
-function arch_install() {
-    pkgs=( git python python-pip python-setuptools python-virtualenv python-gobject libffi swig portaudio mpg123 screen flac curl icu libjpeg-turbo base-devel jq )
-
-    if ! pacman -Qs pipewire-pulse > /dev/null
-    then
-        pulse_pkgs=( pulseaudio pulseaudio-alsa )
-        pkgs=( "${pkgs[@]}" "${pulse_pkgs[@]}" )
-    fi
-
-    $SUDO pacman -S --needed --noconfirm "${pkgs[@]}"
-
-    pacman -Qs '^fann$' &> /dev/null || (
-        git clone  https://aur.archlinux.org/fann.git
-        cd fann
-        makepkg -srciA --noconfirm
-        cd ..
-        rm -rf fann
-    )
-}
-
-
-function centos_install() {
-    $SUDO yum install epel-release
-    redhat_common_install
-}
-
-function redhat_install() {
-    $SUDO yum install -y wget
-    wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    $SUDO yum install -y epel-release-latest-7.noarch.rpm
-    rm epel-release-latest-7.noarch.rpm
-    redhat_common_install
-
-}
-
-function gentoo_install() {
-    $SUDO emerge --noreplace dev-vcs/git dev-lang/python dev-python/setuptools dev-python/pygobject dev-python/requests sys-devel/libtool dev-libs/libffi virtual/jpeg dev-libs/openssl sys-devel/autoconf sys-devel/bison dev-lang/swig dev-libs/glib media-libs/portaudio media-sound/mpg123 media-libs/flac net-misc/curl sci-mathematics/fann sys-devel/gcc app-misc/jq media-libs/alsa-lib dev-libs/icu
-}
-
-function alpine_install() {
-    $SUDO apk add --virtual .makedeps-mycroft-core \
-		alpine-sdk \
-		alsa-lib-dev \
-		autoconf \
-		automake \
-		fann-dev \
-		git \
-		libjpeg-turbo-dev \
-		libtool \
-		mpg123 \
-		pcre2-dev \
-		portaudio-dev \
-		pulseaudio-utils \
-		py3-pip \
-		py3-setuptools \
-		py3-virtualenv \
-		python3 \
-		python3-dev \
-		swig \
-		vorbis-tools
-}
-
 function install_deps() {
     echo 'Installing packages...'
-    if found_exe zypper ; then
-        # OpenSUSE
-        echo "$GREEN Installing packages for OpenSUSE...$RESET" | tee -a /var/log/mycroft/setup.log
-        open_suse_install
-    elif found_exe yum && os_is centos ; then
-        # CentOS
-        echo "$GREEN Installing packages for Centos...$RESET" | tee -a /var/log/mycroft/setup.log
-        centos_install
-    elif found_exe yum && os_is rhel ; then
-        # Redhat Enterprise Linux
-        echo "$GREEN Installing packages for Red Hat...$RESET" | tee -a /var/log/mycroft/setup.log
-        redhat_install
-    elif os_is_like debian || os_is debian || os_is_like ubuntu || os_is ubuntu || os_is linuxmint; then
+    
+    if os_is_like debian || os_is debian || os_is_like ubuntu || os_is ubuntu || os_is linuxmint; then
         # Debian / Ubuntu / Mint
-        echo "$GREEN Installing packages for Debian/Ubuntu/Mint...$RESET" | tee -a /var/log/mycroft/setup.log
+        echo "$GREEN Installing packages for Debian/Ubuntu/Mint...$RESET" | tee -a /var/log/core/setup.log
         debian_install
-    elif os_is_like fedora || os_is fedora; then
-        # Fedora
-        echo "$GREEN Installing packages for Fedora...$RESET" | tee -a /var/log/mycroft/setup.log
-        fedora_install
-    elif found_exe pacman && (os_is arch || os_is_like arch); then
-        # Arch Linux
-        echo "$GREEN Installing packages for Arch...$RESET" | tee -a /var/log/mycroft/setup.log
-        arch_install
-    elif found_exe emerge && os_is gentoo; then
-        # Gentoo Linux
-        echo "$GREEN Installing packages for Gentoo Linux ...$RESET" | tee -a /var/log/mycroft/setup.log
-        gentoo_install
-    elif found_exe apk && os_is alpine; then
-        # Alpine Linux
-        echo "$GREEN Installing packages for Alpine Linux...$RESET" | tee -a /var/log/mycroft/setup.log
-        alpine_install
     else
         echo
         echo -e "${YELLOW}Could not find package manager
-${YELLOW}Make sure to manually install:$BLUE git python3 python-setuptools python-venv pygobject libtool libffi libjpg openssl autoconf bison swig glib2.0 portaudio19 mpg123 flac curl fann g++ jq\n$RESET" | tee -a /var/log/mycroft/setup.log
+                  ${YELLOW}Make sure to manually install:$BLUE git python3 python-setuptools python-venv pygobject libtool libffi libjpg openssl autoconf bison swig glib2.0 portaudio19 mpg123 flac curl fann g++ jq\n$RESET" | tee -a /var/log/core/setup.log
 
-        echo 'Warning: Failed to install all dependencies. Continue? y/N' | tee -a /var/log/mycroft/setup.log
+        echo 'Warning: Failed to install all dependencies. Continue? y/N' | tee -a /var/log/core/setup.log
         read -rn1 continue
         if [[ $continue != 'y' ]] ; then
             exit 1
@@ -455,8 +342,8 @@ install_deps
 
 # It's later. Update existing config with jq.
 if [[ $disable_precise_later == true ]]; then
-    $SUDO bash -c 'jq ". + { \"use_precise\": false }" /etc/mycroft/mycroft.conf > tmp.mycroft.conf' 
-                    $SUDO mv -f tmp.mycroft.conf /etc/mycroft/mycroft.conf
+    $SUDO bash -c 'jq ". + { \"use_precise\": false }" /etc/core/core.conf > tmp.core.conf' 
+                    $SUDO mv -f tmp.core.conf /etc/core/core.conf
 fi
 
 # Configure to use the standard commit template for
@@ -466,7 +353,7 @@ git config commit.template .gitmessage
 # Check whether to build mimic (it takes a really long time!)
 if [[ ! -x ${VIRTUALENV_ROOT}/bin/activate ]] ; then
     if ! install_venv ; then
-        echo 'Failed to set up virtualenv for mycroft, exiting setup.' | tee -a /var/log/mycroft/setup.log
+        echo 'Failed to set up virtualenv for core, exiting setup.' | tee -a /var/log/core/setup.log
         exit 1
     fi
 fi
@@ -480,7 +367,7 @@ cd "$TOP"
 HOOK_FILE='./.git/hooks/pre-commit'
 if [[ -n $INSTALL_PRECOMMIT_HOOK ]] || grep -q 'MYCROFT DEV SETUP' $HOOK_FILE; then
     if [[ ! -f $HOOK_FILE ]] || grep -q 'MYCROFT DEV SETUP' $HOOK_FILE; then
-        echo 'Installing PEP8 check as precommit-hook' | tee -a /var/log/mycroft/setup.log
+        echo 'Installing PEP8 check as precommit-hook' | tee -a /var/log/core/setup.log
         echo "#! $(command -v python)" > $HOOK_FILE
         echo '# MYCROFT DEV SETUP' >> $HOOK_FILE
         cat ./scripts/pre-commit >> $HOOK_FILE
@@ -500,13 +387,13 @@ if [[ ! -f $VENV_PATH_FILE ]] ; then
 fi
 
 if ! grep -q "$TOP" "$VENV_PATH_FILE" ; then
-    echo 'Adding mycroft-core to virtualenv path' | tee -a /var/log/mycroft/setup.log
+    echo 'Adding core to virtualenv path' | tee -a /var/log/core/setup.log
     sed -i.tmp "1 a$TOP" "$VENV_PATH_FILE"
 fi
 
 # install required python modules
 if ! pip install -r requirements/requirements.txt ; then
-    echo 'Warning: Failed to install required dependencies. Continue? y/N' | tee -a /var/log/mycroft/setup.log
+    echo 'Warning: Failed to install required dependencies. Continue? y/N' | tee -a /var/log/core/setup.log
     read -rn1 continue
     if [[ $continue != 'y' ]] ; then
         exit 1
@@ -516,7 +403,7 @@ fi
 # install optional python modules
 if [[ ! $(pip install -r requirements/extra-audiobackend.txt) ||
     ! $(pip install -r requirements/extra-stt.txt) ]] ; then
-    echo 'Warning: Failed to install some optional dependencies. Continue? y/N' | tee -a /var/log/mycroft/setup.log
+    echo 'Warning: Failed to install some optional dependencies. Continue? y/N' | tee -a /var/log/core/setup.log
     read -rn1 continue
     if [[ $continue != 'y' ]] ; then
         exit 1
@@ -525,7 +412,7 @@ fi
 
 
 if ! pip install -r requirements/tests.txt ; then
-    echo "Warning: Test requirements failed to install. Note: normal operation should still work fine..." | tee -a /var/log/mycroft/setup.log
+    echo "Warning: Test requirements failed to install. Note: normal operation should still work fine..." | tee -a /var/log/core/setup.log
 fi
 
 SYSMEM=$(free | awk '/^Mem:/ { print $2 }')
@@ -545,17 +432,14 @@ elif [[ $MAXCORES -lt $CORES ]] ; then
     CORES=$MAXCORES
 fi
 
-echo "Building with $CORES cores." | tee -a /var/log/mycroft/setup.log
-
-#build and install pocketsphinx
-#build and install mimic
+echo "Building with $CORES cores." | tee -a /var/log/core/setup.log
 
 cd "$TOP"
 
 # set permissions for common scripts
-chmod +x start-mycroft.sh
-chmod +x stop-mycroft.sh
-chmod +x bin/mycroft-cli-client
+chmod +x start-core.sh
+chmod +x stop-core.sh
+chmod +x bin/core-cli-client
 chmod +x bin/mycroft-help
 chmod +x bin/mycroft-mic-test
 chmod +x bin/mycroft-msk
@@ -568,4 +452,4 @@ chmod +x bin/mycroft-speak
 #Store a fingerprint of setup
 md5sum requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt dev_setup.sh > .installed
 
-echo 'Mycroft setup complete! Logs can be found at /var/log/mycroft/setup.log' | tee -a /var/log/mycroft/setup.log
+echo 'setup complete! Logs can be found at /var/log/core/setup.log' | tee -a /var/log/core/setup.log

@@ -1,10 +1,7 @@
 from setuptools import setup, find_packages
 import os
 import os.path
-
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
-
-
 
 def required(requirements_file):
     """ Read requirements file and remove comments and empty lines. """

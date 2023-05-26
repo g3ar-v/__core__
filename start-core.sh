@@ -8,7 +8,7 @@ DIR="$( pwd )"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
 help() {
-    echo "${script}:  Mycroft command/service launcher"
+    echo "${script}:  core command/service launcher"
     echo "usage: ${script} [COMMAND] [restart] [params]"
     echo
     echo "Services COMMANDs:"
@@ -18,12 +18,12 @@ help() {
     echo "  bus                      the messagebus service"
     echo "  skills                   the skill service"
     echo "  voice                    voice capture service"
-    # echo "  wifi                     wifi setup service"
+    echo "  wifi                     wifi setup service"
     echo "  enclosure                mark_1 enclosure service"
     echo
     echo "Tool COMMANDs:"
     echo "  cli                      the Command Line Interface"
-    echo "  unittest                 run mycroft-core unit tests (requires pytest)"
+    echo "  unittest                 run core unit tests (requires pytest)"
     echo "  skillstest               run the skill autotests for all skills (requires pytest)"
     echo "  vktest                   run the Voight Kampff integration test suite"
     echo
@@ -106,7 +106,7 @@ launch_background() {
     if pgrep -f "python3 (.*)-m ${_module}" > /dev/null ; then
         if ($_force_restart) ; then
             echo "Restarting: ${1}"
-            "${DIR}/stop-mycroft.sh" "${1}"
+            "${DIR}/stop-core.sh" "${1}"
         else
             # Already running, no need to restart
             return
@@ -117,13 +117,13 @@ launch_background() {
 
     # Security warning/reminder for the user
     if [ "${1}" = "bus" ] ; then
-        echo "CAUTION: The Mycroft bus is an open websocket with no built-in security"
+        echo "CAUTION: The core bus is an open websocket with no built-in security"
         echo "         measures.  You are responsible for protecting the local port"
         echo "         8181 with a firewall as appropriate."
     fi
 
     # Launch process in background, sending logs to standard location
-    python3 -m ${_module} "$@" >> "/var/log/mycroft/${1}.log" 2>&1 &
+    python3 -m ${_module} "$@" >> "/var/log/core/${1}.log" 2>&1 &
 }
 
 launch_all() {
@@ -155,7 +155,7 @@ check_dependencies() {
             echo "Please update dependencies by running ./dev_setup.sh again."
             if command -v notify-send >/dev/null ; then
                 # Generate a desktop notification (ArchLinux)
-                notify-send "Mycroft Dependencies Outdated" "Run ./dev_setup.sh again"
+                notify-send "core Dependencies Outdated" "Run ./dev_setup.sh again"
             fi
             exit 1
         fi
