@@ -8,7 +8,7 @@ from os.path import expanduser, isfile
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util.log import LOG
-from .base import IntentMatch
+import core.intent_services
 
 
 class PadatiousMatcher:
@@ -42,7 +42,7 @@ class PadatiousMatcher:
 
             if padatious_intent:
                 skill_id = padatious_intent.name.split(':')[0]
-                self.ret = IntentMatch(
+                self.ret = core.intent_services.IntentMatch(
                     'Padatious', padatious_intent.name,
                     padatious_intent.matches, skill_id
                 )

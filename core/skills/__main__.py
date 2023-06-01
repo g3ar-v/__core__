@@ -21,13 +21,13 @@ from core.util import (
     start_message_bus_client,
     wait_for_exit_signal
 )
+from core.intent_services import IntentService
 from core.util.log import LOG
 from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
 from core.skills.api import SkillApi
 from core.skills.fallback_skill import FallbackSkill
 from core.skills.event_scheduler import EventScheduler
-from core.skills.intent_service import IntentService
 from core.skills.skill_manager import SkillManager
 
 RASPBERRY_PI_PLATFORMS = ('picroft')

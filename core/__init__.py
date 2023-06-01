@@ -6,7 +6,7 @@ from core.messagebus.message import Message
 from core.skills.context import adds_context, removes_context
 from core.skills import (Skill, FallbackSkill,
                          intent_handler, intent_file_handler)
-from core.skills.intent_service import AdaptIntent
+from core.intent_services import AdaptIntent
 from core.util.log import LOG
 
 CORE_ROOT_PATH = abspath(join(dirname(__file__), '..'))
