@@ -1,4 +1,9 @@
 """Intent service, providing intent parsing since forever!"""
+from .adapt_service import AdaptService, AdaptIntent
+from .fallback_service import FallbackService
+from .padatious_service import PadatiousService, PadatiousMatcher
+from .qa_service import QAService
+
 from copy import copy
 import time
 
@@ -8,12 +13,8 @@ from core.util.log import LOG
 from core.util.parse import normalize
 from core.metrics import report_timing
 from core.util.metrics import Stopwatch
-from .intent_services import (
-    AdaptService, AdaptIntent,
-    FallbackService,
-    PadatiousService, PadatiousMatcher, QAService
-)
-from .intent_service_interface import open_intent_envelope
+
+from core.util.intent_service_interface import open_intent_envelope
 
 
 # Intent match response tuple containing
@@ -90,7 +91,7 @@ class IntentService:
         except Exception as err:
             LOG.exception('Failed to create padatious handlers '
                           '({})'.format(repr(err)))
-        self.qa = QAService(bus)
+        self.common_qa = QAService(bus)
         self.fallback = FallbackService(bus)
 
         self.bus.on('register_vocab', self.handle_register_vocab)
@@ -291,9 +292,10 @@ class IntentService:
             # These are listed in priority order.
             match_funcs = [
                 self._converse, padatious_matcher.match_high,
-                self.adapt_service.match_intent, self.qa.match, self.fallback.high_prio,
-                padatious_matcher.match_medium, self.fallback.medium_prio,
-                padatious_matcher.match_low, self.fallback.low_prio
+                self.adapt_service.match_intent, self.common_qa.match,
+                self.fallback.high_prio, padatious_matcher.match_medium,
+                self.fallback.medium_prio, padatious_matcher.match_low,
+                self.fallback.low_prio
             ]
 
             match = None
@@ -322,7 +324,7 @@ class IntentService:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task
                 self.send_complete_intent_failure(message)
-            self.send_metrics(match, message.context, stopwatch)
+            # self.send_metrics(match, message.context, stopwatch)
         except Exception as err:
             LOG.exception(err)
 

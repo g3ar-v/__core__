@@ -14,7 +14,7 @@
 #
 """Intent service for Mycroft's fallback system."""
 from collections import namedtuple
-from .base import IntentMatch
+import core.intent_services
 
 FallbackRange = namedtuple('FallbackRange', ['start', 'stop'])
 
@@ -45,7 +45,7 @@ class FallbackService:
         )
         response = self.bus.wait_for_response(msg, timeout=10)
         if response and response.data['handled']:
-            ret = IntentMatch('Fallback', None, {}, None)
+            ret = core.intent_services.IntentMatch('Fallback', None, {}, None)
         else:
             ret = None
         return ret

@@ -32,10 +32,10 @@ from core.util import (
 from core.util.log import LOG
 from core.util.format import pronounce_number, join_list
 from core.util.parse import match_one, extract_number
+from core.util.intent_service_interface import IntentServiceInterface
 
 from .event_container import EventContainer, create_wrapper, get_handler_name
 from ..event_scheduler import EventSchedulerInterface
-from ..intent_service_interface import IntentServiceInterface
 from ..settings import get_local_settings, save_settings
 from ..skill_data import (
     load_vocabulary,

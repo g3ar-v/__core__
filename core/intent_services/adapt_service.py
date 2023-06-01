@@ -5,9 +5,9 @@ import time
 from adapt.context import ContextManagerFrame
 from adapt.engine import IntentDeterminationEngine
 from adapt.intent import IntentBuilder
+import core.intent_services
 
 from core.util.log import LOG
-from .base import IntentMatch
 
 
 def _entity_skill_id(skill_id):
@@ -228,7 +228,7 @@ class AdaptService:
         if best_intent:
             self.update_context(best_intent)
             skill_id = best_intent['intent_type'].split(":")[0]
-            ret = IntentMatch(
+            ret = core.intent_services.IntentMatch(
                 'Adapt', best_intent['intent_type'], best_intent, skill_id
             )
         else:

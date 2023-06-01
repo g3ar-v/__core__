@@ -110,6 +110,7 @@ class SkillManager(Thread):
         # Set watchdog to argument or function returning None
         self._watchdog = watchdog or (lambda: None)
         self._stop_event = Event()
+        self._internet_loaded = Event()
         self._connected_event = Event()
         self.config = Configuration.get()
         self.upload_queue = UploadQueue()
