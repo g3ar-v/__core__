@@ -1,23 +1,22 @@
 import audioop
+import random
 from time import sleep, time as get_time
 
 from collections import deque, namedtuple
 import datetime
-import json
 import os
 from os.path import isdir, join
 import pyaudio
 import requests
 import speech_recognition
 from hashlib import md5
-from io import BytesIO, StringIO
 from speech_recognition import (
     Microphone,
     AudioSource,
     AudioData
 )
 from tempfile import gettempdir
-from threading import Thread, Lock
+from threading import Lock
 
 from core.api import DeviceApi
 from core.configuration import Configuration
@@ -658,8 +657,10 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                 self.config.get('sounds').get('activation_sound'))
             self._listen_triggered = False
         else:
-            audio_file = resolve_resource_file(
-                self.config.get('sounds').get('start_listening'))
+            tts = self.config.get('sounds').get('start_listening')
+            audio_file = resolve_resource_file(random.choice(
+                self.config.get('sounds').get(tts)))
+        
         LOG.info(audio_file)
         if audio_file:
             source.mute()
