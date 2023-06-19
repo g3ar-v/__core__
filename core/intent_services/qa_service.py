@@ -92,10 +92,10 @@ class QAService:
             IntentMatch or None
         """
         # we call flatten in case someone is sending the old style list of tuples
-        LOG.info("utterances: {}".format(utterances))
+        # LOG.info("utterances: {}".format(utterances))
         utterances = flatten_list(utterances)
         match = None
-        LOG.info("utterances after flattening: {}".format(utterances))
+        # LOG.info("utterances after flattening: {}".format(utterances))
         for utterance in utterances:
             if self.is_question_like(utterance, lang):
                 message.data["lang"] = lang  # only used for speak

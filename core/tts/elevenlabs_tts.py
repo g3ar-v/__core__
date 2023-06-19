@@ -3,22 +3,28 @@ from elevenlabs.api import Voices
 from pathlib import Path
 from core.configuration import Configuration
 from .tts import TTS, TTSValidator
-from core.util.log import LOG
+from core import LOG
 
 
 class ElevenLabsTTS(TTS):
     def __init__(self, lang, config):
         super(ElevenLabsTTS, self).__init__(lang, config, ElevenLabsTTSValidator(self))
         self.config = Configuration.get().get('tts', {}).get('elevenlabs', {})
-        self.voice_id: str = self.config.get('voice_id')
+        self.voice_name: str = self.config.get('voice_name')
         self.api_key = self.config.get('api_key')
-        self.stability = self.config.get('stability')
-        self.similarity_boost = self.config.get('similarity_boost')
+        self.stability = self.config.get(self.voice_name, 'Antoni').get(
+            'stability', 0.75)
+        self.similarity_boost = self.config.get(self.voice_name, 'Antoni').get(
+            'similarity_boost', 0.23)
         set_api_key(self.api_key)
         voices = Voices.from_api()
         # self.voice = voices[voices.index(self.voice_id)]
         # dynamically select based on config
-        self.voice = voices[3]
+        for voice in voices:
+            if voice.name == self.voice_name:
+                self.voice = voice
+                break
+
         self.voice.settings.stability = self.stability
         self.voice.settings.similarity_boost = self.similarity_boost
         # self.type = 'mp3'
