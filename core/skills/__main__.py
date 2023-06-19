@@ -10,7 +10,9 @@ from lingua_franca import load_languages
 
 import core.lock
 from core import dialog
-from core.api import is_paired, BackendDown, DeviceApi
+from backend_client.api import DeviceApi
+from backend_client.pairing import is_paired
+from backend_client.exceptions import BackendDown
 from core.audio import wait_while_speaking
 from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration

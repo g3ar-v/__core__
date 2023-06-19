@@ -13,7 +13,6 @@ from core.util.log import LOG
 
 from .locations import (
     DEFAULT_CONFIG,
-    USER_CONFIG,
     SYSTEM_CONFIG
 )
 
@@ -152,8 +151,8 @@ class RemoteConf(LocalConf):
 
     def reload(self):
         try:
-            from ovos_backend_client.pairing import is_paired
-            from ovos_backend_client.config import RemoteConfigManager
+            from backend_client.pairing import is_paired
+            from backend_client.config import RemoteConfigManager
 
             if not is_paired():
                 self.load_local(self.path)

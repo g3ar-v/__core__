@@ -15,7 +15,7 @@ from xdg import BaseDirectory
 from adapt.intent import Intent, IntentBuilder
 
 from core import dialog
-from core.api import DeviceApi
+from backend_client.api import DeviceApi
 from core.audio import wait_while_speaking
 from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI
@@ -91,7 +91,7 @@ def get_non_properties(obj):
 
 
 class Skill:
-    """Base class for mycroft skills providing common behaviour and parameters
+    """Base class for skills providing common behaviour and parameters
     to all Skill implementations.
 
     Args:

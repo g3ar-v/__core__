@@ -7,8 +7,8 @@ import xdg.BaseDirectory
 
 from msm import MsmException
 
-from ovos_backend_client.api import DeviceApi
-from ovos_backend_client.pairing import is_paired
+from backend_client.api import DeviceApi
+from backend_client.pairing import is_paired
 # from core.api import DeviceApi, is_paired
 from core.configuration import Configuration
 from core.util import connected

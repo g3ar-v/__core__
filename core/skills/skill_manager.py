@@ -5,7 +5,7 @@ from threading import Thread, Event, Lock
 from time import sleep, time, monotonic
 from inspect import signature
 
-from core.api import is_paired
+from backend_client.pairing import is_paired
 from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
