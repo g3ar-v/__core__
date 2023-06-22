@@ -108,10 +108,14 @@ class IntentService:
         self.bus.on('core.speech.recognition.unknown', self.reset_converse)
         self.bus.on('core.skills.loaded', self.update_skill_name_dict)
 
+        def remove_active_skill_handler(message):
+            self.remove_active_skill(message.data['skill_id'])
+
         def add_active_skill_handler(message):
             self.add_active_skill(message.data['skill_id'])
 
         self.bus.on('active_skill_request', add_active_skill_handler)
+        self.bus.on('remove_active_skill', remove_active_skill_handler)
         self.active_skills = []  # [skill_id , timestamp]
         self.converse_timeout = 5  # minutes to prune active_skills
 

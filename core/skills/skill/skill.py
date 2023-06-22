@@ -678,6 +678,10 @@ class Skill:
         self.bus.emit(Message('active_skill_request',
                               {'skill_id': self.skill_id}))
 
+    def remove_from_active_skill_list(self):
+        """Revert skill to default state if it's in active_skill list"""
+        self.bus.emit(Message('remove_active_skill', {'skill_id': self.skill_id}))
+
     def _handle_collect_resting(self, _=None):
         """Handler for collect resting screen messages.
 
