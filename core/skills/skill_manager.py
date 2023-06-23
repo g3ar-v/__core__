@@ -6,7 +6,7 @@ from time import sleep, time, monotonic
 from inspect import signature
 
 from backend_client.pairing import is_paired
-from core.enclosure.api import EnclosureAPI
+# from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util.log import LOG
@@ -116,7 +116,7 @@ class SkillManager(Thread):
         self.upload_queue = UploadQueue()
 
         self.skill_loaders = {}
-        self.enclosure = EnclosureAPI(bus)
+        # self.enclosure = EnclosureAPI(bus)
         self.initial_load_complete = False
         self.num_install_retries = 0
         self.settings_downloader = SkillSettingsDownloader(self.bus)

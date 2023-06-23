@@ -17,7 +17,7 @@ from adapt.intent import Intent, IntentBuilder
 from core import dialog
 from backend_client.api import DeviceApi
 from core.audio import wait_while_speaking
-from core.enclosure.api import EnclosureAPI
+# from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI
 from core.configuration import Configuration
 from core.dialog import load_dialogs
@@ -113,7 +113,7 @@ class Skill:
         # self.gui = SkillGUI(self)
 
         self._bus = None
-        self._enclosure = None
+        # self._enclosure = None
         self.bind(bus)
         # global configuration. (dict)
         self.config_core = Configuration.get()
@@ -180,15 +180,15 @@ class Skill:
         self.settings = get_local_settings(settings_read_path, self.name)
         self._initial_settings = deepcopy(self.settings)
 
-    @property
-    def enclosure(self):
-        if self._enclosure:
-            return self._enclosure
-        else:
-            LOG.error('Skill not fully initialized. Move code ' +
-                      'from  __init__() to initialize() to correct this.')
-            LOG.error(simple_trace(traceback.format_stack()))
-            raise Exception('Accessed Skill.enclosure in __init__')
+    # @property
+    # def enclosure(self):
+    #     if self._enclosure:
+    #         return self._enclosure
+    #     else:
+    #         LOG.error('Skill not fully initialized. Move code ' +
+    #                   'from  __init__() to initialize() to correct this.')
+    #         LOG.error(simple_trace(traceback.format_stack()))
+    #         raise Exception('Accessed Skill.enclosure in __init__')
 
     @property
     def bus(self):
@@ -240,7 +240,7 @@ class Skill:
             self.intent_service.set_bus(bus)
             self.event_scheduler.set_bus(bus)
             self.event_scheduler.set_id(self.skill_id)
-            self._enclosure = EnclosureAPI(bus, self.name)
+            # self._enclosure = EnclosureAPI(bus, self.name)
             self._register_system_event_handlers()
             self._register_public_api()
 
@@ -1211,7 +1211,7 @@ class Skill:
         # registers the skill as being active
         meta = meta or {}
         meta['skill'] = self.name
-        self.enclosure.register(self.name)
+        # self.enclosure.register(self.name)
         data = {'utterance': utterance,
                 'expect_response': expect_response,
                 'meta': meta}

@@ -14,7 +14,7 @@ from backend_client.api import DeviceApi
 from backend_client.pairing import is_paired
 from backend_client.exceptions import BackendDown
 from core.audio import wait_while_speaking
-from core.enclosure.api import EnclosureAPI
+# from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util import (
@@ -45,7 +45,7 @@ class DevicePrimer(object):
     def __init__(self, message_bus_client, config):
         self.bus = message_bus_client
         self.platform = config['enclosure'].get("platform", "unknown")
-        self.enclosure = EnclosureAPI(self.bus)
+        # self.enclosure = EnclosureAPI(self.bus)
         self.is_paired = False
         self.backend_down = False
         # Remember "now" at startup.  Used to detect clock changes.
