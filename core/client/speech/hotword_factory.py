@@ -266,10 +266,10 @@ class PreciseHotword(HotWordEngine):
 
     @property
     def folder(self):
-        old_path = join(expanduser('~'), '.mycroft', 'precise')
+        old_path = join(expanduser('~'), '.core', 'precise')
         if os.path.isdir(old_path):
             return old_path
-        return xdg.BaseDirectory.save_data_path('mycroft', 'precise')
+        return xdg.BaseDirectory.save_data_path('core', 'precise')
 
     @property
     def install_destination(self):
@@ -388,10 +388,12 @@ class PorcupineHotWord(HotWordEngine):
         keyword_file_paths = [expanduser(x.strip()) for x in self.config.get(
             "keyword_file_path", "hey_mycroft.ppn").split(',')]
         sensitivities = self.config.get("sensitivities", 0.5)
+        access_key = self.config.get("access_key", '')
 
         try:
-            from pvporcupine.porcupine import Porcupine
-            from pvporcupine.util import (pv_library_path,
+            import pvporcupine
+            from pvporcupine._porcupine import Porcupine
+            from pvporcupine._util import (pv_library_path,
                                           pv_model_path)
         except ImportError as err:
             raise Exception(
@@ -416,11 +418,12 @@ class PorcupineHotWord(HotWordEngine):
         LOG.info(
             'Loading Porcupine using library path {} and keyword paths {}'
             .format(library_path, keyword_file_paths))
-        self.porcupine = Porcupine(
+        self.porcupine = pvporcupine.create(
             library_path=library_path,
             model_path=model_file_path,
             keyword_paths=keyword_file_paths,
-            sensitivities=sensitivities)
+            sensitivities=sensitivities,
+            access_key=access_key)
 
         LOG.info('Loaded Porcupine')
 
