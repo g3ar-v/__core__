@@ -14,9 +14,6 @@ python-dateutil==2.6.0
 fasteners==0.14.1
 PyYAML~=5.4
 mycroft-mimic3-tts
-ovos-utils==0.0.28
-ovos-plugin-manager
-ovos-config==0.0.5
 lingua-franca==0.4.2
 msm==0.8.9
 msk==0.3.16

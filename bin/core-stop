@@ -18,4 +18,4 @@ SOURCE="${BASH_SOURCE[0]}"
 cd -P "$( dirname "$SOURCE" )"/.. || exit
 DIR="$( pwd )"
 
-. "$DIR/stop-mycroft.sh" "$@"
+. "$DIR/stop-core.sh" "$@"

@@ -64,7 +64,7 @@ function found_exe() {
 opt_forcemimicbuild=false
 opt_allowroot=false
 opt_skipmimicbuild=false
-opt_python=python3
+opt_python=python3.9
 disable_precise_later=false
 param=''
 
@@ -138,17 +138,17 @@ fi
 function get_YN() {
     # Loop until the user hits the Y or the N key
     echo -e -n "Choice [${CYAN}Y${RESET}/${CYAN}N${RESET}]: "
-    while true; do
-        read -rN1 -s key
-        case $key in
-        [Yy])
-            return 0
-            ;;
-        [Nn])
-            return 1
-            ;;
-        esac
-    done
+      while true; do
+          read -r key
+          case $key in
+          [Yy])
+              return 0
+              ;;
+          [Nn])
+              return 1
+              ;;
+          esac
+      done
 }
 
 # If tput is available and can handle multiple colors
@@ -297,6 +297,12 @@ Please review the following package changes carefully."
     fi
 }
 
+function mac_install() {
+  APT_PACKAGE_LIST=(python@3.10 jq pulseaudio ffmpeg libtool flac curl mpg123 swig \
+    automake bison pkg-config jpeg autoconf screen portaudio) 
+    brew install "${APT_PACKAGE_LIST[@]}"
+}
+
 function install_deps() {
     echo 'Installing packages...'
     
@@ -304,6 +310,10 @@ function install_deps() {
         # Debian / Ubuntu / Mint
         echo "$GREEN Installing packages for Debian/Ubuntu/Mint...$RESET" | tee -a /var/log/core/setup.log
         debian_install
+    elif [[ $(uname -s) == "Darwin" ]]; then
+        echo "$GREEN Installing packages for OSX...$RESET" | tee -a /var/log/core/setup.log
+        mac_install
+      
     else
         echo
         echo -e "${YELLOW}Could not find package manager
@@ -333,7 +343,7 @@ function install_venv() {
     # Force version of pip for reproducability, but there is nothing special
     # about this version.  Update whenever a new version is released and
     # verified functional.
-    curl "${GET_PIP_URL}" | "${VIRTUALENV_ROOT}/bin/${opt_python}" - 'pip==20.0.2'
+    curl "${GET_PIP_URL}" | "${VIRTUALENV_ROOT}/bin/${opt_python}" - 'pip==23.1.2'
     # Function status depending on if pip exists
     [[ -x ${VIRTUALENV_ROOT}/bin/pip ]]
 }
@@ -375,7 +385,7 @@ if [[ -n $INSTALL_PRECOMMIT_HOOK ]] || grep -q 'MYCROFT DEV SETUP' $HOOK_FILE; t
     fi
 fi
 
-PYTHON=$(python -c "import sys;print('python{}.{}'.format(sys.version_info[0], sys.version_info[1]))")
+PYTHON=$(python3.9 -c "import sys;print('python{}.{}'.format(sys.version_info[0], sys.version_info[1]))")
 
 # Add mycroft-core to the virtualenv path
 # (This is equivalent to typing 'add2virtualenv $TOP', except
@@ -388,7 +398,9 @@ fi
 
 if ! grep -q "$TOP" "$VENV_PATH_FILE" ; then
     echo 'Adding core to virtualenv path' | tee -a /var/log/core/setup.log
-    sed -i.tmp "1 a$TOP" "$VENV_PATH_FILE"
+    
+    gsed -i.tmp "1 a$TOP" "$VENV_PATH_FILE"
+    # sed -i.tmp "$(printf '1s/^/%s\n/' "$TOP")" "$VENV_PATH_FILE"
 fi
 
 # install required python modules
@@ -415,10 +427,12 @@ if ! pip install -r requirements/tests.txt ; then
     echo "Warning: Test requirements failed to install. Note: normal operation should still work fine..." | tee -a /var/log/core/setup.log
 fi
 
-SYSMEM=$(free | awk '/^Mem:/ { print $2 }')
+SYSMEM=$(vm_stat | awk '/^Pages free/ { print $3 * 4096 }')
+# SYSMEM=$(free | awk '/^Mem:/ { print $2 }')
 MAXCORES=$((SYSMEM / 2202010))
 MINCORES=1
-CORES=$(nproc)
+CORES=$(sysctl -n hw.ncpu)
+# CORES=$(nproc)
 
 # ensure MAXCORES is > 0
 if [[ $MAXCORES -lt 1 ]] ; then
@@ -450,6 +464,6 @@ chmod +x bin/mycroft-skill-testrunner
 chmod +x bin/mycroft-speak
 
 #Store a fingerprint of setup
-md5sum requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt dev_setup.sh > .installed
+md5 requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt dev_setup.sh > .installed
 
 echo 'setup complete! Logs can be found at /var/log/core/setup.log' | tee -a /var/log/core/setup.log

@@ -3,9 +3,10 @@ SOURCE="$0"
 
 script=${0}
 script=${script##*/}
-cd -P "$( dirname "$SOURCE" )" || exit 1 # Enter scripts folder or fail!
+# cd -P "$( dirname "$SOURCE" )" || exit 1 # Enter scripts folder or fail!
 DIR="$( pwd )"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
+echo "current dir: $DIR"
 
 help() {
     echo "${script}:  core command/service launcher"
@@ -64,6 +65,7 @@ name_to_script_path() {
 
 source_venv() {
     # Enter Python virtual environment, unless under Docker
+    echo "Entering virtual environment ${VIRTUALENV_ROOT}"
     if [ ! -f "/.dockerenv" ] ; then
         . "${VIRTUALENV_ROOT}/bin/activate"
     fi
