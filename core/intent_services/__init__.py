@@ -73,7 +73,7 @@ def _normalize_all_utterances(utterances):
 
 
 class IntentService:
-    """core intent service. parses utterances using a variety of systems.
+    """Intent service. parses utterances using a variety of systems.
 
     The intent service also provides the internal API for registering and
     querying the intent service.
@@ -267,7 +267,7 @@ class IntentService:
         1) Active skills attempt to handle using converse()
         2) Padatious high match intents (conf > 0.95)
         3) Adapt intent handlers
-        4) Question and Answer
+        4) Question and Answer Services
         5) High Priority Fallbacks
         6) Padatious near match intents (conf > 0.8)
         7) General Fallbacks

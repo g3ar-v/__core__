@@ -16,9 +16,9 @@ from os import path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from mycroft.skills.skill_loader import SkillLoader
-from mycroft.skills.skill_manager import SkillManager, UploadQueue
-from ..base import MycroftUnitTestBase
+from core.skills.skill_loader import SkillLoader
+from core.skills.skill_manager import SkillManager, UploadQueue
+from ..base import CoreUnitTestBase
 from ..mocks import mock_msm
 
 
@@ -59,8 +59,8 @@ class TestUploadQueue(TestCase):
             l.instance.settings_meta.upload.assert_called_once_with()
 
 
-class TestSkillManager(MycroftUnitTestBase):
-    mock_package = 'mycroft.skills.skill_manager.'
+class TestSkillManager(CoreUnitTestBase):
+    mock_package = 'core.skills.skill_manager.'
     use_msm_mock = True
 
     def setUp(self):
@@ -113,7 +113,7 @@ class TestSkillManager(MycroftUnitTestBase):
         )
         expected_result = [
             'skill.converse.request',
-            'mycroft.internet.connected',
+            'core.internet.connected',
             'skillmanager.update',
             'skillmanager.list',
             'skillmanager.deactivate',
@@ -348,7 +348,7 @@ class TestSkillManager(MycroftUnitTestBase):
                 self.skill_manager.skill_loaders[str(self.skill_dir)]
             )
         self.assertListEqual(
-            ['mycroft.skills.initialized'],
+            ['core.skills.initialized'],
             self.message_bus_mock.message_types
         )
 

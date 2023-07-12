@@ -15,7 +15,7 @@ from xdg import BaseDirectory
 from adapt.intent import Intent, IntentBuilder
 
 from core import dialog
-from backend_client.api import DeviceApi
+from backend_client.api import DeviceApi, EmailApi
 from core.audio import wait_while_speaking
 # from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI
@@ -667,7 +667,7 @@ class Skill:
             body  (str): HTML body of email. This supports
                          simple HTML like bold and italics
         """
-        DeviceApi().send_email(title, body, basename(self.root_dir))
+        EmailApi().send_email(title, body, basename(self.root_dir))
 
     def make_active(self):
         """Bump skill to active_skill list in intent_service.

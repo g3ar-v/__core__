@@ -3,9 +3,8 @@
 In this repo, you will not find an entry called mycroft-skills in the bin
 directory.  The executable gets added to the bin directory when installed
 (see setup.py)
+I'd say this is the main unit/central processing of this system
 """
-import time
-from msm.exceptions import MsmException
 from lingua_franca import load_languages
 
 import core.lock
@@ -14,23 +13,22 @@ from backend_client.api import DeviceApi
 from backend_client.pairing import is_paired
 from backend_client.exceptions import BackendDown
 from core.audio import wait_while_speaking
-# from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util import (
-    connected,
     reset_sigint_handler,
     start_message_bus_client,
     wait_for_exit_signal
 )
 from core.intent_services import IntentService
 from core.util.log import LOG
-from core.util.process_utils import ProcessStatus, StatusCallbackMap
+# from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
 from core.skills.api import SkillApi
 from core.skills.fallback_skill import FallbackSkill
 from core.skills.event_scheduler import EventScheduler
-from core.skills.skill_manager import SkillManager
+from core.skills.skill_manager import (SkillManager, on_alive, on_ready, on_error,
+                                       on_started, on_stopping)
 
 RASPBERRY_PI_PLATFORMS = ('picroft')
 
@@ -154,26 +152,6 @@ class DevicePrimer(object):
             wait_while_speaking()
 
 
-def on_started():
-    LOG.info('Skills service is starting up.')
-
-
-def on_alive():
-    LOG.info('Skills service is alive.')
-
-
-def on_ready():
-    LOG.info('Skills service is ready.')
-
-
-def on_error(e='Unknown'):
-    LOG.info('Skills service failed to launch ({})'.format(repr(e)))
-
-
-def on_stopping():
-    LOG.info('Skills service is shutting down...')
-
-
 def main(alive_hook=on_alive, started_hook=on_started, ready_hook=on_ready,
          error_hook=on_error, stopping_hook=on_stopping, watchdog=None):
     reset_sigint_handler()
@@ -187,35 +165,19 @@ def main(alive_hook=on_alive, started_hook=on_started, ready_hook=on_ready,
     bus = start_message_bus_client("SKILLS")
     _register_intent_services(bus)
     event_scheduler = EventScheduler(bus)
-    callbacks = StatusCallbackMap(on_started=started_hook,
-                                  on_alive=alive_hook,
-                                  on_ready=ready_hook,
-                                  on_error=error_hook,
-                                  on_stopping=stopping_hook)
-    status = ProcessStatus('skills', bus, callbacks)
-
     SkillApi.connect_bus(bus)
-    skill_manager = _initialize_skill_manager(bus, watchdog)
+    # skill_manager = _initialize_skill_manager(bus, watchdog)
 
-    status.set_started()
-    _wait_for_internet_connection()
+    # This helps ensure that the events is logged specifically for the skill manager
+    skill_manager = SkillManager(bus, watchdog,
+                                 alive_hook=alive_hook,
+                                 started_hook=started_hook,
+                                 stopping_hook=stopping_hook,
+                                 ready_hook=ready_hook,
+                                 error_hook=error_hook)
 
-    if skill_manager is None:
-        skill_manager = _initialize_skill_manager(bus, watchdog)
-
-    device_primer = DevicePrimer(bus, config)
-    device_primer.prepare_device()
     skill_manager.start()
-    while not skill_manager.is_alive():
-        time.sleep(0.1)
-    status.set_alive()
-
-    while not skill_manager.is_all_loaded():
-        time.sleep(0.1)
-    status.set_ready()
-
     wait_for_exit_signal()
-    status.set_stopping()
     shutdown(skill_manager, event_scheduler)
 
 
@@ -232,33 +194,6 @@ def _register_intent_services(bus):
         FallbackSkill.make_intent_failure_handler(bus)
     )
     return service
-
-
-def _initialize_skill_manager(bus, watchdog):
-    """Create a thread that monitors the loaded skills, looking for updates
-
-    Returns:
-        SkillManager instance or None if it couldn't be initialized
-    """
-    try:
-        skill_manager = SkillManager(bus, watchdog)
-        skill_manager.load_priority()
-    except MsmException:
-        # skill manager couldn't be created, wait for network connection and
-        # retry
-        skill_manager = None
-        LOG.info(
-            'MSM is uninitialized and requires network connection to fetch '
-            'skill information\nWill retry after internet connection is '
-            'established.'
-        )
-
-    return skill_manager
-
-
-def _wait_for_internet_connection():
-    while not connected():
-        time.sleep(1)
 
 
 def shutdown(skill_manager, event_scheduler):

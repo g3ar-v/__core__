@@ -13,7 +13,7 @@ from core.configuration import Configuration
 from core.metrics import MetricsAggregator, Stopwatch, report_timing
 from core.session import SessionManager
 from core.stt import STTFactory
-from core.util import connected
+from core.util import is_connected
 from core.util.log import LOG
 from core.util import find_input_device
 from queue import Queue, Empty
@@ -226,7 +226,7 @@ class AudioConsumer(Thread):
             LOG.error("Speech Recognition could not understand audio")
             return None
 
-        if connected():
+        if is_connected():
             dialog_name = 'backend.down'
         else:
             dialog_name = 'not connected to the internet'

@@ -1,4 +1,3 @@
-"""Periodically run by skill manager to update skills and post the manifest."""
 import os
 import sys
 from datetime import datetime
@@ -9,13 +8,14 @@ from msm import MsmException
 
 from backend_client.api import DeviceApi
 from backend_client.pairing import is_paired
-# from core.api import DeviceApi, is_paired
+from backend_client.settings import SeleneSkillsManifest
+
 from core.configuration import Configuration
-from core.util import connected
+from core.util import is_connected
 from core.util.combo_lock import ComboLock
+from core.util.file_utils import get_temp_path
 from core.util.log import LOG
 from .msm_wrapper import build_msm_config, create_msm
-from core.util.file_utils import get_temp_path
 
 ONE_HOUR = 3600
 FIVE_MINUTES = 300  # number of seconds in a minute
@@ -65,6 +65,7 @@ class SkillUpdater:
             os.path.exists(self.dot_msm_path) and
             os.path.exists(self.installed_skills_file_path)
         )
+        time = None
         if msm_files_exist:
             mtime = os.path.getmtime(self.dot_msm_path)
             next_download = mtime + self.update_interval
@@ -137,7 +138,7 @@ class SkillUpdater:
         LOG.info('Beginning skill update...')
         self.msm._device_skill_state = None  # TODO: Proper msm method
         success = True
-        if connected():
+        if is_connected():
             self._load_installed_skills()
             with self.msm_lock, self.msm.lock:
                 self._apply_install_or_update(quick)
@@ -254,3 +255,32 @@ class SkillUpdater:
             'Next scheduled skill update: ' +
             str(datetime.fromtimestamp(self.next_download))
         )
+
+
+
+class SeleneSkillManifestUploader:
+    """Class facilitating skill manifest upload."""
+
+    def __init__(self):
+        super().__init__()
+        self.api = DeviceApi()
+        self.config = Configuration().get()
+        self.skill_manifest = SeleneSkillsManifest(self.api)
+        self.post_manifest(True)
+
+    @property
+    def installed_skills_file_path(self):
+        """Property representing the path of the installed skills file."""
+        return self.skill_manifest.path
+
+    def post_manifest(self, reload_skills_manifest=False):
+        """Post the manifest of the device's skills to the backend."""
+        upload_allowed = self.config['skills'].get('upload_skill_manifest')
+        if upload_allowed and is_paired():
+            if reload_skills_manifest:
+                self.skill_manifest.clear()
+                self.skill_manifest.scan_skills()
+            try:
+                self.api.upload_skills_data(self.skill_manifest)
+            except Exception:
+                LOG.error('Could not upload skill manifest')

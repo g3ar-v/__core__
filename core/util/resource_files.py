@@ -47,6 +47,9 @@ SkillResourceTypes = namedtuple(
     ]
 )
 
+# TODO: Port all resource utils from ovos_utils to this module
+def get_xdg_base():
+    """ base """
 
 def locate_base_directories(skill_directory: str,
                             resource_subdirectory: Optional[str] = None) -> \

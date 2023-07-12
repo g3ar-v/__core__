@@ -203,8 +203,11 @@ class QAService:
                     pass
 
                 # invoke best match
-                self.speak(best['answer'], expect_response=True if best['answer'].
-                           endswith("?") or "?" in best['answer'] else False)
+                # self.speak(best['answer'], expect_response=True if best['answer'].
+                           # endswith("?") or "?" in best['answer'] else False)
+                self.speak(best['answer'], expect_response=True)
+
+                # self.bus.emit(Message("core.mic.listen"))
                 LOG.info('Handling with: ' + str(best['skill_id']))
                 self.bus.emit(message.forward('question:action',
                                               data={'skill_id': best['skill_id'],

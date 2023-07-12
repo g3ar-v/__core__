@@ -120,3 +120,11 @@ def extract_datetime(text, anchorDate="DEFAULT", lang=None,
                              anchorDate,
                              lang or get_default_loc(),
                              default_time)
+
+
+def use_a_or_an(text: str):
+    word = text.strip("")
+    vowels: tuple = ('a', 'e', 'i', 'o', 'u')
+    if word.startswith(vowels):
+        return 'an'
+    return 'a'

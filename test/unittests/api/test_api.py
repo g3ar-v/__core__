@@ -17,16 +17,16 @@ from copy import copy
 
 from unittest.mock import MagicMock, patch
 
-import mycroft.api
-import mycroft.configuration
+import core.api
+import core.configuration
 
 from test.util import base_config
 CONFIG = base_config()
 CONFIG.merge(
     {
-        'data_dir': '/opt/mycroft',
+        'data_dir': '/opt/core',
         'server': {
-            'url': 'https://api-test.mycroft.ai',
+            'url': 'http://192.168.100.147:8086',
             'version': 'v1',
             'update': True,
             'metrics': False
@@ -62,7 +62,7 @@ class TestApi(unittest.TestCase):
         self.addCleanup(patcher.stop)
         super().setUp()
 
-    @patch('mycroft.api.IdentityManager.get')
+    @patch('backend_client.api.IdentityManager.get')
     def test_init(self, mock_identity_get):
         mock_identity_get.return_value = create_identity('1234')
         a = mycroft.api.Api('test-path')

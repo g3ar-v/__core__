@@ -6,9 +6,9 @@ import requests
 from requests import HTTPError, RequestException
 
 from core.configuration import Configuration
-from core.identity import IdentityManager, identity_lock
+from backend_client.identity import IdentityManager, identity_lock
 from core.version import VersionManager
-from core.util import get_arch, connected, LOG
+from core.util import get_arch, is_connected, LOG
 
 
 _paired_cache = False
@@ -512,7 +512,7 @@ def check_remote_pairing(ignore_errors):
         return False
 
     if isinstance(error, HTTPError):
-        if connected():
+        if is_connected():
             raise BackendDown from error
         else:
             raise InternetDown from error

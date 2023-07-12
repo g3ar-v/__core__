@@ -18,8 +18,8 @@ from adapt.intent import IntentBuilder
 
 from core.configuration import Configuration
 from core.messagebus import Message
-from core.skills.intent_service import IntentService, _get_message_lang
-from core.skills.intent_services.adapt_service import (ContextManager,
+from core.intent_services import IntentService, _get_message_lang
+from core.intent_services.adapt_service import (ContextManager,
                                                           AdaptIntent)
 
 from test.util import base_config

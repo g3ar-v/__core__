@@ -1,7 +1,7 @@
 # Expose core  modules to skills and other programs
 from os.path import abspath, dirname, join
 
-from core.api import Api
+# from core.api import Api
 from core.messagebus.message import Message
 from core.skills.context import adds_context, removes_context
 from core.skills import (Skill, FallbackSkill,

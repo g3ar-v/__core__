@@ -300,7 +300,7 @@ class SettingsMetaUploader:
 
 
 # Path to remote cache
-REMOTE_CACHE = Path(xdg_cache_home, 'mycroft', 'remote_skill_settings.json')
+REMOTE_CACHE = Path(xdg_cache_home, 'core', 'remote_skill_settings.json')
 
 
 def load_remote_settings_cache():

@@ -21,7 +21,7 @@ from unittest.mock import patch
 from .mocks import mock_msm, mock_config, MessageBusMock
 
 
-class MycroftUnitTestBase(TestCase):
+class CoreUnitTestBase(TestCase):
     mock_package = None
     use_msm_mock = False
 

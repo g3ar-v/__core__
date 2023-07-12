@@ -27,4 +27,3 @@ petact==0.1.2
 pyxdg==0.27
 openai==0.27.4
 langchain
-elevenlabs
