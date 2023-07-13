@@ -20,7 +20,7 @@ from .file_utils import (
     ensure_directory_exists,
     curate_cache,
     get_cache_directory)
-from .network_utils import connected
+from .network_utils import is_connected
 from .process_utils import (reset_sigint_handler, create_daemon,
                             wait_for_exit_signal, create_echo_function,
                             start_message_bus_client)
