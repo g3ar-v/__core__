@@ -411,10 +411,6 @@ class PorcupineHotWord(HotWordEngine):
         self.has_found = False
         self.num_keywords = len(keyword_file_paths)
 
-        LOG.warning('The Porcupine wakeword engine shipped with '
-                    'Mycroft-core is deprecated and will be removed in '
-                    'mycroft-core 21.02. Use the mycroft-porcupine-plugin '
-                    'instead.')
         LOG.info(
             'Loading Porcupine using library path {} and keyword paths {}'
             .format(library_path, keyword_file_paths))
