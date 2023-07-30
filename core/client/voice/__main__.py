@@ -1,7 +1,7 @@
 from threading import Lock
 
 from core import dialog
-from core.client.speech.listener import RecognizerLoop
+from core.client.voice.listener import RecognizerLoop
 from core.configuration import Configuration
 from backend_client.identity import IdentityManager
 from core.lock import Lock as PIDLock  # Create/Support PID locking file

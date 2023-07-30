@@ -7,8 +7,8 @@ from requests import RequestException
 from requests.exceptions import ConnectionError
 
 from core import dialog
-from core.client.speech.hotword_factory import HotWordFactory
-from core.client.speech.mic import MutableMicrophone, ResponsiveRecognizer
+from core.client.voice.hotword_factory import HotWordFactory
+from core.client.voice.mic import MutableMicrophone, ResponsiveRecognizer
 from core.configuration import Configuration
 from core.metrics import MetricsAggregator, Stopwatch, report_timing
 from core.session import SessionManager
