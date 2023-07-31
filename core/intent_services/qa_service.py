@@ -214,6 +214,9 @@ class QAService:
                                                     'phrase': search_phrase,
                                                     'callback_data':
                                                     best.get('callback_data')}))
+                # This allows a smooth conversation but there's an issue when ending the conversation
+                # TODO: When user utterance is no or nevermind remove from active skill and handle with padatious
+                self.bus.emit(Message('active_skill_request', {'skill_id': "fallback-gpt-skill.g3ar-v"}))
                 self.answered = True
             else:
                 self.answered = False

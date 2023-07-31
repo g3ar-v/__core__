@@ -27,10 +27,11 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'core-speech-client=core.client.speech.__main__:main',  # SPEECH
+            'core-voice-client=core.client.voice.__main__:main',  # VOICE INPUT
             'core-messagebus=core.messagebus.service.__main__:main',  # MESSAGEBUS
             'core-skills=core.skills.__main__:main',  # SKILLS
-            'core-audio=core.audio.__main__:main',  # VOICE
+            'core-audio=core.audio.__main__:main',  # AUDIO OUTPUT
+            # TODO audio and echo are broken
             'core-echo-observer=core.messagebus.client.ws:echo',
             'core-audio-test=core.util.audio_test:main',
             'core-enclosure-client=core.client.enclosure.__main__:main',  # ENCLOSURE

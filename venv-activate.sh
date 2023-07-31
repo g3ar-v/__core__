@@ -58,6 +58,8 @@ function main() {
         local SRC_DIR
         SRC_DIR="$( builtin cd "$( dirname "${BASH_SOURCE[0]}" )" || exit 1; pwd -P )"
         source "${SRC_DIR}/.venv/bin/activate"
+        # I run zsh again because it removes the round brackets at the start of the prompt
+        zsh
         
         # Provide an easier to find "mycroft-" prefixed command.
         unalias mycroft-venv-activate 2>/dev/null

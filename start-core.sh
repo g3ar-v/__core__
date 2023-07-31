@@ -51,7 +51,7 @@ name_to_script_path() {
         "bus")               _module="core.messagebus.service" ;;
         "skills")            _module="core.skills" ;;
         "audio")             _module="core.audio" ;;
-        "voice")             _module="core.client.speech" ;;
+        "voice")             _module="core.client.voice" ;;
         "cli")               _module="core.client.text" ;;
         "audiotest")         _module="core.util.audio_test" ;;
         "wakewordtest")      _module="test.wake_word" ;;
