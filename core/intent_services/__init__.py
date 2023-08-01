@@ -14,7 +14,7 @@ from core.util.parse import normalize
 from core.metrics import report_timing
 from core.util.metrics import Stopwatch
 
-from core.util.intent_service_interface import open_intent_envelope
+from core.util.intent_service_interface import open_intent_envelope, IntentQueryApi
 
 
 # Intent match response tuple containing
@@ -83,6 +83,7 @@ class IntentService:
         # Dictionary for translating a skill id to a name
         self.bus = bus
 
+        self.intent_api = IntentQueryApi()
         self.skill_names = {}
         config = Configuration.get()
         self.adapt_service = AdaptService(config.get('context', {}))
@@ -110,14 +111,17 @@ class IntentService:
 
         def remove_active_skill_handler(message):
             self.remove_active_skill(message.data['skill_id'])
+            LOG.debug(self.intent_api.get_active_skills())
 
         def add_active_skill_handler(message):
             self.add_active_skill(message.data['skill_id'])
+            LOG.debug(self.intent_api.get_active_skills())
 
         self.bus.on('active_skill_request', add_active_skill_handler)
         self.bus.on('remove_active_skill', remove_active_skill_handler)
         self.active_skills = []  # [skill_id , timestamp]
-        self.converse_timeout = 5  # minutes to prune active_skills
+        # set to 0.5 for qa to not loop for a long time and let padatious handle 
+        self.converse_timeout = 0.2  # minutes to prune active_skills
 
         # Intents API
         self.registered_vocab = []

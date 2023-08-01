@@ -11,7 +11,7 @@ from core.util.log import LOG
 
 
 class IntentServiceInterface:
-    """Interface to communicate with the Mycroft intent service.
+    """Interface to communicate with the intent service.
 
     This class wraps the messagebus interface of the intent service allowing
     for easier interaction with the service. It wraps both the Adapt and
