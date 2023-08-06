@@ -93,7 +93,8 @@ class MutableStream:
 
         input_latency = self.wrapped_stream.get_input_latency()
         if input_latency > 0.2:
-            LOG.warning("High input latency: %f" % input_latency)
+            # LOG.warning("High input latency: %f" % input_latency)
+            LOG.debug("High input latency: %f" % input_latency)
         audio = b"".join(list(frames))
         return audio
 
@@ -719,7 +720,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # indicate recording has begun.
         if self.config.get('confirm_listening'):
             if self.mute_and_confirm_listening(source):
-                # Clear frames from wakeword detctions since they're
+                # Clear frames from wakeword detections since they're
                 # irrelevant after mute - play wav - unmute sequence
                 ww_frames = None
 
@@ -734,6 +735,15 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         )
         audio_data = self._create_audio_data(frame_data, source)
         emitter.emit("recognizer_loop:record_end")
+
+        # HACK: Play a wav file to indicate audio recording has ended
+        if self.config.get('confirm_listening'):
+
+            audio_file = resolve_resource_file(self.config.get('sounds').get(
+                'end_sound'))
+            LOG.info(audio_file)
+            play_wav(audio_file).wait()
+
         if self.save_utterances:
             LOG.info("Recording utterance")
             stamp = str(datetime.datetime.now())

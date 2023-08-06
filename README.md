@@ -1,7 +1,9 @@
 ## core 
 
-A middleware to integrate AI technology for automation, management, research and other 
-purposes
+An AI-powered personal assistant equipped with an array of advanced components, including a robust wakeword system, an accurate speech recognizer, a cutting-edge speech synthesis module, and a sophisticated natural language generation powered by a state-of-the-art language model.
+A middleware to integrate AI technology for automation, management, research and other purposes.
+One of the remarkable features of this system lies in its versatility to seamlessly exchange specific components with alternative options. For instance, the text-to-speech functionality can be easily swapped from Mimic to ElevenLabs, demonstrating the system's adaptability and flexibility.
+
 
 ## Components
 
