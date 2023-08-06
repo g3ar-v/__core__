@@ -18,7 +18,7 @@ from speech_recognition import (
 from tempfile import gettempdir
 from threading import Lock
 
-from core.api import DeviceApi
+from backend_client.api import DeviceApi
 from core.configuration import Configuration
 from core.session import SessionManager
 from core.util import (
@@ -113,7 +113,7 @@ class MutableStream:
 
 
 class MutableMicrophone(Microphone):
-    def __init__(self, device_index=None, sample_rate=16000, chunk_size=1024,
+    def __init__(self, device_index=None, sample_rate=16000, chunk_size=160,
                  mute=False):
         Microphone.__init__(self, device_index=device_index,
                             sample_rate=sample_rate, chunk_size=chunk_size)
@@ -455,6 +455,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         return byte_data
 
     def write_mic_level(self, energy, source):
+        """ Write mic level to file log"""
         with open(self.mic_level_file, 'w') as f:
             f.write('Energy:  cur={} thresh={:.3f} muted={}'.format(
                 energy,
@@ -512,6 +513,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         LOG.debug('Listen triggered from external source.')
         self._listen_triggered = True
 
+    # TODO: this might need to go because it serves no purpose
     def _upload_wakeword(self, audio, metadata):
         """Upload the wakeword in a background thread."""
         LOG.debug(
@@ -660,7 +662,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             tts = self.config.get('sounds').get('start_listening')
             audio_file = resolve_resource_file(random.choice(
                 self.config.get('sounds').get(tts)))
-        
         LOG.info(audio_file)
         if audio_file:
             source.mute()
@@ -671,7 +672,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             return False
 
     def listen(self, source, emitter, stream=None):
-        """Listens for chunks of audio that Mycroft should perform STT on.
+        """Listens for chunks of audio that STT can be performed on.
 
         This will listen continuously for a wake-up-word, then return the
         audio chunk containing the spoken phrase that comes immediately

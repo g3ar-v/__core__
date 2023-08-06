@@ -428,7 +428,7 @@ class RecognizerLoop(EventEmitter):
                 current_hash = recognizer_conf_hash(Configuration().get())
                 if current_hash != self._config_hash:
                     self._config_hash = current_hash
-                    LOG.debug('Config has changed, reloading...')
+                    LOG.debug('Voice: Config has changed, reloading...')
                     self.reload()
             except KeyboardInterrupt as e:
                 LOG.error(e)
