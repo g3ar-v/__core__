@@ -230,12 +230,16 @@ def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping,
         connect_loop_events(loop)
         create_daemon(loop.run)
         status.set_started()
+
+        # Producer message when voice starts or restarts
+        bus.emit(Message("core.voice.start"))
     except Exception as e:
         error_hook(e)
     else:
         status.set_ready()
         wait_for_exit_signal()
         status.set_stopping()
+        bus.emit(Message("core.voice.stop"))
 
 
 if __name__ == "__main__":
