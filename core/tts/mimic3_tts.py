@@ -13,15 +13,15 @@
 # limitations under the License.
 #
 import io
-import logging
+# import logging
 import re
 import typing
 import wave
 from pathlib import Path
 
-from core.messagebus.message import Message
+# from core.messagebus.message import Message
 from core.tts.cache import AudioFile
-from core.util.log import LOG
+# from core.util.log import LOG
 
 from .tts import TTS, TTSValidator
 
