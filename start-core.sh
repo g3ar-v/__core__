@@ -2,11 +2,16 @@
 SOURCE="$0"
 
 script=${0}
+# echo  "script: $script"
 script=${script##*/}
-# cd -P "$( dirname "$SOURCE" )" || exit 1 # Enter scripts folder or fail!
+# NOTE: for macOS, it seems I have to leave script folder to run the other scripts
+if [[ script =~ "start-core" ]]; then
+    cd -P "$( dirname "$SOURCE" )"/.. || exit 1 # Enter scripts folder or fail!
+else
+    cd -P "$( dirname "$SOURCE" )" || exit 1 # Enter scripts folder or fail!
+fi
 DIR="$( pwd )"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
-echo "current dir: $DIR"
 
 help() {
     echo "${script}:  core command/service launcher"
@@ -19,19 +24,18 @@ help() {
     echo "  bus                      the messagebus service"
     echo "  skills                   the skill service"
     echo "  voice                    voice capture service"
-    echo "  wifi                     wifi setup service"
-    echo "  enclosure                mark_1 enclosure service"
+    # echo "  enclosure                enclosure service"
     echo
     echo "Tool COMMANDs:"
     echo "  cli                      the Command Line Interface"
-    echo "  unittest                 run core unit tests (requires pytest)"
-    echo "  skillstest               run the skill autotests for all skills (requires pytest)"
-    echo "  vktest                   run the Voight Kampff integration test suite"
+    # echo "  unittest                 run core unit tests (requires pytest)"
+    # echo "  skillstest               run the skill autotests for all skills (requires pytest)"
+    # echo "  vktest                   run the Voight Kampff integration test suite"
     echo
-    echo "Util COMMANDs:"
-    echo "  audiotest                attempt simple audio validation"
-    echo "  wakewordtest             test selected wakeword engine"
-    echo "  sdkdoc                   generate sdk documentation"
+    # echo "Util COMMANDs:"
+    # echo "  audiotest                attempt simple audio validation"
+    # echo "  wakewordtest             test selected wakeword engine"
+    # echo "  sdkdoc                   generate sdk documentation"
     echo
     echo "Options:"
     echo "  restart                  (optional) Force the service to restart if running"
@@ -40,7 +44,7 @@ help() {
     echo "  ${script} all"
     echo "  ${script} all restart"
     echo "  ${script} cli"
-    echo "  ${script} unittest"
+    # echo "  ${script} unittest"
 
     exit 1
 }
@@ -53,9 +57,9 @@ name_to_script_path() {
         "audio")             _module="core.audio" ;;
         "voice")             _module="core.client.voice" ;;
         "cli")               _module="core.client.text" ;;
-        "audiotest")         _module="core.util.audio_test" ;;
-        "wakewordtest")      _module="test.wake_word" ;;
-        "enclosure")         _module="core.client.enclosure" ;;
+        # "audiotest")         _module="core.util.audio_test" ;;
+        # "wakewordtest")      _module="test.wake_word" ;;
+        # "enclosure")         _module="core.client.enclosure" ;;
 
         *)
             echo "Error: Unknown name '${1}'"
@@ -79,6 +83,8 @@ init_once() {
         source_venv
         first_time=false
     fi
+    # NOTE: this won't be here if first_time is initially false at runtime
+    # source_venv
 }
 
 launch_process() {
@@ -94,7 +100,7 @@ launch_process() {
 require_process() {
     # Launch process if not found
     name_to_script_path "${1}"
-    if ! pgrep -f "python3 (.*)-m ${_module}" > /dev/null ; then
+    if ! pgrep -f "(python3|python|Python) (.*)-m ${_module}" > /dev/null ; then
         # Start required process
         launch_background "${1}"
     fi
@@ -105,7 +111,7 @@ launch_background() {
 
     # Check if given module is running and start (or restart if running)
     name_to_script_path "${1}"
-    if pgrep -f "python3 (.*)-m ${_module}" > /dev/null ; then
+    if pgrep -f "(python3|python|Python) (.*)-m ${_module}" > /dev/null ; then
         if ($_force_restart) ; then
             echo "Restarting: ${1}"
             "${DIR}/stop-core.sh" "${1}"
@@ -134,7 +140,7 @@ launch_all() {
     launch_background audio
     launch_background voice
     launch_background skills
-    launch_background enclosure
+    # launch_background enclosure
 }
 
 check_dependencies() {

@@ -8,8 +8,8 @@ from core.tts import TTSFactory
 from core.util import check_for_signal
 from core.util.log import LOG
 from core.messagebus.message import Message
-from core.tts.remote_tts import RemoteTTSException
-from core.tts.mimic_tts import Mimic
+# from core.tts.remote_tts import RemoteTTSException
+from core.tts.mimic3_tts import Mimic3
 
 bus = None  # messagebus connection
 config = None
@@ -106,13 +106,14 @@ def mute_and_speak(utterance, ident, listen=False):
     LOG.info("Speak: " + utterance)
     try:
         tts.execute(utterance, ident, listen)
-    except RemoteTTSException as e:
-        LOG.error(e)
-        mimic_fallback_tts(utterance, ident, listen)
+    # except RemoteTTSException as e:
+    #     LOG.error(e)
+    #     mimic_fallback_tts(utterance, ident, listen)
     except Exception:
         LOG.exception('TTS execution failed.')
 
 
+# TODO: check mimic3 is the fallback and if it works
 def _get_mimic_fallback():
     """Lazily initializes the fallback TTS if needed."""
     global mimic_fallback_obj
@@ -120,7 +121,7 @@ def _get_mimic_fallback():
         config = Configuration.get()
         tts_config = config.get('tts', {}).get("mimic", {})
         lang = config.get("lang", "en-us")
-        tts = Mimic(lang, tts_config)
+        tts = Mimic3(lang, tts_config)
         tts.validator.validate()
         tts.init(bus)
         mimic_fallback_obj = tts

@@ -42,19 +42,17 @@ help() {
 }
 
 process_running() {
-    if [ "$( pgrep -f "python3 (.*)-m core.*${1}" )" ] ; then
+  if [ "$( pgrep -f "(python3|python|Python) (.*)-m core.*${1}" )" ] ; then
         return 0
-    elif [ "$( pgrep -f "python (.*)-m core.*${1}" )" ] ; then
-        return 0
-    else
+  else
         return 1
-    fi
+  fi
 }
 
 end_process() {
     if process_running "$1" ; then
         # Find the process by name, only returning the oldest if it has children
-        pid=$( pgrep -o -f "python3 (.*)-m core.*${1}" )
+        pid=$( pgrep -o -f "(python3|python|Python) (.*)-m core.*${1}" )
         printf "Stopping %s (%s)..." "$1" "${pid}"
         kill -s INT "${pid}"
 
@@ -71,7 +69,7 @@ end_process() {
 
         if process_running "$1" ; then
             echo "failed to stop."
-            pid=$( pgrep -o -f "python3 (.*)-m core.*${1}" )            
+            pid=$( pgrep -o -f "(python3|python|Python) (.*)-m core.*${1}" )
             printf "  Killing %s (%s)...\n" "$1" "${pid}"
             kill -9 "${pid}"
             echo "killed."
@@ -114,7 +112,7 @@ case ${OPT} in
         end_process skills
         ;;
     "voice")
-        end_process speech
+        end_process voice
         ;;
     "enclosure")
         end_process enclosure
