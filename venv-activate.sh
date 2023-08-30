@@ -58,15 +58,13 @@ function main() {
         local SRC_DIR
         SRC_DIR="$( builtin cd "$( dirname "${BASH_SOURCE[0]}" )" || exit 1; pwd -P )"
         source "${SRC_DIR}/.venv/bin/activate"
-        # I run zsh again because it removes the round brackets at the start of the prompt
-        zsh
         
         # Provide an easier to find "mycroft-" prefixed command.
-        unalias mycroft-venv-activate 2>/dev/null
+        unalias core-venv-activate 2>/dev/null
         # shellcheck disable=SC2139 # The intention _is_ to resolve the variable at define time
-        alias mycroft-venv-deactivate="deactivate && unalias mycroft-venv-deactivate 2>/dev/null && alias mycroft-venv-activate=\"source '${SRC_DIR}/venv-activate.sh'\""
+        alias core-venv-deactivate="deactivate && unalias core-venv-deactivate 2>/dev/null && alias core-venv-activate=\"source '${SRC_DIR}/venv-activate.sh'\""
         if [ $quiet -eq 0 ] ; then
-            echo "Entering Mycroft virtual environment.  Run 'mycroft-venv-deactivate' to exit"
+            echo "Entering Core virtual environment.  Run 'core-venv-deactivate' to exit"
         fi
     fi
 }

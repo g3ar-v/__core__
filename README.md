@@ -7,14 +7,26 @@ One of the remarkable features of this system lies in its versatility to seamles
 
 ## Components
 
-- Wakeword Listener (precise/snowboy)
+- Wakeword Listener (precise/porcupine)
 - Automatic Speech Recognition/STT (Precise/Whisper)
 - NLU/Intent parser (Adapt/Padatious)
 - Skill (Main processing unit)
 - TTS/Speech Synthesis (Mimic 3/ElevenLabs)
 
-## Aim
+## Features
+- Provide answers to user questions (online-dependent) 
+- AI-powered personal assistant with a predisposed persona emulation
+- partially precise speech recognizer (using offline whisper)
+- icloud event reminder [demo](https://www.instagram.com/p/Cwa3Y0fMQh-/)
 
+## RoadMap
+- Fluid conversation
+    - interruption remarks when user is speaking
+- offline execution
+- voice to IOS actions using osascript
+- GUI's for elaboration of speech
+
+## Aim
 - Interact with the environment (realworld)
 - Knowledge and deep analysis on user-provided data with environment
 - Remember the interactions with user-provided data 

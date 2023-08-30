@@ -1,4 +1,4 @@
-#! /usr/bin/bash
+#! /bin/zsh
 #
 # Define the directory to search
 directory_to_search="$1"

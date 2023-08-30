@@ -1,4 +1,4 @@
-#! /usr/bin/sh
+#! /bin/zsh
 
 tmux send-keys 'echo "new-session"' C-m
 tmux new-session -d -s trevor 
@@ -26,12 +26,12 @@ tmux split-window -v -l 50%
 tmux send-keys 'cd /opt/core/skills' C-m
 
 # setup backend window
-tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
-tmux split-window -h -l 27%
-tmux select-pane -t %2
-tmux send-keys 'ovos-local-backend' C-m
-tmux split-window -v -l 50%
-tmux send-keys 'ovos-backend-manager' C-m
+# tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
+# tmux split-window -h -l 27%
+# tmux select-pane -t %2
+# tmux send-keys 'ovos-local-backend' C-m
+# tmux split-window -v -l 50%
+# tmux send-keys 'ovos-backend-manager' C-m
 
 
 # setup test window

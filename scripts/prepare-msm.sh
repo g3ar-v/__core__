@@ -14,7 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-core_root_dir="/opt/core"  # Also change in configuration
+
+# TODO: get rid of msm and use ovos-style plugins - maybe
+# NOTE: linux_core_root_dir="/opt/core"  # Also change in configuration
+# NOTE: based on the idea that ./start-core.sh calls this script
+core_root_dir="$( pwd )"
+# echo "$core_root_dir"
 skills_dir="${core_root_dir}"/skills
 # exit on any error
 set -Ee
@@ -60,6 +65,12 @@ if [[ ${CI} != true ]] ; then
 fi
 
 # fix ownership of ${mycroft_root_dir} if it is not owned by the ${setup_user}
-if [[ $( stat -c "%U:%G" ${core_root_dir} ) != "${setup_user}:${setup_group}" ]] ; then
+# NOTE: In linux this command doesn't work
+# if [[ $( stat -c "%U:%G" ${core_root_dir} ) != "${setup_user}:${setup_group}" ]] ; then
+#     change_ownership
+# fi
+
+if [[ $( stat -f "%Su:%Sg" ${core_root_dir} ) != "${setup_user}:${setup_group}" ]] ; then
     change_ownership
 fi
+
