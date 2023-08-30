@@ -97,7 +97,7 @@ case ${OPT} in
         echo "Stopping all core services"
         end_process skills
         end_process audio
-        end_process speech
+        end_process voice
         end_process enclosure
         end_process messagebus.service
         end_process client

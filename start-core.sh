@@ -4,12 +4,15 @@ SOURCE="$0"
 script=${0}
 # echo  "script: $script"
 script=${script##*/}
+echo "$script"
 # NOTE: for macOS, it seems I have to leave script folder to run the other scripts
-if [[ script =~ "start-core" ]]; then
+if [[ "$script" != "start-core.sh" ]]; then
+    echo "going back .."
     cd -P "$( dirname "$SOURCE" )"/.. || exit 1 # Enter scripts folder or fail!
 else
     cd -P "$( dirname "$SOURCE" )" || exit 1 # Enter scripts folder or fail!
 fi
+
 DIR="$( pwd )"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
@@ -138,6 +141,8 @@ launch_all() {
     echo "Starting all core services"
     launch_background bus
     launch_background audio
+    # NOTE: provide the opportunity for online voice component to load
+    sleep 2  # Add a delay of 5 seconds
     launch_background voice
     launch_background skills
     # launch_background enclosure
