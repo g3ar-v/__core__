@@ -493,61 +493,6 @@ class TTS(metaclass=ABCMeta):
         """
         return None
 
-    def clear_cache(self):
-        """Remove all cached files."""
-        # TODO: remove in 21.08
-        LOG.warning("This method is deprecated, use TextToSpeechCache.clear")
-        if not os.path.exists(core.util.get_cache_directory('tts')):
-            return
-        for d in os.listdir(core.util.get_cache_directory("tts")):
-            dir_path = os.path.join(core.util.get_cache_directory("tts"), d)
-            if os.path.isdir(dir_path):
-                for f in os.listdir(dir_path):
-                    file_path = os.path.join(dir_path, f)
-                    if os.path.isfile(file_path):
-                        os.unlink(file_path)
-            # If no sub-folders are present, check if it is a file & clear it
-            elif os.path.isfile(dir_path):
-                os.unlink(dir_path)
-
-    def save_phonemes(self, key, phonemes):
-        """Cache phonemes
-
-        Args:
-            key (str):        Hash key for the sentence
-            phonemes (str):   phoneme string to save
-        """
-        # TODO: remove in 21.08
-        LOG.warning("This method is deprecated, use PhonemeFile.save")
-        cache_dir = core.util.get_cache_directory("tts/" + self.tts_name)
-        pho_file = os.path.join(cache_dir, key + ".pho")
-        try:
-            with open(pho_file, "w") as cachefile:
-                cachefile.write(phonemes)
-        except Exception:
-            LOG.exception("Failed to write {} to cache".format(pho_file))
-            pass
-
-    def load_phonemes(self, key):
-        """Load phonemes from cache file.
-
-        Args:
-            key (str): Key identifying phoneme cache
-        """
-        # TODO: remove in 21.08
-        LOG.warning("This method is deprecated, use PhonemeFile.load")
-        pho_file = os.path.join(
-            core.util.get_cache_directory("tts/" + self.tts_name),
-            key + ".pho")
-        if os.path.exists(pho_file):
-            try:
-                with open(pho_file, "r") as cachefile:
-                    phonemes = cachefile.read().strip()
-                return phonemes
-            except Exception:
-                LOG.debug("Failed to read .PHO from cache")
-        return None
-
 
 class TTSValidator(metaclass=ABCMeta):
     """TTS Validator abstract class to be implemented by all TTS engines.
@@ -617,17 +562,11 @@ class TTSFactory:
     The factory can select between a range of built-in TTS engines and also
     from TTS engine plugins.
     """
-    from core.tts.google_tts import GoogleTTS
-    from core.tts.mary_tts import MaryTTS
-    from core.tts.mimic2_tts import Mimic2
     from core.tts.mimic3_tts import Mimic3
     from core.tts.elevenlabs_tts import ElevenLabsTTS
 
     CLASSES = {
-        "mimic2": Mimic2,
         "mimic3": Mimic3,
-        "google": GoogleTTS,
-        "marytts": MaryTTS,
         "elevenlabs": ElevenLabsTTS
     }
 
@@ -644,7 +583,7 @@ class TTSFactory:
         """
         config = Configuration.get()
         lang = config.get("lang", "en-us")
-        tts_module = config.get('tts', {}).get('module', 'mimic')
+        tts_module = config.get('tts', {}).get('module', 'mimic3')
         tts_config = config.get('tts', {}).get(tts_module, {})
         tts_lang = tts_config.get('lang', lang)
         try:
@@ -660,11 +599,11 @@ class TTSFactory:
             tts.validator.validate()
         except Exception:
             # Fallback to mimic if an error occurs while loading.
-            if tts_module != 'mimic':
+            if tts_module != 'mimic3':
                 LOG.exception('The selected TTS backend couldn\'t be loaded. '
                               'Falling back to Mimic')
-                clazz = TTSFactory.CLASSES.get('mimic')
-                tts_config = config.get('tts', {}).get('mimic', {})
+                clazz = TTSFactory.CLASSES.get('mimic3')
+                tts_config = config.get('tts', {}).get('mimic3', {})
                 tts = clazz(tts_lang, tts_config)
                 tts.validator.validate()
             else:
