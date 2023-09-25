@@ -66,6 +66,7 @@ class AudioProducer(Thread):
             self.recognizer.adjust_for_ambient_noise(source)
             while self.state.running:
                 try:
+                    LOG.debug("Running listening loop")
                     audio = self.recognizer.listen(source, self.emitter,
                                                    self.stream_handler)
                     if audio is not None:
@@ -360,9 +361,9 @@ class RecognizerLoop(EventEmitter):
         stream_handler = None
         if stt.can_stream:
             stream_handler = AudioStreamHandler(queue)
-        self.producer = AudioProducer(self.state, queue, self.microphone,
-                                      self.responsive_recognizer, self,
-                                      stream_handler)
+        self.producer = AudioProducer(state=self.state, queue=queue, mic=self.microphone,
+                                      recognizer=self.responsive_recognizer, emitter=self,
+                                      stream_handler=stream_handler)
         self.producer.start()
         self.consumer = AudioConsumer(self.state, queue, self,
                                       stt, self.wakeup_recognizer,
