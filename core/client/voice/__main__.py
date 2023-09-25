@@ -1,9 +1,11 @@
+# NOTE: Most consumers and producers registered handle messages for the voice system
+# only
 from threading import Lock
 
 from core import dialog
 from core.client.voice.listener import RecognizerLoop
 from core.configuration import Configuration
-from backend_client.identity import IdentityManager
+from core.identity import IdentityManager
 from core.lock import Lock as PIDLock  # Create/Support PID locking file
 from core.messagebus.message import Message
 from core.util import (
@@ -24,7 +26,7 @@ config = None
 def handle_record_begin():
     """Forward internal bus message to external bus."""
     LOG.info("Begin Recording...")
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('recognizer_loop:record_begin', context=context))
 
@@ -32,14 +34,14 @@ def handle_record_begin():
 def handle_record_end():
     """Forward internal bus message to external bus."""
     LOG.info("End Recording...")
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('recognizer_loop:record_end', context=context))
 
 
 def handle_no_internet():
     LOG.debug("Notifying enclosure of no internet connection")
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('enclosure.notify.no_internet', context=context))
 
@@ -47,7 +49,7 @@ def handle_no_internet():
 def handle_awoken():
     """Forward core.awoken to the messagebus."""
     LOG.info("Listener is now Awake: ")
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('core.awoken', context=context))
 
@@ -55,11 +57,13 @@ def handle_awoken():
 def handle_wakeword(event):
     LOG.info("Wakeword Detected: " + event['utterance'])
     bus.emit(Message('recognizer_loop:wakeword', event))
+    # TODO: find a way to pause instead of stop
+    bus.emit(Message('core.audio.speech.stop', event))
 
 
 def handle_utterance(event):
     LOG.info("Utterance: " + str(event['utterances']))
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio',
                'destination': ["skills"]}
     if 'ident' in event:
@@ -69,7 +73,7 @@ def handle_utterance(event):
 
 
 def handle_unknown():
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('core.speech.recognition.unknown', context=context))
 
@@ -78,7 +82,7 @@ def handle_speak(event):
     """
         Forward speak message to message bus.
     """
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('speak', event, context))
 
@@ -87,7 +91,7 @@ def handle_complete_intent_failure(event):
     """Extreme backup for answering completely unhandled intent requests."""
     LOG.info("Failed to find intent.")
     data = {'utterance': dialog.get('cant.intent')}
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('speak', data, context))
 
@@ -116,10 +120,9 @@ def handle_info_taking_too_long(event):
     """Core is taking too long to process information"""
     LOG.info("Info taking too long")
     data = {'utterance': dialog.get('taking_too_long')}
-    context = {'client_name': 'mycroft_listener',
+    context = {'client_name': 'core_listener',
                'source': 'audio'}
     bus.emit(Message('speak', data, context))
-    # bus.emit(Message('recognizer_loop:audio_output_timeout'))
 
 
 def handle_mic_listen(_):
@@ -171,10 +174,18 @@ def handle_open(event):
 
 
 def on_ready():
+    data = {'utterance': dialog.get('voice.available')}
+    context = {'client_name': 'core_listener',
+               'source': 'audio'}
+    bus.emit(Message('speak', data, context))
     LOG.info('Speech client is ready.')
 
 
 def on_stopping():
+    data = {'utterance': dialog.get('voice.shutting')}
+    context = {'client_name': 'core_listener',
+               'source': 'audio'}
+    bus.emit(Message('speak', data, context))
     LOG.info('Speech service is shutting down...')
 
 
@@ -207,7 +218,6 @@ def connect_bus_events(bus):
     bus.on('recognizer_loop:audio_output_start', handle_audio_start)
     bus.on('recognizer_loop:audio_output_timeout', handle_info_taking_too_long)
     bus.on('recognizer_loop:audio_output_end', handle_audio_end)
-    bus.on('core.stop', handle_stop)
 
 
 def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping,
@@ -231,15 +241,12 @@ def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping,
         create_daemon(loop.run)
         status.set_started()
 
-        # Producer message when voice starts or restarts
-        bus.emit(Message("core.voice.start"))
     except Exception as e:
         error_hook(e)
     else:
         status.set_ready()
         wait_for_exit_signal()
         status.set_stopping()
-        bus.emit(Message("core.voice.stop"))
 
 
 if __name__ == "__main__":
