@@ -15,7 +15,7 @@
 from unittest import TestCase
 from unittest.mock import patch, Mock
 
-from mycroft.messagebus.client import MessageBusClient, MessageWaiter
+from core.messagebus.client import MessageBusClient, MessageWaiter
 
 WS_CONF = {
     'websocket': {
@@ -34,7 +34,7 @@ class TestMessageBusClient:
         ssl_url = MessageBusClient.build_url('sslhost', 443, '/core', True)
         assert ssl_url == 'wss://sslhost:443/core'
 
-    @patch('mycroft.configuration.Configuration.get', return_value=WS_CONF)
+    @patch('core.configuration.Configuration.get', return_value=WS_CONF)
     def test_create_client(self, mock_conf):
         mc = MessageBusClient()
         assert mc.client.url == 'ws://testhost:1337/core'

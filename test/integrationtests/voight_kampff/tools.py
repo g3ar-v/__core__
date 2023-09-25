@@ -18,8 +18,8 @@ from threading import Event
 from typing import Any, Callable, List, Tuple
 import time
 
-from mycroft.audio.utils import wait_while_speaking
-from mycroft.messagebus import Message
+from core.audio.utils import wait_while_speaking
+from core.messagebus import Message
 
 DEFAULT_TIMEOUT = 10
 
@@ -500,7 +500,7 @@ def wait_for_audio_service(context: Any, message_type: str):
     Raises:
         AssertionError if no match is found.
     """
-    msg_type = 'mycroft.audio.service.{}'.format(message_type)
+    msg_type = 'core.audio.service.{}'.format(message_type)
     event_matcher = VoightKampffMessageMatcher(context, msg_type)
     match_found, error_message = event_matcher.match()
 

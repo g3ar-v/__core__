@@ -18,8 +18,8 @@ import speech_recognition
 from os.path import dirname, join
 from speech_recognition import WavFile, AudioData
 
-from core.client.speech.listener import (AudioConsumer, RecognizerLoop,
-                                            AUDIO_DATA)
+from core.client.voice.listener import (AudioConsumer, RecognizerLoop,
+                                        AUDIO_DATA)
 from core.stt import MycroftSTT
 from queue import Queue
 

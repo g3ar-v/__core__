@@ -15,7 +15,7 @@
 
 from unittest import TestCase
 
-from core.client.speech.mic import NoiseTracker
+from core.client.voice.mic import NoiseTracker
 
 
 LOUD_TIME_LIMIT = 2.0  # Must be loud for 2 seconds

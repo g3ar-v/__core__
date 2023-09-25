@@ -18,7 +18,7 @@ from unittest.mock import patch
 import os
 from speech_recognition import WavFile
 
-from core.client.speech.listener import RecognizerLoop
+from core.client.voice.listener import RecognizerLoop
 from core.configuration import Configuration
 from test.util import base_config
 

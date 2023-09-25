@@ -18,11 +18,11 @@ from time import sleep, monotonic
 from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
 
 from msm import MycroftSkillsManager
-from mycroft.audio import wait_while_speaking
-from mycroft.configuration import Configuration
-from mycroft.messagebus.client import MessageBusClient
-from mycroft.messagebus import Message
-from mycroft.util import create_daemon
+from core.audio import wait_while_speaking
+from core.configuration import Configuration
+from core.messagebus.client import MessageBusClient
+from core.messagebus import Message
+from core.util import create_daemon
 
 
 def create_voight_kampff_logger():
@@ -119,7 +119,7 @@ def before_all(context):
     log.info('Waiting for skills to be loaded...')
     start = monotonic()
     while True:
-        response = bus.wait_for_response(Message('mycroft.skills.all_loaded'))
+        response = bus.wait_for_response(Message('core.skills.all_loaded'))
         if response and response.data['status']:
             break
         elif monotonic() - start >= 2 * 60:

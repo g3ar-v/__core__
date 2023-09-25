@@ -14,11 +14,11 @@
 #
 from adapt.intent import IntentBuilder
 
-from mycroft.skills.core import MycroftSkill
-from mycroft.skills.core import intent_handler, intent_file_handler
+from core.skills import Skill
+from core.skills import intent_handler, intent_file_handler
 
 
-class TestSkill(MycroftSkill):
+class TestSkill(Skill):
     """ Test skill for intent_handler decorator. """
     @intent_handler(IntentBuilder('a').require('Keyword').build())
     def handler(self, message):

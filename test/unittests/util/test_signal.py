@@ -24,6 +24,7 @@ from core.util import create_signal, check_for_signal
 class TestSignals(unittest.TestCase):
     def setUp(self):
         if exists(join(gettempdir(), 'core')):
+            print("True")
             rmtree(join(gettempdir(), 'core'))
 
     def test_create_signal(self):

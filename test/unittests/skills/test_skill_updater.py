@@ -18,12 +18,12 @@ from time import sleep
 from xdg import BaseDirectory
 from unittest.mock import Mock, patch, PropertyMock
 
-from mycroft.skills.skill_updater import SkillUpdater
+from core.skills.skill_updater import SkillUpdater
 from test.unittests.base import MycroftUnitTestBase
 
 
 class TestSkillUpdater(MycroftUnitTestBase):
-    mock_package = 'mycroft.skills.skill_updater.'
+    mock_package = 'core.skills.skill_updater.'
     use_msm_mock = True
 
     def setUp(self):

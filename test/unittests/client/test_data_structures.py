@@ -14,8 +14,8 @@
 #
 from unittest import TestCase
 
-from core.client.speech.data_structures import (RollingMean,
-                                                   CyclicAudioBuffer)
+from core.client.voice.data_structures import (RollingMean,
+                                               CyclicAudioBuffer)
 
 
 class TestRollingMean(TestCase):

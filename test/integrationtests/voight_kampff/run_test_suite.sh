@@ -16,7 +16,7 @@ if [[ -v CI ]]; then
     pulseaudio -D
 fi
 # Start all mycroft core services.
-${SCRIPT_DIR}/../../../start-mycroft.sh all
+${SCRIPT_DIR}/../../../start-core.sh all
 # Run the integration test suite.  Results will be formatted for input into
 # the Allure reporting tool.
 echo "Running behave with the arguments \"$@\""
@@ -24,7 +24,7 @@ behave $@
 RESULT=$?
 if [[ -v CI ]]; then
     # Stop all mycroft core services if running in CI environment.
-    ${SCRIPT_DIR}/../../../stop-mycroft.sh all
+    ${SCRIPT_DIR}/../../../stop-core.sh all
 fi
 
 # Reort the result of the behave test as exit status

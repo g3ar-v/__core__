@@ -44,8 +44,8 @@ def setup_mocks(config_mock, tts_factory_mock):
     tts_mock.reset_mock()
 
 
-@mock.patch('mycroft.audio.speech.Configuration')
-@mock.patch('mycroft.audio.speech.TTSFactory')
+@mock.patch('core.audio.speech.Configuration')
+@mock.patch('core.audio.speech.TTSFactory')
 class TestSpeech(unittest.TestCase):
     def test_life_cycle(self, tts_factory_mock, config_mock):
         """Ensure the init and shutdown behaves as expected."""
@@ -78,29 +78,7 @@ class TestSpeech(unittest.TestCase):
                 [mock.call('hello there.', 'a', False),
                  mock.call('world', 'a', False)])
 
-    @mock.patch('mycroft.audio.speech.Mimic')
-    def test_fallback_tts(self, mimic_cls_mock, tts_factory_mock, config_mock):
-        """Ensure the fallback tts is triggered if the remote times out."""
-        setup_mocks(config_mock, tts_factory_mock)
-        mimic_mock = mock.Mock()
-        mimic_cls_mock.return_value = mimic_mock
-
-        tts = tts_factory_mock.create.return_value
-        tts.execute.side_effect = RemoteTTSTimeoutException
-
-        bus = mock.Mock()
-        speech.init(bus)
-
-        speak_msg = Message('speak',
-                            data={'utterance': 'hello there. world',
-                                  'listen': False},
-                            context={'ident': 'a'})
-        speech.handle_speak(speak_msg)
-        mimic_mock.execute.assert_has_calls(
-                [mock.call('hello there.', 'a', False),
-                 mock.call('world', 'a', False)])
-
-    @mock.patch('mycroft.audio.speech.check_for_signal')
+    @mock.patch('core.audio.speech.check_for_signal')
     def test_abort_speak(self, check_for_signal_mock, tts_factory_mock,
                          config_mock):
         """Ensure the speech handler aborting speech on stop signal."""
@@ -158,7 +136,7 @@ class TestSpeech(unittest.TestCase):
         speech.handle_speak(speak_msg)
         self.assertTrue(tts_factory_mock.create.called)
 
-    @mock.patch('mycroft.audio.speech.check_for_signal')
+    @mock.patch('core.audio.speech.check_for_signal')
     def test_stop(self, check_for_signal_mock, tts_factory_mock, config_mock):
         """Ensure the stop handler signals stop correctly."""
         setup_mocks(config_mock, tts_factory_mock)

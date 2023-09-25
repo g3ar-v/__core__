@@ -35,11 +35,11 @@ class TestResolveResource(TestCase):
         mock_conf.get.return_value = test_config
 
         def files_in_dotmycroft_exists(path):
-            return '.mycroft/' in path
+            return '.core/' in path
 
         mock_isfile.side_effect = files_in_dotmycroft_exists
         self.assertEqual(resolve_resource_file('1984.txt'),
-                         expanduser('~/.mycroft/1984.txt'))
+                         expanduser('~/.core/1984.txt'))
 
     @mock.patch('os.path.isfile')
     def test_data_dir(self, mock_isfile, mock_conf):
@@ -101,13 +101,13 @@ class TestCache(TestCase):
 
     def test_get_cache_directory(self, mock_conf):
         mock_conf.get.return_value = test_config
-        expected_path = join(test_config['cache_dir'], 'mycroft', 'cache')
+        expected_path = join(test_config['cache_dir'], 'core', 'cache')
         self.assertEqual(get_cache_directory(), expected_path)
         self.assertTrue(isdir(expected_path))
 
     def test_get_cache_directory_with_domain(self, mock_conf):
         mock_conf.get.return_value = test_config
-        expected_path = join(test_config['cache_dir'], 'mycroft',
+        expected_path = join(test_config['cache_dir'], 'core',
                              'cache', 'whales')
         self.assertEqual(get_cache_directory('whales'), expected_path)
         self.assertTrue(isdir(expected_path))

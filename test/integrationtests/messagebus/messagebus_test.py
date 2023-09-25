@@ -23,8 +23,8 @@ import unittest
 from subprocess import Popen, call
 from threading import Thread
 
-from mycroft.messagebus.client import MessageBusClient
-from mycroft.messagebus.message import Message
+from core.messagebus.client import MessageBusClient
+from core.messagebus.message import Message
 
 
 class TestMessagebusMethods(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestMessagebusMethods(unittest.TestCase):
         threaded and will require cleanup
         """
         # start the mycroft service. and get the pid of the script.
-        self.pid = Popen(["python3", "-m", "mycroft.messagebus.service"]).pid
+        self.pid = Popen(["python3", "-m", "core.messagebus.service"]).pid
         # Create the two web clients
         self.ws1 = MessageBusClient()
         self.ws2 = MessageBusClient()
@@ -54,8 +54,8 @@ class TestMessagebusMethods(unittest.TestCase):
         Thread(target=self.ws1.run_forever).start()
         Thread(target=self.ws2.run_forever).start()
         # Setup handlers for each of the messages.
-        self.ws1.on('ws1.message', self.onHandle1)
-        self.ws2.on('ws2.message', self.onHandle2)
+        self.ws1.on("ws1.message", self.onHandle1)
+        self.ws2.on("ws2.message", self.onHandle2)
 
     def onHandle1(self, event):
         """This is the handler for ws1.message
@@ -92,8 +92,8 @@ class TestMessagebusMethods(unittest.TestCase):
         to the other.
         """
         # Send the messages
-        self.ws2.emit(Message('ws1.message'))
-        self.ws1.emit(Message('ws2.message'))
+        self.ws2.emit(Message("ws1.message"))
+        self.ws1.emit(Message("ws2.message"))
         # allow time for messages to be processed
         time.sleep(0.2)
         # Check that both of the handlers were called.
@@ -101,6 +101,6 @@ class TestMessagebusMethods(unittest.TestCase):
         self.assertTrue(self.handle2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """This is to start the testing"""
     unittest.main()

@@ -41,11 +41,11 @@ import ast
 from os.path import join, isdir, basename
 from pyee import EventEmitter
 from numbers import Number
-from mycroft.messagebus.message import Message
-from mycroft.skills.core import MycroftSkill, FallbackSkill
-from mycroft.skills.skill_loader import SkillLoader
-from mycroft.configuration import Configuration
-from mycroft.util.log import LOG
+from core.messagebus.message import Message
+from core.skills import Skill, FallbackSkill
+from core.skills.skill_loader import SkillLoader
+from core.configuration import Configuration
+from core.util.log import LOG
 
 from logging import StreamHandler
 from io import StringIO
@@ -137,7 +137,7 @@ def load_skills(emitter, skills_root):
         skill_id = 'test-' + basename(path)
 
         # Catch the logs during skill loading
-        from mycroft.util.log import LOG as skills_log
+        from core.util.log import LOG as skills_log
         buf = StringIO()
         with temporary_handler(skills_log, StreamHandler(buf)):
             skill_loader = SkillLoader(emitter, path)
@@ -213,11 +213,11 @@ class MockSkillsLoader(object):
 
         self.skills_root = skills_root
         self.emitter = InterceptEmitter()
-        from mycroft.skills.intent_service import IntentService
+        from core.intent_service import IntentService
         self.ih = IntentService(self.emitter)
         self.skills = None
         self.emitter.on(
-            'mycroft.skills.fallback',
+            'core.skills.fallback',
             FallbackSkill.make_intent_failure_handler(self.emitter))
 
         def make_response(message):
@@ -356,14 +356,14 @@ class SkillTest(object):
         """remove an adapt context."""
         if isinstance(cxt, list):
             for x in cxt:
-                MycroftSkill.remove_context(s, x)
+                Skill.remove_context(s, x)
         else:
-            MycroftSkill.remove_context(s, cxt)
+            Skill.remove_context(s, cxt)
 
     def set_context(self, s, cxt):
         """Set an adapt context."""
         for key, value in cxt.items():
-            MycroftSkill.set_context(s, key, value)
+            Skill.set_context(s, key, value)
 
     def send_test_input(self, s, test_case):
         """Emit an utterance, just like the STT engine does. This sends the
@@ -388,7 +388,7 @@ class SkillTest(object):
         """ Execute test case.
 
         Args:
-            s (MycroftSkill): mycroft skill to test
+            s (Skill): mycroft skill to test
 
         Returns:
             (bool) True if the test succeeded completely.
@@ -467,7 +467,7 @@ class SkillTest(object):
                 event.data['__type__'] = event.msg_type
 
             evaluation_rule.evaluate(event.data)
-            if event.msg_type == 'mycroft.skill.handler.complete':
+            if event.msg_type == 'core.skill.handler.complete':
                 self.end_of_skill = True
         except Empty:
             pass
@@ -484,7 +484,7 @@ class SkillTest(object):
 
         # remove the skill which is not responding
         self.emitter.remove_all_listeners('speak')
-        self.emitter.remove_all_listeners('mycroft.skill.handler.complete')
+        self.emitter.remove_all_listeners('core.skill.handler.complete')
 
     def results(self, evaluation_rule):
         """Display and report the results."""
