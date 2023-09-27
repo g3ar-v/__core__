@@ -16,6 +16,21 @@ fi
 DIR="$( pwd )"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
+function found_exe() {
+    hash "$1" 2>/dev/null
+}
+
+if found_exe tput ; then
+    if [[ $(tput colors) != "-1" && -z $CI ]]; then
+        GREEN=$(tput setaf 2)
+        BLUE=$(tput setaf 4)
+        CYAN=$(tput setaf 6)
+        YELLOW=$(tput setaf 3)
+        RESET=$(tput sgr0)
+        HIGHLIGHT=$YELLOW
+    fi
+fi
+
 help() {
     echo "${script}:  core command/service launcher"
     echo "usage: ${script} [COMMAND] [restart] [params]"
@@ -128,9 +143,9 @@ launch_background() {
 
     # Security warning/reminder for the user
     if [ "${1}" = "bus" ] ; then
-        echo "CAUTION: The core bus is an open websocket with no built-in security"
+        echo "$HIGHLIGHT CAUTION: The core bus is an open websocket with no built-in security"
         echo "         measures.  You are responsible for protecting the local port"
-        echo "         8181 with a firewall as appropriate."
+        echo "         8181 with a firewall as appropriate. $RESET "
     fi
 
     # Launch process in background, sending logs to standard location

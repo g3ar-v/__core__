@@ -5,9 +5,11 @@ import os
 from core.filesystem import FileSystemAccess
 from core.util.log import LOG
 from core.util.combo_lock import ComboLock
-identity_lock = ComboLock('/tmp/identity-lock')
+
+identity_lock = ComboLock("/tmp/identity-lock")
 
 
+# NOTE: is this really needed?
 class DeviceIdentity:
     def __init__(self, **kwargs):
         self.uuid = kwargs.get("uuid", "")
@@ -27,16 +29,16 @@ class IdentityManager:
 
     @staticmethod
     def _load():
-        LOG.debug('Loading identity')
+        LOG.debug("Loading identity")
         try:
-            identity_dir = FileSystemAccess('identity')
-            if identity_dir.exists('identity2.json'):
-                with identity_dir.open('identity2.json', 'r') as f:
+            identity_dir = FileSystemAccess("identity")
+            if identity_dir.exists("identity2.json"):
+                with identity_dir.open("identity2.json", "r") as f:
                     IdentityManager.__identity = DeviceIdentity(**json.load(f))
             else:
                 IdentityManager.__identity = DeviceIdentity()
         except Exception as e:
-            LOG.exception(f'Failed to load identity file: {repr(e)}')
+            LOG.exception(f"Failed to load identity file: {repr(e)}")
             IdentityManager.__identity = DeviceIdentity()
 
     @staticmethod
@@ -52,13 +54,13 @@ class IdentityManager:
 
     @staticmethod
     def save(login=None, lock=True):
-        LOG.debug('Saving identity')
+        LOG.debug("Saving identity")
         if lock:
             identity_lock.acquire()
         try:
             if login:
                 IdentityManager._update(login)
-            with FileSystemAccess('identity').open('identity2.json', 'w') as f:
+            with FileSystemAccess("identity").open("identity2.json", "w") as f:
                 json.dump(IdentityManager.__identity.__dict__, f)
                 f.flush()
                 os.fsync(f.fileno())
@@ -68,7 +70,7 @@ class IdentityManager:
 
     @staticmethod
     def _update(login=None):
-        LOG.debug('Updating identity')
+        LOG.debug("Updating identity")
         login = login or {}
         expiration = login.get("expiration", 0)
         IdentityManager.__identity.uuid = login.get("uuid", "")

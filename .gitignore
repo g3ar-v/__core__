@@ -1,5 +1,6 @@
 dev.env
 .dev_opts.json
+.DS_store
 .idea
 *.code-workspace
 *.pyc

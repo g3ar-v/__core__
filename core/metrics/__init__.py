@@ -5,9 +5,9 @@ import time
 
 import requests
 
-from backend_client.api import DeviceApi
-from backend_client.pairing import is_paired
-from backend_client.api import MetricsApi
+from core.api import DeviceApi, is_paired, MetricsApi
+# from backend_client.pairing import is_paired
+# from backend_client.api import MetricsApi
 from core.configuration import Configuration
 from core.session import SessionManager
 from core.util.log import LOG

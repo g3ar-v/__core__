@@ -16,8 +16,11 @@ One of the remarkable features of this system lies in its versatility to seamles
 ## Features
 - Provide answers to user questions (online-dependent) 
 - AI-powered personal assistant with a predisposed persona emulation
+- Relevant history added to conversation
 - partially precise speech recognizer (using offline whisper)
 - icloud event reminder [demo](https://www.instagram.com/p/Cwa3Y0fMQh-/)
+- get real-time weather updates
+- time and date functions
 
 ## RoadMap
 - Fluid conversation

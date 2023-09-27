@@ -302,12 +302,12 @@ class SkillLoader:
     def _check_for_first_run(self):
         """The very first time a skill is run, speak the intro."""
         first_run = self.instance.settings.get(
-            "__mycroft_skill_firstrun",
+            "__core_skill_firstrun",
             True
         )
         if first_run:
             LOG.info("First run of " + self.skill_id)
-            self.instance.settings["__mycroft_skill_firstrun"] = False
+            self.instance.settings["__core_skill_firstrun"] = False
             save_settings(self.instance.settings_write_path,
                           self.instance.settings)
             intro = self.instance.get_intro_message()

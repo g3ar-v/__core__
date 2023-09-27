@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 """Handling of skill data such as intents and regular expressions."""
-import os
 import re
 from collections import namedtuple
 from os import walk
@@ -21,14 +20,12 @@ from os.path import dirname
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from ovos_config.config import Configuration
-from ovos_config.locations import get_xdg_data_dirs, \
-    get_xdg_data_save_path
-from ovos_config.meta import get_xdg_base
-from ovos_utils.bracket_expansion import expand_options
-from core.dialog import MustacheDialogRenderer, load_dialogs
-from ovos_utils.log import LOG
+# from ovos_config.config import Configuration
+# from ovos_utils.bracket_expansion import expand_options
+from core.dialog import load_dialogs
+from core.util.log import LOG
 from .file_utils import resolve_resource_file
+from core.util.format import expand_options
 
 
 SkillResourceTypes = namedtuple(
@@ -43,27 +40,24 @@ SkillResourceTypes = namedtuple(
         "template",
         "vocabulary",
         "word",
-        "qml"
-    ]
+        "qml",
+    ],
 )
 
-# TODO: Port all resource utils from ovos_utils to this module
-def get_xdg_base():
-    """ base """
 
-def locate_base_directories(skill_directory: str,
-                            resource_subdirectory: Optional[str] = None) -> \
-        List[Path]:
+def locate_base_directories(
+    skill_directory: str, resource_subdirectory: Optional[str] = None
+) -> List[Path]:
     """
     Locate all possible resource directories found in the given skill_directory
     @param skill_directory: skill base directory to search for resources
     @param resource_subdirectory: optional extra resource directory to prepend
     @return: list of existing skill resource directories
     """
-    base_dirs = [Path(skill_directory, resource_subdirectory)] if \
-        resource_subdirectory else []
-    base_dirs += [Path(skill_directory, "locale"),
-                  Path(skill_directory, "text")]
+    base_dirs = (
+        [Path(skill_directory, resource_subdirectory)] if resource_subdirectory else []
+    )
+    base_dirs += [Path(skill_directory, "locale"), Path(skill_directory, "text")]
     candidates = []
     for directory in base_dirs:
         if directory.exists():
@@ -71,9 +65,9 @@ def locate_base_directories(skill_directory: str,
     return candidates
 
 
-def locate_lang_directories(lang: str, skill_directory: str,
-                            resource_subdirectory: Optional[str] = None) -> \
-        List[Path]:
+def locate_lang_directories(
+    lang: str, skill_directory: str, resource_subdirectory: Optional[str] = None
+) -> List[Path]:
     """
     Locate all possible resource directories found in the given skill_directory
     for the specified language
@@ -83,8 +77,7 @@ def locate_lang_directories(lang: str, skill_directory: str,
     @return: list of existing skill resource directories for the given lang
     """
     base_lang = lang.split("-")[0]
-    base_dirs = [Path(skill_directory, "locale"),
-                 Path(skill_directory, "text")]
+    base_dirs = [Path(skill_directory, "locale"), Path(skill_directory, "text")]
     if resource_subdirectory:
         base_dirs.append(Path(skill_directory, resource_subdirectory))
     candidates = []
@@ -96,8 +89,9 @@ def locate_lang_directories(lang: str, skill_directory: str,
     return candidates
 
 
-def find_resource(res_name: str, root_dir: str, res_dirname: str,
-                  lang: Optional[str] = None) -> Optional[Path]:
+def find_resource(
+    res_name: str, root_dir: str, res_dirname: str, lang: Optional[str] = None
+) -> Optional[Path]:
     """
     Find a resource file.
 
@@ -158,9 +152,9 @@ class ResourceType:
         if not self.language:
             return []
         resource_subdirectory = self._get_resource_subdirectory()
-        return locate_lang_directories(self.language,
-                                       skill_directory,
-                                       resource_subdirectory)
+        return locate_lang_directories(
+            self.language, skill_directory, resource_subdirectory
+        )
 
     def locate_user_directory(self, skill_id):
         skill_directory = Path(get_xdg_data_save_path(), "resources", skill_id)
@@ -249,7 +243,7 @@ class ResourceType:
             template="dialog",
             vocab="vocab",
             word="dialog",
-            qml="ui"
+            qml="ui",
         )
 
         return subdirectories[self.resource_type]
@@ -323,43 +317,6 @@ class ResourceFile:
                 if not line or line.startswith("#"):
                     continue
                 yield line
-
-
-class QmlFile(ResourceFile):
-    def _locate(self):
-        """ QML files are special because we do not want to walk the directory """
-        file_path = None
-        if self.resource_name.endswith(self.resource_type.file_extension):
-            file_name = self.resource_name
-        else:
-            file_name = self.resource_name + self.resource_type.file_extension
-
-        # first check for user defined resource files
-        # usually these resources are overrides
-        # eg, to change hardcoded color or text
-        if self.resource_type.user_directory:
-            for x in self.resource_type.user_directory.iterdir():
-                if x.is_file() and file_name == x.name:
-                    file_path = Path(self.resource_type.user_directory, file_name)
-
-        # check the skill resources
-        if file_path is None:
-            for x in self.resource_type.base_directory.iterdir():
-                if x.is_file() and file_name == x.name:
-                    file_path = Path(self.resource_type.base_directory, file_name)
-
-        # check the core resources
-        if file_path is None:
-            file_path = resolve_resource_file(file_name) or \
-                        resolve_resource_file(f"ui/{file_name}")
-
-        if file_path is None:
-            LOG.error(f"Could not find resource file {file_name}")
-
-        return file_path
-
-    def load(self):
-        return str(self.file_path)
 
 
 class DialogFile(ResourceFile):
@@ -517,15 +474,15 @@ class SkillResources:
         self._dialog_renderer = val
 
     def _load_dialog_renderer(self):
-        base_dirs = locate_lang_directories(self.language,
-                                            self.skill_directory,
-                                            "dialog")
+        base_dirs = locate_lang_directories(
+            self.language, self.skill_directory, "dialog"
+        )
         for directory in base_dirs:
             if directory.exists():
                 dialog_dir = str(directory)
                 self._dialog_renderer = load_dialogs(dialog_dir)
                 return
-        LOG.debug(f'No dialog loaded for {self.language}')
+        LOG.debug(f"No dialog loaded for {self.language}")
 
     def _define_resource_types(self) -> SkillResourceTypes:
         """Defines all known types of skill resource files.
@@ -544,7 +501,7 @@ class SkillResources:
             template=ResourceType("template", ".template", self.language),
             vocabulary=ResourceType("vocab", ".voc", self.language),
             word=ResourceType("word", ".word", self.language),
-            qml=ResourceType("qml", ".qml")
+            qml=ResourceType("qml", ".qml"),
         )
         for resource_type in resource_types.values():
             if self.skill_id:
@@ -714,7 +671,7 @@ class SkillResources:
 
     @staticmethod
     def _make_unique_regex_group(
-            regexes: List[str], alphanumeric_skill_id: str
+        regexes: List[str], alphanumeric_skill_id: str
     ) -> List[str]:
         """Adds skill ID to group ID in a regular expression for uniqueness.
 
@@ -740,6 +697,7 @@ class CoreResources(SkillResources):
     def __init__(self, language):
         try:
             from mycroft import MYCROFT_ROOT_PATH
+
             directory = f"{MYCROFT_ROOT_PATH}/mycroft/res"
         except ImportError:
             directory = f"{dirname(__file__)}/res"
@@ -750,78 +708,3 @@ class UserResources(SkillResources):
     def __init__(self, language, skill_id):
         directory = f"{get_xdg_data_save_path()}/resources/{skill_id}"
         super().__init__(directory, language)
-
-
-class RegexExtractor:
-    """Extracts data from an utterance using regular expressions.
-
-    Attributes:
-        group_name:
-        regex_patterns: regular expressions read from a .rx file
-    """
-
-    def __init__(self, group_name, regex_patterns):
-        self.group_name = group_name
-        self.regex_patterns = regex_patterns
-
-    def extract(self, utterance) -> Optional[str]:
-        """Attempt to find a value in a user request.
-
-        Args:
-            utterance: request spoken by the user
-
-        Returns:
-            The value extracted from the utterance, if found
-        """
-        extract = None
-        pattern_match = self._match_utterance_to_patterns(utterance)
-        if pattern_match is not None:
-            extract = self._extract_group_from_match(pattern_match)
-        self._log_extraction_result(extract)
-
-        return extract
-
-    def _match_utterance_to_patterns(self, utterance: str):
-        """Match regular expressions to user request.
-
-        Args:
-            utterance: request spoken by the user
-
-        Returns:
-            a regular expression match object if a match is found
-        """
-        pattern_match = None
-        for pattern in self.regex_patterns:
-            pattern_match = re.search(pattern, utterance)
-            if pattern_match:
-                break
-
-        return pattern_match
-
-    def _extract_group_from_match(self, pattern_match):
-        """Extract the alarm name from the utterance.
-
-        Args:
-            pattern_match: a regular expression match object
-        """
-        extract = None
-        try:
-            extract = pattern_match.group(self.group_name).strip()
-        except IndexError:
-            pass
-        else:
-            if not extract:
-                extract = None
-
-        return extract
-
-    def _log_extraction_result(self, extract: str):
-        """Log the results of the matching.
-
-        Args:
-            extract: the value extracted from the user utterance
-        """
-        if extract is None:
-            LOG.info(f"No {self.group_name.lower()} extracted from utterance")
-        else:
-            LOG.info(f"{self.group_name} extracted from utterance: " + extract)

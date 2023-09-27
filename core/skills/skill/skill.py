@@ -15,7 +15,7 @@ from xdg import BaseDirectory
 from adapt.intent import Intent, IntentBuilder
 
 from core import dialog
-from backend_client.api import DeviceApi, EmailApi
+# from core.api import DeviceApi, EmailApi
 from core.audio import wait_while_speaking
 # from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI

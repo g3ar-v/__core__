@@ -51,8 +51,7 @@ from xdg.BaseDirectory import xdg_cache_home
 
 import yaml
 
-from backend_client.api import DeviceApi
-from backend_client.pairing import is_paired
+from core.api import DeviceApi, is_paired
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util import camel_case_split

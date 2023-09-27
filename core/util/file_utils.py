@@ -6,12 +6,85 @@ accessing and curating core's cache.
 
 import os
 import psutil
+from os.path import dirname
+from typing import List
 from stat import S_ISREG, ST_MTIME, ST_MODE, ST_SIZE
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+from threading import RLock
 import tempfile
 import xdg.BaseDirectory
 
 import core.configuration
 from .log import LOG
+
+
+class FileWatcher:
+    def __init__(self, files: List[str], callback: callable,
+                 recursive: bool = False, ignore_creation: bool = False):
+        """
+        Initialize a FileWatcher to monitor the specified files for changes
+        @param files: list of paths to monitor for file changes
+        @param callback: function to call on file change with modified file path
+        @param recursive: If true, recursively include directory contents
+        @param ignore_creation: If true, ignore file creation events
+        """
+        self.observer = Observer()
+        self.handlers = []
+        for file_path in files:
+            if os.path.isfile(file_path):
+                watch_dir = dirname(file_path)
+            else:
+                watch_dir = file_path
+            self.observer.schedule(FileEventHandler(file_path, callback,
+                                                    ignore_creation),
+                                   watch_dir, recursive=recursive)
+        self.observer.start()
+
+    def shutdown(self):
+        """
+        Remove observer scheduled events and stop the observer.
+        """
+        self.observer.unschedule_all()
+        self.observer.stop()
+
+
+class FileEventHandler(FileSystemEventHandler):
+    def __init__(self, file_path: str, callback: callable,
+                 ignore_creation: bool = False):
+        """
+        Create a handler for file change events
+        @param file_path: file_path being watched Unused(?)
+        @param callback: function to call on file change with modified file path
+        @param ignore_creation: if True, only track file modification events
+        """
+        super().__init__()
+        self._callback = callback
+        self._file_path = file_path
+        if ignore_creation:
+            self._events = ('modified')
+        else:
+            self._events = ('created', 'modified')
+        self._changed_files = []
+        self._lock = RLock()
+
+    def on_any_event(self, event):
+        if event.is_directory:
+            return
+        with self._lock:
+            if event.event_type == "closed":
+                if event.src_path in self._changed_files:
+                    self._changed_files.remove(event.src_path)
+                    # fire event, it is now safe
+                    try:
+                        self._callback(event.src_path)
+                    except:
+                        LOG.exception("An error occurred handling file "
+                                      "change event callback")
+
+            elif event.event_type in self._events:
+                if event.src_path not in self._changed_files:
+                    self._changed_files.append(event.src_path)
 
 
 def resolve_resource_file(res_name):

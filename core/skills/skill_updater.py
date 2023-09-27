@@ -6,9 +6,8 @@ import xdg.BaseDirectory
 
 from msm import MsmException
 
-from backend_client.api import DeviceApi
-from backend_client.pairing import is_paired
-from backend_client.settings import SeleneSkillsManifest
+from core.api import DeviceApi, is_paired
+# from core.skills.settings import SeleneSkillsManifest
 
 from core.configuration import Configuration
 from core.util import is_connected
@@ -44,8 +43,8 @@ class SkillUpdater:
         update_interval = self.config['skills']['update_interval']
         self.update_interval = int(update_interval) * ONE_HOUR
         self.dot_msm_path = os.path.join(self.msm.skills_dir, '.msm')
-        self.next_download = self._determine_next_download_time()
-        self._log_next_download_time()
+        # self.next_download = self._determine_next_download_time()
+        # self._log_next_download_time()
         self.installed_skills = set()
         self.default_skill_install_error = False
 
@@ -258,29 +257,29 @@ class SkillUpdater:
 
 
 
-class SeleneSkillManifestUploader:
-    """Class facilitating skill manifest upload."""
+# class SeleneSkillManifestUploader:
+#     """Class facilitating skill manifest upload."""
 
-    def __init__(self):
-        super().__init__()
-        self.api = DeviceApi()
-        self.config = Configuration().get()
-        self.skill_manifest = SeleneSkillsManifest(self.api)
-        self.post_manifest(True)
+#     def __init__(self):
+#         super().__init__()
+#         self.api = DeviceApi()
+#         self.config = Configuration().get()
+#         self.skill_manifest = SeleneSkillsManifest(self.api)
+#         self.post_manifest(True)
 
-    @property
-    def installed_skills_file_path(self):
-        """Property representing the path of the installed skills file."""
-        return self.skill_manifest.path
+#     @property
+#     def installed_skills_file_path(self):
+#         """Property representing the path of the installed skills file."""
+#         return self.skill_manifest.path
 
-    def post_manifest(self, reload_skills_manifest=False):
-        """Post the manifest of the device's skills to the backend."""
-        upload_allowed = self.config['skills'].get('upload_skill_manifest')
-        if upload_allowed and is_paired():
-            if reload_skills_manifest:
-                self.skill_manifest.clear()
-                self.skill_manifest.scan_skills()
-            try:
-                self.api.upload_skills_data(self.skill_manifest)
-            except Exception:
-                LOG.error('Could not upload skill manifest')
+#     def post_manifest(self, reload_skills_manifest=False):
+#         """Post the manifest of the device's skills to the backend."""
+#         upload_allowed = self.config['skills'].get('upload_skill_manifest')
+#         if upload_allowed and is_paired():
+#             if reload_skills_manifest:
+#                 self.skill_manifest.clear()
+#                 self.skill_manifest.scan_skills()
+#             try:
+#                 self.api.upload_skills_data(self.skill_manifest)
+#             except Exception:
+#                 LOG.error('Could not upload skill manifest')

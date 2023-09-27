@@ -120,8 +120,9 @@ class IntentService:
         self.bus.on('active_skill_request', add_active_skill_handler)
         self.bus.on('remove_active_skill', remove_active_skill_handler)
         self.active_skills = []  # [skill_id , timestamp]
-        # set to 0.5 for qa to not loop for a long time and let padatious handle 
-        self.converse_timeout = 0.2  # minutes to prune active_skills
+        # HACK: set to 0.5 for qa to not loop for a long time and let padatious handle
+        # intent
+        self.converse_timeout = 5  # minutes to prune active_skills
 
         # Intents API
         self.registered_vocab = []
@@ -302,8 +303,8 @@ class IntentService:
                 self._converse, padatious_matcher.match_high,
                 self.adapt_service.match_intent, self.common_qa.match,
                 self.fallback.high_prio, padatious_matcher.match_medium,
-                self.fallback.medium_prio, padatious_matcher.match_low,
-                self.fallback.low_prio
+                self.fallback.medium_prio,
+                padatious_matcher.match_low, self.fallback.low_prio
             ]
 
             match = None
@@ -352,6 +353,7 @@ class IntentService:
         self.active_skills = [skill for skill in self.active_skills
                               if time.time() - skill[
                                   1] <= self.converse_timeout * 60]
+        LOG.debug(self.intent_api.get_active_skills())
 
         # check if any skill wants to handle utterance
         for skill in copy(self.active_skills):

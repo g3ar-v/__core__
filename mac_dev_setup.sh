@@ -2,6 +2,7 @@
 # Set a default locale to handle output from commands reliably
 export LANG=C.UTF-8
 export LANGUAGE=en
+export CONDA_ENV_NAME="core"
 
 # exit on any error
 set -Ee
@@ -14,9 +15,6 @@ function clean_mycroft_files() {
     echo '
 This will completely remove any files installed by mycroft (including pairing
 information). 
-
-NOTE: This will not remove Mimic (if you chose to compile it), or other files
-generated within the mycroft-core directory.
 
 Do you wish to continue? (y/n)'
     while true; do
@@ -268,52 +266,19 @@ If unsure answer yes.
     sleep 5
 fi
 
-function os_is() {
-    [[ $(grep "^ID=" /etc/os-release | awk -F'=' '/^ID/ {print $2}' | sed 's/\"//g') == "$1" ]]
-}
-
-function os_is_like() {
-    grep "^ID_LIKE=" /etc/os-release | awk -F'=' '/^ID_LIKE/ {print $2}' | sed 's/\"//g' | grep -q "\\b$1\\b"
-}
-
-
-function debian_install() {
-    APT_PACKAGE_LIST=(python3 python3-dev python3-setuptools git libtool \
-        libffi-dev libssl-dev autoconf automake bison swig libglib2.0-dev \
-        portaudio19-dev mpg123 screen flac curl libicu-dev pkg-config \
-        libjpeg-dev libfann-dev build-essential jq pulseaudio \
-        pulseaudio-utils ffmpeg)
-
-    if dpkg -V libjack-jackd2-0 > /dev/null 2>&1 && [[ -z ${CI} ]] ; then
-        echo "
-We have detected that your computer has the libjack-jackd2-0 package installed.
-core requires a conflicting package, and will likely uninstall this package.
-On some systems, this can cause other programs to be marked for removal.
-Please review the following package changes carefully."
-        read -rp "Press enter to continue"
-        $SUDO apt-get install "${APT_PACKAGE_LIST[@]}"
-    else
-        $SUDO apt-get install -y "${APT_PACKAGE_LIST[@]}"
-    fi
-}
-
 function mac_install() {
   APT_PACKAGE_LIST=(python@3.10 jq pulseaudio ffmpeg libtool flac curl mpg123 swig \
     automake bison pkg-config jpeg autoconf screen portaudio) 
     brew install "${APT_PACKAGE_LIST[@]}"
+    # /bin/bash -c "$(curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh)"
 }
 
 function install_deps() {
     echo 'Installing packages...'
     
-    if os_is_like debian || os_is debian || os_is_like ubuntu || os_is ubuntu || os_is linuxmint; then
-        # Debian / Ubuntu / Mint
-        echo "$GREEN Installing packages for Debian/Ubuntu/Mint...$RESET" | tee -a /var/log/core/setup.log
-        debian_install
-    elif [[ $(uname -s) == "Darwin" ]]; then
+    if [[ $(uname -s) == "Darwin" ]]; then
         echo "$GREEN Installing packages for OSX...$RESET" | tee -a /var/log/core/setup.log
         mac_install
-      
     else
         echo
         echo -e "${YELLOW}Could not find package manager
@@ -328,24 +293,35 @@ function install_deps() {
     fi
 }
 
-VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${TOP}/.venv"}
+# VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${TOP}/.venv"}
 
+PYTHON=$(python3 -c "import sys;print('python{}.{}'.format(sys.version_info[0], sys.version_info[1]))")
 function install_venv() {
-    $opt_python -m venv "${VIRTUALENV_ROOT}/" 
+    # $opt_python -m venv "${VIRTUALENV_ROOT}/" 
 
-    # Check if old script for python 3.6 is needed
-    if "${VIRTUALENV_ROOT}/bin/${opt_python}" --version | grep " 3.6" > /dev/null; then
-        GET_PIP_URL="https://bootstrap.pypa.io/pip/3.6/get-pip.py"
-    else
-        GET_PIP_URL="https://bootstrap.pypa.io/get-pip.py"
-    fi
+    # # Check if old script for python 3.6 is needed
+    # if "${VIRTUALENV_ROOT}/bin/${opt_python}" --version | grep " 3.6" > /dev/null; then
+    #     GET_PIP_URL="https://bootstrap.pypa.io/pip/3.6/get-pip.py"
+    # else
+    #     GET_PIP_URL="https://bootstrap.pypa.io/get-pip.py"
+    # fi
 
     # Force version of pip for reproducability, but there is nothing special
     # about this version.  Update whenever a new version is released and
     # verified functional.
-    curl "${GET_PIP_URL}" | "${VIRTUALENV_ROOT}/bin/${opt_python}" - 'pip==23.1.2'
+    # curl "${GET_PIP_URL}" | "${VIRTUALENV_ROOT}/bin/${opt_python}" - 'pip==23.1.2'
     # Function status depending on if pip exists
-    [[ -x ${VIRTUALENV_ROOT}/bin/pip ]]
+    # [[ -x ${VIRTUALENV_ROOT}/bin/pip ]]
+    # sudo conda install python="$PYTHON"
+    if [[ ! $(conda env list | grep -w $CONDA_ENV_NAME) ]]; then
+        echo "$HIGHLIGHT Conda environment ($CONDA_ENV_NAME) does not exist. Creating..." $RESET
+        sudo conda create --name $CONDA_ENV_NAME python=3.9
+    else
+        echo "$HIGHLIGHT Not creating ($CONDA_ENV_NAME) environment as it already exists." $RESET
+    fi
+    
+    # NOTE: 
+    # conda init zsh
 }
 
 install_deps
@@ -370,38 +346,31 @@ fi
 
 # Start the virtual environment
 # shellcheck source=/dev/null
-source "${VIRTUALENV_ROOT}/bin/activate"
+# source "${VIRTUALENV_ROOT}/bin/activate"
+# source "/opt/conda/envs/$CONDA_ENV_NAME/bin/activate"
+echo "$HIGHLIGHT Activating conda environment ($CONDA_ENV_NAME)" $RESET
+source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
 cd "$TOP"
 
-# Install pep8 pre-commit hook
-HOOK_FILE='./.git/hooks/pre-commit'
-if [[ -n $INSTALL_PRECOMMIT_HOOK ]] || grep -q 'MYCROFT DEV SETUP' $HOOK_FILE; then
-    if [[ ! -f $HOOK_FILE ]] || grep -q 'MYCROFT DEV SETUP' $HOOK_FILE; then
-        echo 'Installing PEP8 check as precommit-hook' | tee -a /var/log/core/setup.log
-        echo "#! $(command -v python)" > $HOOK_FILE
-        echo '# MYCROFT DEV SETUP' >> $HOOK_FILE
-        cat ./scripts/pre-commit >> $HOOK_FILE
-        chmod +x $HOOK_FILE
-    fi
-fi
 
-PYTHON=$(python3.9 -c "import sys;print('python{}.{}'.format(sys.version_info[0], sys.version_info[1]))")
 
 # Add mycroft-core to the virtualenv path
 # (This is equivalent to typing 'add2virtualenv $TOP', except
 # you can't invoke that shell function from inside a script)
-VENV_PATH_FILE="${VIRTUALENV_ROOT}/lib/$PYTHON/site-packages/_virtualenv_path_extensions.pth"
-if [[ ! -f $VENV_PATH_FILE ]] ; then
-    echo 'import sys; sys.__plen = len(sys.path)' > "$VENV_PATH_FILE" || return 1
-    echo "import sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)" >> "$VENV_PATH_FILE" || return 1
-fi
 
-if ! grep -q "$TOP" "$VENV_PATH_FILE" ; then
-    echo 'Adding core to virtualenv path' | tee -a /var/log/core/setup.log
+# VENV_PATH_FILE="${VIRTUALENV_ROOT}/lib/$PYTHON/site-packages/_virtualenv_path_extensions.pth"
+# CONDA_SITE_PACKAGES=$(conda info --base)/envs/$CONDA_ENV_NAME/lib/$PYTHON/site-packages
+# if [[ ! -f $VENV_PATH_FILE ]] ; then
+#     echo 'import sys; sys.__plen = len(sys.path)' > "$VENV_PATH_FILE" || return 1
+#     echo "import sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)" >> "$VENV_PATH_FILE" || return 1
+# fi
+
+# if ! grep -q "$TOP" "$VENV_PATH_FILE" ; then
+#     echo 'Adding core to virtualenv path' | tee -a /var/log/core/setup.log
     
-    gsed -i.tmp "1 a$TOP" "$VENV_PATH_FILE"
-    # sed -i.tmp "$(printf '1s/^/%s\n/' "$TOP")" "$VENV_PATH_FILE"
-fi
+#     gsed -i.tmp "1 a$TOP" "$VENV_PATH_FILE"
+#     # sed -i.tmp "$(printf '1s/^/%s\n/' "$TOP")" "$VENV_PATH_FILE"
+# fi
 
 # install required python modules
 if ! pip install -r requirements/requirements.txt ; then
@@ -446,7 +415,7 @@ elif [[ $MAXCORES -lt $CORES ]] ; then
     CORES=$MAXCORES
 fi
 
-echo "Building with $CORES cores." | tee -a /var/log/core/setup.log
+echo "$GREEN Building with $CORES cores. $RESET" | tee -a /var/log/core/setup.log
 
 cd "$TOP"
 
@@ -454,16 +423,19 @@ cd "$TOP"
 chmod +x start-core.sh
 chmod +x stop-core.sh
 chmod +x bin/core-cli-client
-chmod +x bin/mycroft-help
+chmod +x bin/core-help
 chmod +x bin/mycroft-mic-test
-chmod +x bin/mycroft-msk
-chmod +x bin/mycroft-msm
-chmod +x bin/mycroft-pip
-chmod +x bin/mycroft-say-to
-chmod +x bin/mycroft-skill-testrunner
-chmod +x bin/mycroft-speak
+# chmod +x bin/mycroft-msk
+# chmod +x bin/mycroft-msm
+# chmod +x bin/mycroft-pip
+# chmod +x bin/mycroft-say-to
+# chmod +x bin/mycroft-skill-testrunner
+chmod +x bin/core-speak
 
 #Store a fingerprint of setup
-md5 requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt dev_setup.sh > .installed
+md5 requirements/requirements.txt requirements/extra-audiobackend.txt requirements/extra-stt.txt requirements/tests.txt mac_dev_setup.sh > .installed
+
+# Build and install core
+pip install -e .
 
 echo 'setup complete! Logs can be found at /var/log/core/setup.log' | tee -a /var/log/core/setup.log

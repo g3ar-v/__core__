@@ -138,7 +138,6 @@ def mimic_fallback_tts(utterance, ident, listen):
         listen (bool): True if interaction should end with mycroft listening
     """
     tts = _get_mimic_fallback()
-    LOG.debug("Mimic fallback, utterance : " + str(utterance))
     tts.execute(utterance, ident, listen)
 
 

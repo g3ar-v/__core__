@@ -5,6 +5,8 @@ from os.path import exists, isfile, join, dirname
 
 import xdg.BaseDirectory
 
+from core import dialog
+from core.messagebus.message import Message
 from core.util.combo_lock import ComboLock
 from core.util.file_utils import get_temp_path
 from core.util import camel_case_split
@@ -152,8 +154,8 @@ class RemoteConf(LocalConf):
 
     def reload(self):
         try:
-            from backend_client.pairing import is_paired
-            from backend_client.config import RemoteConfigManager
+            from core.api import is_paired
+            from core.api import RemoteConfigManager
 
             if not is_paired():
                 self.load_local(self.path)
@@ -170,17 +172,6 @@ class RemoteConf(LocalConf):
         except Exception as e:
             LOG.error(f"Exception fetching remote configuration: {e}")
             self.load_local(self.path)
-
-
-# def _log_old_location_deprecation():
-#     LOG.warning("\n ===============================================\n"
-#                 " ==             DEPRECATION WARNING           ==\n"
-#                 " ===============================================\n"
-#                 f" You still have a config file at {OLD_USER_CONFIG}\n"
-#                 " Note that this location is deprecated and will"
-#                 " not be used in the future\n"
-#                 " Please move it to "
-#                 f"{join(xdg.BaseDirectory.xdg_config_home, 'mycroft')}")
 
 
 class Configuration:

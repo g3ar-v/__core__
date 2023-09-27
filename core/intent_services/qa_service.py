@@ -1,10 +1,10 @@
-import re
 import time
+import re
 import core.intent_services
-
 from itertools import chain
+
 from core.messagebus.message import dig_for_message, Message
-from core.util import (flatten_list, LOG)
+from core.util import flatten_list, LOG
 from core.util.resource_files import CoreResources
 from threading import Lock, Event
 
@@ -20,17 +20,17 @@ class QAService:
     def __init__(self, bus):
         self.bus = bus
         self.skill_id = "common_query.query_skill"
-        self.query_replies = {}     # cache of received replies
+        self.query_replies = {}  # cache of received replies
         self.query_extensions = {}  # maintains query timeout extensions
         self.lock = Lock()
         self.waiting = True
         self.answered = False
         self._vocabs = {}
         self.searching = Event()
-        self.bus.on('question:query.response', self.handle_query_response)
-        self.bus.on('common_query.question', self.handle_question)
+        self.bus.on("question:query.response", self.handle_query_response)
+        self.bus.on("common_query.question", self.handle_question)
 
-    def voc_match(self, utt, voc_filename, lang=None, exact=False):
+    def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
 
         By default the method checks if the utterance contains the given vocab
@@ -38,15 +38,14 @@ class QAService:
         match against "Yes.voc" containing only "yes". An exact match can be
         requested.
 
-        The method first checks in the current Skill's .voc files and secondly
-        in the "res/text" folder of core. The result is cached to
-        avoid hitting the disk each time the method is called.
+        The method checks the "res/text/{lang}" folder of mycroft-core.
+        The result is cached to avoid hitting the disk each time the method is called.
 
         Args:
-            utt (str): Utterance to be tested
+            utterance (str): Utterance to be tested
             voc_filename (str): Name of vocabulary file (e.g. 'yes' for
                                 'res/text/en-us/yes.voc')
-            lang (str): Language code, defaults to self.long
+            lang (str): Language code, defaults to self.lang
             exact (bool): Whether the vocab must exactly match the utterance
 
         Returns:
@@ -59,17 +58,20 @@ class QAService:
             vocab = resources.load_vocabulary_file(voc_filename)
             self._vocabs[lang] = list(chain(*vocab))
 
-        if utt:
+        if utterance:
             if exact:
                 # Check for exact match
-                return any(i.strip() == utt
-                           for i in self._vocabs[lang])
+                match = any(i.strip() == utterance for i in self._vocabs[lang])
             else:
                 # Check for matches against complete words
-                return any([re.match(r'.*\b' + i + r'\b.*', utt)
-                            for i in self._vocabs[lang]])
-        else:
-            return match
+                match = any(
+                    [
+                        re.match(r".*\b" + i + r"\b.*", utterance)
+                        for i in self._vocabs[lang]
+                    ]
+                )
+
+        return match
 
     def is_question_like(self, utterance, lang):
         # skip utterances with less than 3 words
@@ -102,25 +104,26 @@ class QAService:
                 message.data["utterance"] = utterance
                 answered = self.handle_question(message)
                 if answered:
-                    match = core.intent_services.IntentMatch('CommonQuery',
-                                                             None, {}, None)
+                    match = core.intent_services.IntentMatch(
+                        "CommonQuery", None, {}, None
+                    )
                 break
         return match
 
     def handle_question(self, message):
-        """ Send the phrase to the CommonQuerySkills and prepare for handling
-            the replies.
+        """Send the phrase to the CommonQuerySkills and prepare for handling
+        the replies.
         """
         self.searching.set()
         self.waiting = True
         self.answered = False
-        utt = message.data.get('utterance')
+        utt = message.data.get("utterance")
 
         self.query_replies[utt] = []
         self.query_extensions[utt] = []
-        LOG.info('Searching for {}'.format(utt))
+        LOG.info("Searching for {}".format(utt))
         # Send the query to anyone listening for them
-        msg = message.reply('question:query', data={'phrase': utt})
+        msg = message.reply("question:query", data={"phrase": utt})
         if "skill_id" not in msg.context:
             msg.context["skill_id"] = self.skill_id
         self.bus.emit(msg)
@@ -138,10 +141,10 @@ class QAService:
         return self.answered
 
     def handle_query_response(self, message):
-        search_phrase = message.data['phrase']
-        skill_id = message.data['skill_id']
-        searching = message.data.get('searching')
-        answer = message.data.get('answer')
+        search_phrase = message.data["phrase"]
+        skill_id = message.data["skill_id"]
+        searching = message.data.get("searching")
+        answer = message.data.get("answer")
 
         # Manage requests for time to complete searches
         if searching:
@@ -149,13 +152,15 @@ class QAService:
             self.timeout_time = time.time() + EXTENSION_TIME
 
             # TODO: Perhaps block multiple extensions?
-            if (search_phrase in self.query_extensions and
-                    skill_id not in self.query_extensions[search_phrase]):
+            if (
+                search_phrase in self.query_extensions
+                and skill_id not in self.query_extensions[search_phrase]
+            ):
                 self.query_extensions[search_phrase].append(skill_id)
         elif search_phrase in self.query_extensions:
             # Search complete, don't wait on this skill any longer
             if answer and search_phrase in self.query_replies:
-                LOG.info('Answer from {}'.format(skill_id))
+                LOG.info("Answer from {}".format(skill_id))
                 self.query_replies[search_phrase].append(message.data)
 
             # Remove the skill from list of extensions
@@ -164,12 +169,12 @@ class QAService:
 
             # No waiting for any more skill
             if not self.query_extensions[search_phrase]:
-                self._query_timeout(message.reply('question:query.timeout',
-                                                  message.data))
+                self._query_timeout(
+                    message.reply("question:query.timeout", message.data)
+                )
 
         else:
-            LOG.warning('{} Answered too slowly,'
-                        'will be ignored.'.format(skill_id))
+            LOG.warning("{} Answered too slowly," "will be ignored.".format(skill_id))
 
     def _query_timeout(self, message):
         if not self.searching.is_set():
@@ -179,8 +184,8 @@ class QAService:
 
         # Prevent any late-comers from retriggering this query handler
         with self.lock:
-            LOG.info('Timeout occured check responses')
-            search_phrase = message.data.get('phrase', "")
+            LOG.info("Timeout occured check responses")
+            search_phrase = message.data.get("phrase", "")
             if search_phrase in self.query_extensions:
                 self.query_extensions[search_phrase] = []
             # self.enclosure.mouth_reset()
@@ -191,10 +196,10 @@ class QAService:
             ties = []
             if search_phrase in self.query_replies:
                 for handler in self.query_replies[search_phrase]:
-                    if not best or handler['conf'] > best['conf']:
+                    if not best or handler["conf"] > best["conf"]:
                         best = handler
                         ties = []
-                    elif handler['conf'] == best['conf']:
+                    elif handler["conf"] == best["conf"]:
                         ties.append(handler)
 
             if best:
@@ -204,19 +209,30 @@ class QAService:
 
                 # invoke best match
                 # self.speak(best['answer'], expect_response=True if best['answer'].
-                           # endswith("?") or "?" in best['answer'] else False)
-                self.speak(best['answer'], expect_response=True)
+                # endswith("?") or "?" in best['answer'] else False)
+                self.speak(best["answer"], expect_response=True)
 
                 # self.bus.emit(Message("core.mic.listen"))
-                LOG.info('Handling with: ' + str(best['skill_id']))
-                self.bus.emit(message.forward('question:action',
-                                              data={'skill_id': best['skill_id'],
-                                                    'phrase': search_phrase,
-                                                    'callback_data':
-                                                    best.get('callback_data')}))
+                LOG.info("Handling with: " + str(best["skill_id"]))
+                self.bus.emit(
+                    message.forward(
+                        "question:action",
+                        data={
+                            "skill_id": best["skill_id"],
+                            "phrase": search_phrase,
+                            "callback_data": best.get("callback_data"),
+                        },
+                    )
+                )
                 # This allows a smooth conversation but there's an issue when ending the conversation
                 # TODO: When user utterance is no or nevermind remove from active skill and handle with padatious
-                self.bus.emit(Message('active_skill_request', {'skill_id': "fallback-gpt-skill.g3ar-v"}))
+                # HACK: allow qa_service which is not a skill to converse
+                self.bus.emit(
+                    Message(
+                        "active_skill_request",
+                        {"skill_id": "fallback-gpt-skill.g3ar-v"},
+                    )
+                )
                 self.answered = True
             else:
                 self.answered = False
@@ -237,10 +253,11 @@ class QAService:
 
         message = message or dig_for_message()
         # lang = get_message_lang(message)
-        data = {'utterance': utterance,
-                'expect_response': expect_response,
-                'meta': {"skill": self.skill_id},
-                }
+        data = {
+            "utterance": utterance,
+            "expect_response": expect_response,
+            "meta": {"skill": self.skill_id},
+        }
 
         m = Message("speak", data)
         m.context["skill_id"] = self.skill_id

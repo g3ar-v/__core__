@@ -1,6 +1,6 @@
 [tool.commitizen]
 # name = "cz_customize"
-version = "2.0.0"
+version = "3.0.0"
 version_files = [
     "setup.py","core/version/__init__.py"
 ]
@@ -20,3 +20,9 @@ version_files = [
 # commit_parser = "^(?P<change_type>feature|bug fix):\\s(?P<message>.*)?"
 # changelog_pattern = "^(feature|bug fix)?(!)?"
 # change_type_map = {"feature" = "Feat", "bug fix" = "Fix"}
+
+[tool.ruff]
+line-length = 88
+
+[pycodestyle]
+max-line-length = 88
