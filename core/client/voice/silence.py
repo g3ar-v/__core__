@@ -365,7 +365,7 @@ class SileroVoiceActivityDetector:
         return out
 
 
-class SileroVAD():
+class SileroVAD:
     def __init__(self, config=None, sample_rate=None):
         model = join(dirname(__file__), "silero_vad.onnx")
         self.vad_threshold = config.get("threshold", 0.2)

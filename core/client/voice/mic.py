@@ -438,7 +438,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         self.recording_timeout = listener_config.get("recording_timeout", 10.0)
 
         vad_config = listener_config.get("VAD", {})
-        LOG.info("Using VAD parameters: {}".format(vad_config))
+        # LOG.info("Using VAD parameters: {}".format(vad_config))
         try:
             vad_method = SileroVAD(vad_config)
         except Exception as e:
@@ -449,13 +449,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         self.recording_timeout_with_silence = listener_config.get(
             "recording_timeout_with_silence", 3.0
         )
+
         self.silence_detector = SilenceDetector(
-            speech_seconds=0.1,
-            silence_seconds=0.5,
-            min_seconds=1,
+            speech_seconds=vad_config.get("speech_seconds", 0.1),
+            silence_seconds=vad_config.get("silence_seconds", 0.5),
+            min_seconds=vad_config.get("min_seconds", 1),
             max_seconds=self.recording_timeout,
-            before_seconds=0.5,
-            current_energy_threshold=1000.0,
+            before_seconds=vad_config.get("before_seconds", 0.5),
+            current_energy_threshold=vad_config.get("initial_energy_threshold", 1000.0),
             max_current_ratio_threshold=vad_config.get(
                 "max_current_ratio_threshold", 2
             ),
@@ -509,13 +510,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             bytearray: complete audio buffer recorded, including any
                        silence at the end of the user's utterance
         """
-        NoiseTracker(
-            0,
-            25,
-            sec_per_buffer,
-            self.MIN_LOUD_SEC_PER_PHRASE,
-            self.recording_timeout_with_silence,
-        )
 
         # Maximum number of chunks to record before timing out
         int(self.recording_timeout / sec_per_buffer)
@@ -711,37 +705,50 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             and not self._stop_signaled
             and not self._skip_wake_word()
         ):
-            chunk = self.record_sound_chunk(source)
-            audio_buffer.append(chunk)
-            ww_frames.append(chunk)
+            for chunk in source.stream.iter_chunks():
+                if self._skip_wake_word():
+                    return WakeWordData(
+                        audio_data, False, self._stop_signaled, ww_frames
+                    )
 
-            energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
-            audio_mean.append_sample(energy)
+                # chunk = self.record_sound_chunk(source)
+                audio_buffer.append(chunk)
+                ww_frames.append(chunk)
 
-            if energy < self.energy_threshold * self.multiplier:
-                self._adjust_threshold(energy, sec_per_buffer)
-            # maintain the threshold using average
-            if self.energy_threshold < energy < audio_mean.value * 1.5:
-                # bump the threshold to just above this value
-                self.energy_threshold = energy * 1.2
+                buffers_since_check += 1.0
 
-            # Periodically output energy level stats. This can be used to
-            # visualize the microphone input, e.g. a needle on a meter.
-            if mic_write_counter % 3:
-                self._watchdog()
-                self.write_mic_level(energy, source)
-            mic_write_counter += 1
+                # if self.loop
+                energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
+                audio_mean.append_sample(energy)
 
-            buffers_since_check += 1.0
-            # Send chunk to wake_word_recognizer
-            self.wake_word_recognizer.update(chunk)
+                if energy < self.energy_threshold * self.multiplier:
+                    self._adjust_threshold(energy, sec_per_buffer)
+                # maintain the threshold using average
+                if self.energy_threshold < energy < audio_mean.value * 1.5:
+                    # bump the threshold to just above this value
+                    self.energy_threshold = energy * 1.2
 
-            if buffers_since_check > buffers_per_check:
-                buffers_since_check -= buffers_per_check
-                audio_data = audio_buffer.get_last(test_size) + silence
-                said_wake_word = self.wake_word_recognizer.found_wake_word(audio_data)
+                # Periodically output energy level stats. This can be used to
+                # visualize the microphone input, e.g. a needle on a meter.
+                if mic_write_counter % 3:
+                    self._watchdog()
+                    self.write_mic_level(energy, source)
+                mic_write_counter += 1
 
-        return WakeWordData(audio_data, said_wake_word, self._stop_signaled, ww_frames)
+                # buffers_since_check += 1.0
+                # Send chunk to wake_word_recognizer
+                self.wake_word_recognizer.update(chunk)
+
+                if buffers_since_check > buffers_per_check:
+                    buffers_since_check -= buffers_per_check
+                    audio_data = audio_buffer.get_last(test_size) + silence
+                    said_wake_word = self.wake_word_recognizer.found_wake_word(
+                        audio_data
+                    )
+                if said_wake_word:
+                    return WakeWordData(
+                        audio_data, said_wake_word, self._stop_signaled, ww_frames
+                    )
 
     @staticmethod
     def _create_audio_data(raw_data, source):
