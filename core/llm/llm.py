@@ -1,7 +1,7 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
 import os
-from langchain import LLMChain
+from langchain.chains import LLMChain
 from langchain.llms.openai import OpenAI
 from langchain.memory import MongoDBChatMessageHistory
 from core.configuration import Configuration
@@ -23,7 +23,7 @@ class LLM:
             "langsmith_key"
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
-        self.model = OpenAI(temperature=1, max_tokens=100)
+        self.model = OpenAI(temperature=1, max_tokens=70)
         MongoClient(self.conn_string)
         self.message_history = MongoDBChatMessageHistory(
             connection_string=self.conn_string,
@@ -39,13 +39,15 @@ class LLM:
     @staticmethod
     def use_llm(**kwargs):
         """
-        Use the Language Model to generate a response based on the given prompt and input.
+        Use the Language Model to generate a response based
+        on the given prompt and input.
 
         Args:
             **kwargs: Keyword arguments for prompt, context, and query.
-            NOTE: the prompt template used in the function call determines what goes in the
-            predict function
-            prompt (PromptTemplate): The prompt template to use for generating the response.
+            NOTE: the prompt template used in the function call
+            determines what goes in the predict function
+            prompt (PromptTemplate): The prompt template to use
+            for generating the response.
             context (str): The context data to use for the language model.
             query (str): The question for llm to generate response
 
@@ -56,7 +58,7 @@ class LLM:
         context = kwargs.get("context")
         query = kwargs.get("query")
 
-        llm = OpenAI(temperature=1, max_tokens=100)
+        llm = OpenAI(temperature=1, max_tokens=70)
         gptchain = LLMChain(llm=llm, verbose=True, prompt=prompt)
 
         response = gptchain.predict(context=context, query=query)
