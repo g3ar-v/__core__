@@ -2,7 +2,7 @@
 utterances not handled by the intent system.
 """
 import operator
-from core.metrics import report_timing, Stopwatch
+from core.util.metrics import Stopwatch
 from core.util.log import LOG
 
 
@@ -33,6 +33,7 @@ class FallbackSkill(Skill):
     A Fallback can either observe or consume an utterance. A consumed
     utterance will not be see by any other Fallback handlers.
     """
+
     fallback_handlers = {}
     wrapper_map = []  # Map containing (handler, wrapper) tuples
 
@@ -47,49 +48,53 @@ class FallbackSkill(Skill):
         """Goes through all fallback handlers until one returns True"""
 
         def handler(message):
-            start, stop = message.data.get('fallback_range', (0, 101))
+            start, stop = message.data.get("fallback_range", (0, 101))
             # indicate fallback handling start
-            LOG.debug('Checking fallbacks in range '
-                      '{} - {}'.format(start, stop))
-            bus.emit(message.forward("core.skill.handler.start",
-                                     data={'handler': "fallback"}))
+            LOG.debug("Checking fallbacks in range " "{} - {}".format(start, stop))
+            bus.emit(
+                message.forward(
+                    "core.skill.handler.start", data={"handler": "fallback"}
+                )
+            )
 
             stopwatch = Stopwatch()
             handler_name = None
             with stopwatch:
-                sorted_handlers = sorted(cls.fallback_handlers.items(),
-                                         key=operator.itemgetter(0))
-                handlers = [f[1] for f in sorted_handlers
-                            if start <= f[0] < stop]
+                sorted_handlers = sorted(
+                    cls.fallback_handlers.items(), key=operator.itemgetter(0)
+                )
+                handlers = [f[1] for f in sorted_handlers if start <= f[0] < stop]
                 for handler in handlers:
                     try:
                         if handler(message):
                             # indicate completion
                             status = True
                             handler_name = get_handler_name(handler)
-                            bus.emit(message.forward(
-                                     'core.skill.handler.complete',
-                                     data={'handler': "fallback",
-                                           "fallback_handler": handler_name}))
+                            bus.emit(
+                                message.forward(
+                                    "core.skill.handler.complete",
+                                    data={
+                                        "handler": "fallback",
+                                        "fallback_handler": handler_name,
+                                    },
+                                )
+                            )
                             break
                     except Exception:
-                        LOG.exception('Exception in fallback.')
+                        LOG.exception("Exception in fallback.")
                 else:
                     status = False
                     #  indicate completion with exception
-                    warning = 'No fallback could handle intent.'
-                    bus.emit(message.forward('core.skill.handler.complete',
-                                             data={'handler': "fallback",
-                                                   'exception': warning}))
+                    warning = "No fallback could handle intent."
+                    bus.emit(
+                        message.forward(
+                            "core.skill.handler.complete",
+                            data={"handler": "fallback", "exception": warning},
+                        )
+                    )
 
             # return if the utterance was handled to the caller
-            bus.emit(message.response(data={'handled': status}))
-
-            # Send timing metric
-            if message.context.get('ident'):
-                ident = message.context['ident']
-                report_timing(ident, 'fallback_handler', stopwatch,
-                              {'handler': handler_name})
+            bus.emit(message.response(data={"handled": status}))
 
         return handler
 
@@ -145,7 +150,7 @@ class FallbackSkill(Skill):
                 del cls.fallback_handlers[priority]
 
         if not found_handler:
-            LOG.warning('No fallback matching {}'.format(wrapper_to_del))
+            LOG.warning("No fallback matching {}".format(wrapper_to_del))
         return found_handler
 
     @classmethod
@@ -168,13 +173,13 @@ class FallbackSkill(Skill):
             cls.wrapper_map.remove((h, w))
             remove_ok = cls._remove_registered_handler(wrapper_to_del)
         else:
-            LOG.warning('Could not find matching fallback handler')
+            LOG.warning("Could not find matching fallback handler")
             remove_ok = False
         return remove_ok
 
     def remove_instance_handlers(self):
         """Remove all fallback handlers registered by the fallback skill."""
-        self.log.info('Removing all handlers...')
+        self.log.info("Removing all handlers...")
         while len(self.instance_fallback_handlers):
             handler = self.instance_fallback_handlers.pop()
             self.remove_fallback(handler)

@@ -4,7 +4,7 @@ from threading import Lock
 
 from core.configuration import Configuration
 from core.llm import LLM
-from core.metrics import report_timing, Stopwatch
+from core.util.metrics import Stopwatch
 from core.tts import TTSFactory
 from core.util import check_for_signal
 from core.util.log import LOG
@@ -90,12 +90,6 @@ def handle_speak(event):
             mute_and_speak(utterance, ident, listen)
 
         stopwatch.stop()
-    report_timing(
-        ident,
-        "speech",
-        stopwatch,
-        {"utterance": utterance, "tts": tts.__class__.__name__},
-    )
 
 
 def mute_and_speak(utterance, ident, listen=False):
@@ -150,6 +144,7 @@ def mimic_fallback_tts(utterance, ident, listen):
         ident (str): interaction id for metrics
         listen (bool): True if interaction should end with mycroft listening
     """
+    LOG.debug("Defaulting to Mimic3 as fallback for speech")
     tts = _get_mimic_fallback()
     tts.execute(utterance, ident, listen)
 

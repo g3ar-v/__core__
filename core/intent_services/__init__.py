@@ -12,7 +12,6 @@ from core.configuration import Configuration, set_default_lf_lang
 from core.util import flatten_list
 from core.util.log import LOG
 from core.util.parse import normalize
-from core.metrics import report_timing
 from core.util.metrics import Stopwatch
 from core.llm import LLM
 
@@ -235,33 +234,6 @@ class IntentService:
         else:
             LOG.warning("Skill ID was empty, won't add to list of " "active skills.")
 
-    def send_metrics(self, intent, context, stopwatch):
-        """Send timing metrics to the backend.
-
-        NOTE: This only applies to those with Opt In.
-
-        Args:
-            intent (IntentMatch or None): intet match info
-            context (dict): context info about the interaction
-            stopwatch (StopWatch): Timing info about the skill parsing.
-        """
-        ident = context["ident"] if "ident" in context else None
-        # Determine what handled the intent
-        if intent and intent.intent_service == "Converse":
-            intent_type = "{}:{}".format(intent.skill_id, "converse")
-        elif intent and intent.intent_service == "Fallback":
-            intent_type = "fallback"
-        elif intent:  # Handled by an other intent parser
-            # Recreate skill name from skill id
-            parts = intent.intent_type.split(":")
-            intent_type = self.get_skill_name(parts[0])
-            if len(parts) > 1:
-                intent_type = ":".join([intent_type] + parts[1:])
-        else:  # No intent was found
-            intent_type = "intent_failure"
-
-        report_timing(ident, "intent_service", stopwatch, {"intent_type": intent_type})
-
     def handle_utterance(self, message):
         """Main entrypoint for handling user utterances
 
@@ -341,7 +313,6 @@ class IntentService:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task
                 self.send_complete_intent_failure(message)
-            # self.send_metrics(match, message.context, stopwatch)
         except Exception as err:
             LOG.exception(err)
 

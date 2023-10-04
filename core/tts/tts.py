@@ -14,7 +14,6 @@ import core.util
 # from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
-from core.metrics import report_timing
 from core.util.metrics import Stopwatch
 from core.util import (
     play_wav, play_mp3, check_for_signal, create_signal, resolve_resource_file
@@ -56,6 +55,7 @@ class PlaybackThread(Thread):
     """Thread class for playing back tts audio and sending
     viseme data to enclosure.
     """
+
     def __init__(self, queue):
         super(PlaybackThread, self).__init__()
         self.queue = queue
@@ -125,7 +125,6 @@ class PlaybackThread(Thread):
             try:
                 (snd_type, data,
                  visemes, ident, listen) = self.queue.get(timeout=2)
-                # self.blink(0.5)
                 if not self._processing_queue:
                     self._processing_queue = True
                     self.begin_audio()
@@ -139,12 +138,10 @@ class PlaybackThread(Thread):
                     if self.p:
                         self.p.communicate()
                         self.p.wait()
-                report_timing(ident, 'speech_playback', stopwatch)
 
                 if self.queue.empty():
                     self.end_audio(listen)
                     self._processing_queue = False
-                # self.blink(0.2)
             except Empty:
                 pass
             except Exception as e:

@@ -1,6 +1,6 @@
 import audioop
 import random
-from time import sleep, time as get_time
+from time import sleep
 
 from collections import deque, namedtuple
 import datetime
@@ -10,14 +10,12 @@ import pyaudio
 import requests
 import speech_recognition
 from threading import Event
-from hashlib import md5
 from speech_recognition import Microphone, AudioSource, AudioData
 from tempfile import gettempdir
 from threading import Lock
 
 from core.api import DeviceApi
 from core.configuration import Configuration
-from core.session import SessionManager
 from core.util import (
     check_for_signal,
     get_ipc_directory,
@@ -577,69 +575,10 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         self._stop_signaled = True
         self._stop_recording = True
 
-    def _compile_metadata(self):
-        ww_module = self.wake_word_recognizer.__class__.__name__
-        if ww_module == "PreciseHotword":
-            model_path = self.wake_word_recognizer.precise_model
-            with open(model_path, "rb") as f:
-                model_hash = md5(f.read()).hexdigest()
-        else:
-            model_hash = "0"
-
-        return {
-            "name": self.wake_word_name.replace(" ", "-"),
-            "engine": md5(ww_module.encode("utf-8")).hexdigest(),
-            "time": str(int(1000 * get_time())),
-            "sessionId": SessionManager.get().session_id,
-            "accountId": self.account_id,
-            "model": str(model_hash),
-        }
-
     def trigger_listen(self):
         """Externally trigger listening."""
         LOG.debug("Listen triggered from external source.")
         self._listen_triggered = True
-
-    # TODO: this might need to go because it serves no purpose
-    def _upload_wakeword(self, audio, metadata):
-        """Upload the wakeword in a background thread."""
-        LOG.debug(
-            "Wakeword uploading has been disabled. The API endpoint used in "
-            "Mycroft-core v20.2 and below has been deprecated. To contribute "
-            "new wakeword samples please upgrade to v20.8 or above."
-        )
-        # def upload(audio, metadata):
-        #     requests.post(self.upload_url,
-        #                   files={'audio': BytesIO(audio.get_wav_data()),
-        #                          'metadata': StringIO(json.dumps(metadata))})
-        # Thread(target=upload, daemon=True, args=(audio, metadata)).start()
-
-    def _send_wakeword_info(self, emitter):
-        """Send messagebus message indicating that a wakeword was received.
-
-        Args:
-            emitter: bus emitter to send information on.
-        """
-        SessionManager.touch()
-        payload = {
-            "utterance": self.wake_word_name,
-            "session": SessionManager.get().session_id,
-        }
-        emitter.emit("recognizer_loop:wakeword", payload)
-
-    def _write_wakeword_to_disk(self, audio, metadata):
-        """Write wakeword to disk.
-
-        Args:
-            audio: Audio data to write
-            metadata: List of metadata about the captured wakeword
-        """
-        filename = join(
-            self.saved_wake_words_dir,
-            "_".join(str(metadata[k]) for k in sorted(metadata)) + ".wav",
-        )
-        with open(filename, "wb") as f:
-            f.write(audio.get_wav_data())
 
     def _handle_wakeword_found(self, audio_data, source):
         """Perform actions to be triggered after a wakeword is found.
@@ -648,17 +587,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         store wakeword to disk if configured and sending the wakeword data
         to the cloud in case the user has opted into the data sharing.
         """
-        # Save and upload positive wake words as appropriate
-        upload_allowed = self.config["opt_in"] and not self.upload_disabled
-        if self.save_wake_words or upload_allowed:
-            audio = self._create_audio_data(audio_data, source)
-            metadata = self._compile_metadata()
-            if self.save_wake_words:
-                # Save wake word locally
-                self._write_wakeword_to_disk(audio, metadata)
-            # Upload wake word for opt_in people
-            if upload_allowed:
-                self._upload_wakeword(audio, metadata)
+        pass
 
     def _wait_until_wake_word(self, source, sec_per_buffer):
         """Listen continuously on source until a wake word is spoken
@@ -758,6 +687,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
         return AudioData(raw_data, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
 
+    # TODO: seperate activation sound from start_listening
     def mute_and_confirm_listening(self, source):
         if self._skip_wake_word():
             audio_file = resolve_resource_file(
@@ -816,8 +746,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         ww_frames = None
         if ww_data.found:
-            # If the wakeword was heard send it
-            self._send_wakeword_info(emitter)
             self._handle_wakeword_found(ww_data.audio, source)
             ww_frames = ww_data.end_audio
         if ww_data.stopped:

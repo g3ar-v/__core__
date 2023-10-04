@@ -16,7 +16,7 @@ from adapt.intent import Intent, IntentBuilder
 
 from core import dialog
 
-from core.api import DeviceApi, EmailApi
+from core.api import EmailApi
 from core.audio import wait_while_speaking
 
 # from core.enclosure.api import EnclosureAPI
@@ -25,7 +25,8 @@ from core.configuration import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
 from core.messagebus.message import Message, dig_for_message
-from core.metrics import report_metric
+
+# from core.metrics import report_metric
 from core.util import resolve_resource_file, play_audio_file, camel_case_split
 from core.util.log import LOG
 from core.util.format import pronounce_number, join_list
@@ -646,15 +647,6 @@ class Skill:
                 )
         else:
             return False
-
-    def report_metric(self, name, data):
-        """Report a skill metric to the Mycroft servers.
-
-        Args:
-            name (str): Name of metric. Must use only letters and hyphens
-            data (dict): JSON dictionary to report. Must be valid JSON
-        """
-        report_metric("{}:{}".format(basename(self.root_dir), name), data)
 
     def send_email(self, title, body):
         """Send an email to the registered user's email.
