@@ -75,8 +75,10 @@ class QAService:
 
     def is_question_like(self, utterance, lang):
         # skip utterances with less than 3 words
-        if len(utterance.split(" ")) < 3:
-            return False
+        # NOTE: removing this code cause it could filter out one line answers that
+        # make sense
+        # if len(utterance.split(" ")) < 3:
+        #     return False
         # skip utterances meant for common play
         if self.voc_match(utterance, "common_play", lang):
             return False

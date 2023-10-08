@@ -111,12 +111,14 @@ class IntentService:
         self.bus.on("core.skills.loaded", self.update_skill_name_dict)
 
         def remove_active_skill_handler(message):
-            self.remove_active_skill(message.data["skill_id"])
-            LOG.debug(self.intent_api.get_active_skills())
+            skill_id = message.data["skill_id"]
+            self.remove_active_skill(skill_id)
+            LOG.debug("Removing active skill: " + skill_id)
 
         def add_active_skill_handler(message):
-            self.add_active_skill(message.data["skill_id"])
-            LOG.debug(self.intent_api.get_active_skills())
+            skill_id = message.data["skill_id"]
+            self.add_active_skill(skill_id)
+            LOG.debug("Adding active skill: " + skill_id)
 
         self.bus.on("active_skill_request", add_active_skill_handler)
         self.bus.on("remove_active_skill", remove_active_skill_handler)
@@ -334,7 +336,9 @@ class IntentService:
             for skill in self.active_skills
             if time.time() - skill[1] <= self.converse_timeout * 60
         ]
-        LOG.debug(self.intent_api.get_active_skills())
+        LOG.debug(
+            f"skills to handle conversation: {self.intent_api.get_active_skills()}"
+        )
 
         # check if any skill wants to handle utterance
         for skill in copy(self.active_skills):
@@ -597,8 +601,7 @@ def _is_old_style_keyword_message(message):
         message (Message): Message object to check
 
     Returns:
-        (bool) True if this is an old messagem, else False
-    """
+        (bool) True if this is an old messagem, else False"""
     return "entity_value" not in message.data and "start" in message.data
 
 
