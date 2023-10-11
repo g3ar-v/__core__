@@ -7,14 +7,12 @@ import datetime
 import os
 from os.path import isdir, join
 import pyaudio
-import requests
 import speech_recognition
 from threading import Event
 from speech_recognition import Microphone, AudioSource, AudioData
 from tempfile import gettempdir
 from threading import Lock
 
-from core.api import DeviceApi
 from core.configuration import Configuration
 from core.util import (
     check_for_signal,
@@ -461,26 +459,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             vad_method=vad_method,
         )
 
-    @property
-    def account_id(self):
-        """Fetch account from backend when needed.
-
-        If an error occurs it's handled and a temporary value is returned.
-        When a value is received it will be cached until next start.
-        """
-        if not self._account_id:
-            try:
-                self._account_id = DeviceApi().get()["user"]["uuid"]
-            except (requests.RequestException, AttributeError):
-                pass  # These are expected and won't be reported
-            except Exception as e:
-                LOG.debug(
-                    "Unhandled exception while determining device_id, "
-                    "Error: {}".format(repr(e))
-                )
-
-        return self._account_id or "0"
-
     def record_sound_chunk(self, source):
         return source.stream.read(source.CHUNK, self.overflow_exc)
 
@@ -628,12 +606,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         ww_frames = deque(maxlen=7)
 
         said_wake_word = False
-        audio_data = None
-        while (
-            not said_wake_word
-            and not self._stop_signaled
-            and not self._skip_wake_word()
-        ):
+        audio_data = silence
+        while not said_wake_word and not self._stop_signaled:
             for chunk in source.stream.iter_chunks():
                 if self._skip_wake_word():
                     return WakeWordData(
@@ -750,7 +724,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             ww_frames = ww_data.end_audio
         if ww_data.stopped:
             # If the waiting returned from a stop signal
-            return
+            return None
 
         LOG.debug("Recording...")
         # If enabled, play a wave file with a short sound to audibly
