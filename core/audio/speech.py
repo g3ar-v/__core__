@@ -22,6 +22,7 @@ lock = Lock()
 mimic_fallback_obj = None
 
 _last_stop_signal = 0
+interrupted_utterance = None
 
 
 def handle_speak(event):
@@ -32,7 +33,6 @@ def handle_speak(event):
     config = Configuration.get()
     Configuration.set_config_update_handlers(bus)
     global _last_stop_signal
-
     # if the message is targeted and audio is not the target don't
     # don't synthezise speech
     event.context = event.context or {}
@@ -62,6 +62,8 @@ def handle_speak(event):
         # HACK: this works for now but should it be here and should all messages be
         # tracked?
         llm.message_history.add_ai_message(utterance)
+        # NOTE: is there an efficient way of getting the previous utterance?
+        tts.store_interrupted_utterance(utterance)
         # TODO: Remove or make an option?  This is really a hack, anyway,
         # so we likely will want to get rid of this when not running on Mimic
         if (
@@ -82,6 +84,7 @@ def handle_speak(event):
                     break
                 try:
                     mute_and_speak(chunk, ident, listen)
+
                 except KeyboardInterrupt:
                     raise
                 except Exception:
@@ -155,10 +158,22 @@ def handle_stop(event):
     Shutdown any speech.
     """
     global _last_stop_signal
+    global interrupted_utterance
+
     if check_for_signal("isSpeaking", -1):
         _last_stop_signal = time.time()
+        interrupted_utterance = tts.get_interrupted_utterance()
+        LOG.info("Utterance interrupted")
         tts.playback.clear()  # Clear here to get instant stop
         bus.emit(Message("core.stop.handled", {"by": "TTS"}))
+        bus.emit(
+            Message("core.interrupted_utterance", {"utterance": interrupted_utterance})
+        )
+
+
+def handle_interrupted_utterance(event):
+    """Clear interrupted utterance from TTS object"""
+    tts.store_interrupted_utterance(None)
 
 
 def init(messagebus):
@@ -173,6 +188,7 @@ def init(messagebus):
     global llm
     global tts_hash
     global config
+    global interrupted_utterance
 
     bus = messagebus
     Configuration.set_config_update_handlers(bus)
@@ -180,6 +196,7 @@ def init(messagebus):
     bus.on("core.stop", handle_stop)
     bus.on("core.audio.speech.stop", handle_stop)
     bus.on("speak", handle_speak)
+    bus.on("core.handled.interrupted_utterance", handle_interrupted_utterance)
 
     tts = TTSFactory.create()
     tts.init(bus)
