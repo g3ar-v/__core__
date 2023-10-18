@@ -63,7 +63,8 @@ def handle_speak(event):
         # tracked?
         llm.message_history.add_ai_message(utterance)
         # NOTE: is there an efficient way of getting the previous utterance?
-        tts.store_interrupted_utterance(utterance)
+        global interrupted_utterance
+        interrupted_utterance = utterance
         # TODO: Remove or make an option?  This is really a hack, anyway,
         # so we likely will want to get rid of this when not running on Mimic
         if (
@@ -158,22 +159,21 @@ def handle_stop(event):
     Shutdown any speech.
     """
     global _last_stop_signal
-    global interrupted_utterance
 
     if check_for_signal("isSpeaking", -1):
-        _last_stop_signal = time.time()
-        interrupted_utterance = tts.get_interrupted_utterance()
-        LOG.info("Utterance interrupted")
+        tts.playback.set_interrupted_utterance(interrupted_utterance)
         tts.playback.clear()  # Clear here to get instant stop
-        bus.emit(Message("core.stop.handled", {"by": "TTS"}))
+        _last_stop_signal = time.time()
         bus.emit(
             Message("core.interrupted_utterance", {"utterance": interrupted_utterance})
         )
+        LOG.info("Utterance interrupted")
+        bus.emit(Message("core.stop.handled", {"by": "TTS"}))
 
 
 def handle_interrupted_utterance(event):
     """Clear interrupted utterance from TTS object"""
-    tts.store_interrupted_utterance(None)
+    tts.playback.set_interrupted_utterance(None)
 
 
 def init(messagebus):
@@ -188,7 +188,7 @@ def init(messagebus):
     global llm
     global tts_hash
     global config
-    global interrupted_utterance
+    # global interrupted_utterance
 
     bus = messagebus
     Configuration.set_config_update_handlers(bus)

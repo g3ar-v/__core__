@@ -25,13 +25,14 @@ def wait_while_speaking():
 
 
 def stop_speaking():
-    """Stop mycroft speech.
+    """Stop system speech.
 
     TODO: Skills should only be able to stop speech they've initiated
     """
     if is_speaking():
         from core.messagebus.send import send
-        send('core.audio.speech.stop')
+
+        send("core.audio.speech.stop")
 
         # Block until stopped
         while check_for_signal("isSpeaking", -1):

@@ -10,13 +10,17 @@ from warnings import warn
 import os.path
 from os.path import dirname, exists, isdir, join
 
-import core.util
+
 # from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util.metrics import Stopwatch
 from core.util import (
-    play_wav, play_mp3, check_for_signal, create_signal, resolve_resource_file
+    play_wav,
+    play_mp3,
+    check_for_signal,
+    create_signal,
+    resolve_resource_file,
 )
 from core.util.file_utils import get_temp_path
 from core.util.log import LOG
@@ -25,15 +29,13 @@ from queue import Queue, Empty
 from .cache import hash_sentence, TextToSpeechCache
 
 _TTS_ENV = deepcopy(os.environ)
-_TTS_ENV['PULSE_PROP'] = 'media.role=phone'
+_TTS_ENV["PULSE_PROP"] = "media.role=phone"
 
 EMPTY_PLAYBACK_QUEUE_TUPLE = (None, None, None, None, None)
 
-SSML_TAGS = re.compile(r'<[^>]*>')
-WHITESPACE_AFTER_PERIOD = re.compile(r'\b([A-za-z][\.])(\s+)')
-SENTENCE_DELIMITERS = re.compile(
-    r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\;|\?)\s'
-)
+SSML_TAGS = re.compile(r"<[^>]*>")
+WHITESPACE_AFTER_PERIOD = re.compile(r"\b([A-za-z][\.])(\s+)")
+SENTENCE_DELIMITERS = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\;|\?)\s")
 
 
 def default_preprocess_utterance(utterance):
@@ -46,7 +48,7 @@ def default_preprocess_utterance(utterance):
         [str]: list of preprocessed sentences
     """
 
-    utterance = WHITESPACE_AFTER_PERIOD.sub(r'\g<1>', utterance)
+    utterance = WHITESPACE_AFTER_PERIOD.sub(r"\g<1>", utterance)
     chunks = SENTENCE_DELIMITERS.split(utterance)
     return chunks
 
@@ -64,10 +66,11 @@ class PlaybackThread(Thread):
 
         self._terminated = False
         self._processing_queue = False
+        self.interrupted_utterance = None
         # self.enclosure = None
         self.p = None
         # Check if the tts shall have a ducking role set
-        if Configuration.get().get('tts', {}).get('pulse_duck'):
+        if Configuration.get().get("tts", {}).get("pulse_duck"):
             self.pulse_env = _TTS_ENV
         else:
             self.pulse_env = None
@@ -123,17 +126,16 @@ class PlaybackThread(Thread):
         """
         while not self._terminated:
             try:
-                (snd_type, data,
-                 visemes, ident, listen) = self.queue.get(timeout=2)
+                (snd_type, data, visemes, ident, listen) = self.queue.get(timeout=2)
                 if not self._processing_queue:
                     self._processing_queue = True
                     self.begin_audio()
 
                 stopwatch = Stopwatch()
                 with stopwatch:
-                    if snd_type == 'wav':
+                    if snd_type == "wav":
                         self.p = play_wav(data, environment=self.pulse_env)
-                    elif snd_type == 'mp3':
+                    elif snd_type == "mp3":
                         self.p = play_mp3(data, environment=self.pulse_env)
                     if self.p:
                         self.p.communicate()
@@ -142,6 +144,7 @@ class PlaybackThread(Thread):
                 if self.queue.empty():
                     self.end_audio(listen)
                     self._processing_queue = False
+
             except Empty:
                 pass
             except Exception as e:
@@ -169,9 +172,22 @@ class PlaybackThread(Thread):
         """
         if self.bus:
             # Send end of speech signals to the system
-            self.bus.emit(Message("recognizer_loop:audio_output_end"))
-            if listen:
-                self.bus.emit(Message('core.mic.listen'))
+            context = {"client_name": "core_audio_pbthread", "source": "llm"}
+            self.bus.emit(Message("recognizer_loop:audio_output_end", context=context))
+            # For every end of speech if speech is interrupted do not listen
+            LOG.info(f"interrupted utt: {self.interrupted_utterance}")
+            LOG.info(
+                f"interrupted utt in playback thread is None:\
+                {self.interrupted_utterance is None} and\
+                    listen is {listen}"
+            )
+
+            # the new wakeword will handle listening
+            if listen and (self.interrupted_utterance is None):
+                LOG.info("triggering listen")
+                self.bus.emit(Message("core.mic.listen", context=context))
+            else:
+                LOG.info("not triggering listen")
 
             # Clear cache for all attached tts objects
             # This is basically the only safe time
@@ -186,6 +202,9 @@ class PlaybackThread(Thread):
     def clear(self):
         """Clear all pending actions for the TTS playback thread."""
         self.clear_queue()
+
+    def set_interrupted_utterance(self, value):
+        self.interrupted_utterance = value
 
     def stop(self):
         """Stop thread"""
@@ -206,14 +225,22 @@ class TTS(metaclass=ABCMeta):
         phonetic_spelling (bool): Whether to spell certain words phonetically
         ssml_tags (list): Supported ssml properties. Ex. ['speak', 'prosody']
     """
+
     queue = None
     playback = None
 
-    def __init__(self, lang, config, validator, audio_ext='wav',
-                 phonetic_spelling=True, ssml_tags=None):
+    def __init__(
+        self,
+        lang,
+        config,
+        validator,
+        audio_ext="wav",
+        phonetic_spelling=True,
+        ssml_tags=None,
+    ):
         super(TTS, self).__init__()
         self.bus = None  # initalized in "init" step
-        self.lang = lang or 'en-us'
+        self.lang = lang or "en-us"
         self.config = config
         self.validator = validator
         self.phonetic_spelling = phonetic_spelling
@@ -221,8 +248,9 @@ class TTS(metaclass=ABCMeta):
         self.ssml_tags = ssml_tags or []
 
         self.voice = config.get("voice")
-        self.filename = get_temp_path('tts.wav')
+        self.filename = get_temp_path("tts.wav")
         self.enclosure = None
+        self.interrupted_utterance = None
         random.seed()
 
         if TTS.queue is None:
@@ -232,9 +260,7 @@ class TTS(metaclass=ABCMeta):
 
         self.spellings = self.load_spellings()
         self.tts_name = type(self).__name__
-        self.cache = TextToSpeechCache(
-            self.config, self.tts_name, self.audio_ext
-        )
+        self.cache = TextToSpeechCache(self.config, self.tts_name, self.audio_ext)
         self.cache.clear()
 
     @property
@@ -251,17 +277,17 @@ class TTS(metaclass=ABCMeta):
 
     def load_spellings(self):
         """Load phonetic spellings of words as dictionary."""
-        path = join('text', self.lang.lower(), 'phonetic_spellings.txt')
+        path = join("text", self.lang.lower(), "phonetic_spellings.txt")
         spellings_file = resolve_resource_file(path)
         if not spellings_file:
             return {}
         try:
             with open(spellings_file) as f:
-                lines = filter(bool, f.read().split('\n'))
-            lines = [i.split(':') for i in lines]
+                lines = filter(bool, f.read().split("\n"))
+            lines = [i.split(":") for i in lines]
             return {key.strip(): value.strip() for key, value in lines}
         except ValueError:
-            LOG.exception('Failed to load phonetic spellings.')
+            LOG.exception("Failed to load phonetic spellings.")
             return {}
 
     def begin_audio(self):
@@ -280,10 +306,11 @@ class TTS(metaclass=ABCMeta):
         Args:
             listen (bool): indication if listening trigger should be sent.
         """
+        context = {"client_name": "core_audio_tts", "source": "llm"}
 
-        self.bus.emit(Message("recognizer_loop:audio_output_end"))
+        self.bus.emit(Message("recognizer_loop:audio_output_end", context=context))
         if listen:
-            self.bus.emit(Message('core.mic.listen'))
+            self.bus.emit(Message("core.mic.listen", context=context))
 
         self.cache.curate()
         # This check will clear the "signal"
@@ -333,7 +360,7 @@ class TTS(metaclass=ABCMeta):
         Returns:
             str: input string stripped from tags.
         """
-        return re.sub('<[^>]*>', '', text).replace('  ', ' ')
+        return re.sub("<[^>]*>", "", text).replace("  ", " ")
 
     def validate_ssml(self, utterance):
         """Check if engine supports ssml, if not remove all tags.
@@ -413,22 +440,21 @@ class TTS(metaclass=ABCMeta):
         if self.phonetic_spelling:
             for word in re.findall(r"[\w']+", sentence):
                 if word.lower() in self.spellings:
-                    sentence = sentence.replace(word,
-                                                self.spellings[word.lower()])
+                    sentence = sentence.replace(word, self.spellings[word.lower()])
 
         # TODO: 22.02 This is no longer needed and can be removed
         # Just kept for compatibility for now
         chunks = self._preprocess_sentence(sentence)
         # Apply the listen flag to the last chunk, set the rest to False
-        chunks = [(chunks[i], listen if i == len(chunks) - 1 else False)
-                  for i in range(len(chunks))]
+        chunks = [
+            (chunks[i], listen if i == len(chunks) - 1 else False)
+            for i in range(len(chunks))
+        ]
 
         for sentence, l in chunks:
             sentence_hash = hash_sentence(sentence)
             if sentence_hash in self.cache:
-                audio_file, phoneme_file = self._get_sentence_from_cache(
-                    sentence_hash
-                )
+                audio_file, phoneme_file = self._get_sentence_from_cache(sentence_hash)
                 if phoneme_file is None:
                     phonemes = None
                 else:
@@ -441,8 +467,7 @@ class TTS(metaclass=ABCMeta):
                 #  API of the get_tts method in each engine.
                 audio_file = self.cache.define_audio_file(sentence_hash)
                 # TODO 21.08: remove mutation of audio_file.path.
-                returned_file, phonemes = self.get_tts(
-                    sentence, str(audio_file.path))
+                returned_file, phonemes = self.get_tts(sentence, str(audio_file.path))
                 # Convert to Path as needed
                 returned_file = Path(returned_file)
                 if returned_file != audio_file.path:
@@ -452,22 +477,18 @@ class TTS(metaclass=ABCMeta):
                             "to a different path than requested. If you are "
                             "the maintainer of this plugin, please adhere to "
                             "the file path argument provided. Modified paths "
-                            "will be ignored in a future release."))
+                            "will be ignored in a future release."
+                        )
+                    )
                     audio_file.path = returned_file
                 if phonemes:
-                    phoneme_file = self.cache.define_phoneme_file(
-                        sentence_hash
-                    )
+                    phoneme_file = self.cache.define_phoneme_file(sentence_hash)
                     phoneme_file.save(phonemes)
                 else:
                     phoneme_file = None
-                self.cache.cached_sentences[sentence_hash] = (
-                    audio_file, phoneme_file
-                )
+                self.cache.cached_sentences[sentence_hash] = (audio_file, phoneme_file)
             viseme = self.viseme(phonemes) if phonemes else None
-            TTS.queue.put(
-                (self.audio_ext, str(audio_file.path), viseme, ident, l)
-            )
+            TTS.queue.put((self.audio_ext, str(audio_file.path), viseme, ident, l))
 
     def _get_sentence_from_cache(self, sentence_hash):
         cached_sentence = self.cache.cached_sentences[sentence_hash]
@@ -497,6 +518,7 @@ class TTSValidator(metaclass=ABCMeta):
     It exposes and implements ``validate(tts)`` function as a template to
     validate the TTS engines.
     """
+
     def __init__(self, tts):
         self.tts = tts
 
@@ -514,16 +536,16 @@ class TTSValidator(metaclass=ABCMeta):
     def validate_instance(self):
         clazz = self.get_tts_class()
         if not isinstance(self.tts, clazz):
-            raise AttributeError('tts must be instance of ' + clazz.__name__)
+            raise AttributeError("tts must be instance of " + clazz.__name__)
 
     def validate_filename(self):
         filename = self.tts.filename
-        if not (filename and filename.endswith('.wav')):
-            raise AttributeError('file: %s must be in .wav format!' % filename)
+        if not (filename and filename.endswith(".wav")):
+            raise AttributeError("file: %s must be in .wav format!" % filename)
 
         dir_path = dirname(filename)
         if not (exists(dir_path) and isdir(dir_path)):
-            raise AttributeError('filename: %s is not valid!' % filename)
+            raise AttributeError("filename: %s is not valid!" % filename)
 
     @abstractmethod
     def validate_lang(self):
@@ -550,7 +572,7 @@ def load_tts_plugin(module_name):
     Returns:
         class: found tts plugin class
     """
-    return load_plugin('core.plugin.tts', module_name)
+    return load_plugin("core.plugin.tts", module_name)
 
 
 class TTSFactory:
@@ -559,13 +581,11 @@ class TTSFactory:
     The factory can select between a range of built-in TTS engines and also
     from TTS engine plugins.
     """
+
     from core.tts.mimic3_tts import Mimic3
     from core.tts.elevenlabs_tts import ElevenLabsTTS
 
-    CLASSES = {
-        "mimic3": Mimic3,
-        "elevenlabs": ElevenLabsTTS
-    }
+    CLASSES = {"mimic3": Mimic3, "elevenlabs": ElevenLabsTTS}
 
     @staticmethod
     def create():
@@ -580,30 +600,32 @@ class TTSFactory:
         """
         config = Configuration.get()
         lang = config.get("lang", "en-us")
-        tts_module = config.get('tts', {}).get('module', 'mimic3')
-        tts_config = config.get('tts', {}).get(tts_module, {})
-        tts_lang = tts_config.get('lang', lang)
+        tts_module = config.get("tts", {}).get("module", "mimic3")
+        tts_config = config.get("tts", {}).get(tts_module, {})
+        tts_lang = tts_config.get("lang", lang)
         try:
             if tts_module in TTSFactory.CLASSES:
                 clazz = TTSFactory.CLASSES[tts_module]
             else:
                 clazz = load_tts_plugin(tts_module)
-                LOG.info('Loaded plugin {}'.format(tts_module))
+                LOG.info("Loaded plugin {}".format(tts_module))
             if clazz is None:
-                raise ValueError('TTS module not found')
+                raise ValueError("TTS module not found")
 
             tts = clazz(tts_lang, tts_config)
             tts.validator.validate()
         except Exception:
             # Fallback to mimic if an error occurs while loading.
-            if tts_module != 'mimic3':
-                LOG.exception('The selected TTS backend couldn\'t be loaded. '
-                              'Falling back to Mimic')
-                clazz = TTSFactory.CLASSES.get('mimic3')
-                tts_config = config.get('tts', {}).get('mimic3', {})
+            if tts_module != "mimic3":
+                LOG.exception(
+                    "The selected TTS backend couldn't be loaded. "
+                    "Falling back to Mimic"
+                )
+                clazz = TTSFactory.CLASSES.get("mimic3")
+                tts_config = config.get("tts", {}).get("mimic3", {})
                 tts = clazz(tts_lang, tts_config)
                 tts.validator.validate()
             else:
-                LOG.exception('The TTS could not be loaded.')
+                LOG.exception("The TTS could not be loaded.")
                 raise
         return tts

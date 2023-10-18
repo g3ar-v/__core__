@@ -29,7 +29,7 @@ def handle_record_begin():
     context = {"client_name": "core_listener", "source": "audio"}
     # Forward message to stop any existing speech synthesis
     # NOTE: is the right place to handle stoping speech
-    bus.emit(Message("core.audio.speech.stop", context=context))
+    bus.emit(Message("core.wakeword", context=context))
     bus.emit(Message("recognizer_loop:record_begin", context=context))
 
 
@@ -53,11 +53,11 @@ def handle_awoken():
     bus.emit(Message("core.awoken", context=context))
 
 
-def handle_wakeword(event):
-    LOG.info("Wakeword Detected: " + event["utterance"])
-    bus.emit(Message("recognizer_loop:wakeword", event))
+def handle_wakeword():
+    LOG.info("Wakeword Detected")
     # TODO: find a way to pause instead of stop
-    # context = {"client_name": "core_listener", "source": "audio"}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("recognizer_loop:wakeword", context=context))
 
 
 def handle_utterance(event):
