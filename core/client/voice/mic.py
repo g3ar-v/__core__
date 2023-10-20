@@ -21,7 +21,7 @@ from core.util import (
     play_wav,
 )
 from core.util.log import LOG
-
+from core.audio import wait_while_speaking
 from .data_structures import RollingMean, CyclicAudioBuffer
 from .silence import SilenceDetector, SilenceResultType, SileroVAD
 
@@ -558,14 +558,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         LOG.debug("Listen triggered from external source.")
         self._listen_triggered = True
 
-    def _handle_wakeword_found(self, audio_data, source):
+    def _handle_wakeword_found(self, audio_data, source, emitter):
         """Perform actions to be triggered after a wakeword is found.
 
         This includes: emit event on messagebus that a wakeword is heard,
         store wakeword to disk if configured and sending the wakeword data
         to the cloud in case the user has opted into the data sharing.
         """
-        pass
+        emitter.emit("recognizer_loop:wakeword")
 
     def _wait_until_wake_word(self, source, sec_per_buffer):
         """Listen continuously on source until a wake word is spoken
@@ -720,7 +720,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         ww_frames = None
         if ww_data.found:
-            self._handle_wakeword_found(ww_data.audio, source)
+            self._handle_wakeword_found(ww_data.audio, source, emitter)
             ww_frames = ww_data.end_audio
         if ww_data.stopped:
             # If the waiting returned from a stop signal
@@ -729,7 +729,9 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         LOG.debug("Recording...")
         # If enabled, play a wave file with a short sound to audibly
         # indicate recording has begun.
+        # NOTE: Aim is to avoid interference of the activation sound with system speech
         if self.config.get("confirm_listening"):
+            wait_while_speaking()
             if self.mute_and_confirm_listening(source):
                 # Clear frames from wakeword detections since they're
                 # irrelevant after mute - play wav - unmute sequence

@@ -29,7 +29,7 @@ def handle_record_begin():
     context = {"client_name": "core_listener", "source": "audio"}
     # Forward message to stop any existing speech synthesis
     # NOTE: is the right place to handle stoping speech
-    bus.emit(Message("core.wakeword", context=context))
+    # bus.emit(Message("core.wakeword", context=context))
     bus.emit(Message("recognizer_loop:record_begin", context=context))
 
 
@@ -57,7 +57,8 @@ def handle_wakeword():
     LOG.info("Wakeword Detected")
     # TODO: find a way to pause instead of stop
     context = {"client_name": "core_listener", "source": "audio"}
-    bus.emit(Message("recognizer_loop:wakeword", context=context))
+    bus.emit(Message("core.wakeword", context=context))
+    # bus.emit(Message("recognizer_loop:wakeword", context=context))
 
 
 def handle_utterance(event):
@@ -197,6 +198,7 @@ def connect_loop_events(loop):
     loop.on("recognizer_loop:utterance", handle_utterance)
     loop.on("recognizer_loop:speech.recognition.unknown", handle_unknown)
     loop.on("speak", handle_speak)
+    loop.on("core.wakeword", handle_wakeword)
     loop.on("recognizer_loop:record_begin", handle_record_begin)
     loop.on("recognizer_loop:awoken", handle_awoken)
     loop.on("recognizer_loop:wakeword", handle_wakeword)
@@ -214,6 +216,7 @@ def connect_bus_events(bus):
     bus.on("core.mic.unmute", handle_mic_unmute)
     bus.on("core.mic.get_status", handle_mic_get_status)
     bus.on("core.mic.listen", handle_mic_listen)
+    # bus.on("core.wakeword", handle_wakeword)
     bus.on("core.paired", handle_paired)
     bus.on("recognizer_loop:audio_output_start", handle_audio_start)
     bus.on("recognizer_loop:audio_output_timeout", handle_info_taking_too_long)
