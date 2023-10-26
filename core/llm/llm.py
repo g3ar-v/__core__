@@ -1,12 +1,14 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
 import os
+
 from langchain.chains import LLMChain
 from langchain.llms.openai import OpenAI
-from langchain.memory import MongoDBChatMessageHistory
+from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
+from pymongo import MongoClient
+
 from core.configuration import Configuration
 from core.util.log import LOG
-from pymongo import MongoClient
 
 model = "gpt-3.5-turbo"
 config = Configuration.get()
@@ -23,7 +25,7 @@ class LLM:
             "langsmith_key"
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
-        self.model = OpenAI(temperature=1, max_tokens=70)
+        self.model = OpenAI(temperature=1, max_tokens=85)
         MongoClient(self.conn_string)
         self.message_history = MongoDBChatMessageHistory(
             connection_string=self.conn_string,
@@ -31,11 +33,18 @@ class LLM:
             session_id="main",
             collection_name="chat_history",
         )
+        self.chat_history = ConversationBufferWindowMemory(
+            memory_key="chat_history",
+            chat_memory=self.message_history,
+            ai_prefix="Jarvis",
+            k=3,
+        )
 
         # self.collection = client[db_name][collection_name]
 
     # TODO: use a local llm to produce response
 
+    # NOTE: why is this static? could it be a method
     @staticmethod
     def use_llm(**kwargs):
         """
@@ -57,10 +66,11 @@ class LLM:
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
+        curr_conv = kwargs.get("curr_conv")
 
         llm = OpenAI(temperature=1, max_tokens=70)
         gptchain = LLMChain(llm=llm, verbose=True, prompt=prompt)
 
-        response = gptchain.predict(context=context, query=query)
+        response = gptchain.predict(context=context, query=query, curr_conv=curr_conv)
         LOG.info(f"LLM response: {response}")
         return response
