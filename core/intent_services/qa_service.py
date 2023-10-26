@@ -1,13 +1,12 @@
-import time
 import re
-import core.intent_services
+import time
 from itertools import chain
+from threading import Event, Lock
 
-from core.messagebus.message import dig_for_message, Message
-from core.util import flatten_list, LOG
+import core.intent_services
+from core.messagebus.message import Message, dig_for_message
+from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
-from threading import Lock, Event
-
 
 EXTENSION_TIME = 10
 
@@ -29,6 +28,7 @@ class QAService:
         self.searching = Event()
         self.bus.on("question:query.response", self.handle_query_response)
         self.bus.on("common_query.question", self.handle_question)
+        # self.bus.on("")
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -232,7 +232,7 @@ class QAService:
                 self.bus.emit(
                     Message(
                         "active_skill_request",
-                        {"skill_id": "fallback-gpt-skill.g3ar-v"},
+                        {"skill_id": best["skill_id"]},
                     )
                 )
                 self.answered = True
@@ -248,7 +248,7 @@ class QAService:
         """Speak a sentence.
 
         Args:
-            utterance (str):        sentence system should speak
+            utterance (str): sentence system should speak
         """
         # registers the skill as being active
         # self.enclosure.register(self.skill_id)
