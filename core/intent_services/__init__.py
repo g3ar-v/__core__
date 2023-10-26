@@ -1,22 +1,20 @@
 """Intent service, providing intent parsing since forever!"""
-from .adapt_service import AdaptService, AdaptIntent  # noqa: F401
-from .fallback_service import FallbackService
-from .padatious_service import PadatiousService, PadatiousMatcher
-from .qa_service import QAService
-
-from copy import copy
 import time
-
 from collections import namedtuple
+from copy import copy
+
 from core.configuration import Configuration, set_default_lf_lang
-from core.util import flatten_list
-from core.util.log import LOG
-from core.util.parse import normalize
-from core.util.metrics import Stopwatch
 from core.llm import LLM
+from core.util import flatten_list
+from core.util.intent_service_interface import IntentQueryApi, open_intent_envelope
+from core.util.log import LOG
+from core.util.metrics import Stopwatch
+from core.util.parse import normalize
 
-from core.util.intent_service_interface import open_intent_envelope, IntentQueryApi
-
+from .adapt_service import AdaptIntent, AdaptService  # noqa: F401
+from .fallback_service import FallbackService
+from .padatious_service import PadatiousMatcher, PadatiousService
+from .qa_service import QAService
 
 # Intent match response tuple containing
 # intent_service: Name of the service that matched the intent
@@ -268,7 +266,6 @@ class IntentService:
             combined = _normalize_all_utterances(utterances)
             # NOTE: ideally where user_message is to be sent to DB, but due to unrefined
             # form of the utternace, should all utterances be sent to database?
-            self.llm.message_history.add_user_message(flatten_list(combined)[0])
 
             stopwatch = Stopwatch()
 
@@ -310,7 +307,8 @@ class IntentService:
                     # highest confidence.
                     reply.data["utterances"] = utterances
                     self.bus.emit(reply)
-
+                # NOTE: should prevent user utterance from already being in chat_history
+                self.llm.message_history.add_user_message(flatten_list(combined)[0])
             else:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task
