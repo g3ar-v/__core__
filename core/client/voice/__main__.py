@@ -136,6 +136,10 @@ def handle_mic_listen(_):
     loop.responsive_recognizer.trigger_listen()
 
 
+def handle_stop_listen(_):
+    loop.reload()
+
+
 def handle_mic_get_status(event):
     """Query microphone mute status."""
     data = {"muted": loop.is_muted()}
@@ -216,6 +220,7 @@ def connect_bus_events(bus):
     bus.on("core.mic.unmute", handle_mic_unmute)
     bus.on("core.mic.get_status", handle_mic_get_status)
     bus.on("core.mic.listen", handle_mic_listen)
+    bus.on("core.mic.stop_listen", handle_stop_listen)
     # bus.on("core.wakeword", handle_wakeword)
     bus.on("core.paired", handle_paired)
     bus.on("recognizer_loop:audio_output_start", handle_audio_start)

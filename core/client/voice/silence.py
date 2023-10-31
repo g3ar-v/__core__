@@ -377,3 +377,121 @@ class SileroVAD:
     def is_silent(self, chunk):
         audio_array = np.frombuffer(chunk, dtype=np.int16)
         return self.vad(audio_array)[0] < self.vad_threshold
+
+# NOTE: has this become redundant?
+class NoiseTracker:
+    """Noise tracker, used to deterimine if an audio utterance is complete.
+
+    The current implementation expects a number of loud chunks (not necessary
+    in one continous sequence) followed by a short period of continous quiet
+    audio data to be considered complete.
+
+    Args:
+        minimum (int): lower noise level will be threshold for "quiet" level
+        maximum (int): ceiling of noise level
+        sec_per_buffer (float): the length of each buffer used when updating
+                                the tracker
+        loud_time_limit (float): time in seconds of low noise to be considered
+                                 a complete sentence
+        silence_time_limit (float): time limit for silence to abort sentence
+        silence_after_loud (float): time of silence to finalize the sentence.
+                                    default 0.25 seconds.
+    """
+
+    def __init__(
+        self,
+        minimum,
+        maximum,
+        sec_per_buffer,
+        loud_time_limit,
+        silence_time_limit,
+        silence_after_loud_time=0.25,
+    ):
+        self.min_level = minimum
+        self.max_level = maximum
+        self.sec_per_buffer = sec_per_buffer
+
+        self.num_loud_chunks = 0
+        self.level = 0
+
+        # Smallest number of loud chunks required to return loud enough
+        self.min_loud_chunks = int(loud_time_limit / sec_per_buffer)
+
+        self.max_silence_duration = silence_time_limit
+        self.silence_duration = 0
+
+        # time of quite period after long enough loud data to consider the
+        # sentence complete
+        self.silence_after_loud = silence_after_loud_time
+
+        # Constants
+        self.increase_multiplier = 200
+        self.decrease_multiplier = 100
+
+    def _increase_noise(self):
+        """Bumps the current level.
+
+        Modifies the noise level with a factor depending in the buffer length.
+        """
+        if self.level < self.max_level:
+            self.level += self.increase_multiplier * self.sec_per_buffer
+
+    def _decrease_noise(self):
+        """Decrease the current level.
+
+        Modifies the noise level with a factor depending in the buffer length.
+        """
+        if self.level > self.min_level:
+            self.level -= self.decrease_multiplier * self.sec_per_buffer
+
+    def update(self, is_loud):
+        """Update the tracking. with either a loud chunk or a quiet chunk.
+
+        Args:
+            is_loud: True if a loud chunk should be registered
+                     False if a quiet chunk should be registered
+        """
+        if is_loud:
+            self._increase_noise()
+            self.num_loud_chunks += 1
+        else:
+            self._decrease_noise()
+        # Update duration of energy under the threshold level
+        if self._quiet_enough():
+            self.silence_duration += self.sec_per_buffer
+        else:  # Reset silence duration
+            self.silence_duration = 0
+
+    def _loud_enough(self):
+        """Check if the noise loudness criteria is fulfilled.
+
+        The noise is considered loud enough if it's been over the threshold
+        for a certain number of chunks (accumulated, not in a row).
+        """
+        return self.num_loud_chunks > self.min_loud_chunks
+
+    def _quiet_enough(self):
+        """Check if the noise quietness criteria is fulfilled.
+
+        The quiet level is instant and will return True if the level is lower
+        or equal to the minimum noise level.
+        """
+        return self.level <= self.min_level
+
+    def recording_complete(self):
+        """Has the end creteria for the recording been met.
+
+        If the noise level has decresed from a loud level to a low level
+        the user has stopped speaking.
+
+        Alternatively if a lot of silence was recorded without detecting
+        a loud enough phrase.
+        """
+        too_much_silence = self.silence_duration > self.max_silence_duration
+        if too_much_silence:
+            LOG.debug("Too much silence recorded without start of sentence " "detected")
+        return (
+            self._quiet_enough() and self.silence_duration > self.silence_after_loud
+        ) and (self._loud_enough() or too_much_silence)
+
+
