@@ -4,14 +4,14 @@ from threading import Lock
 
 from core.configuration import Configuration
 from core.llm import LLM
-from core.util.metrics import Stopwatch
-from core.tts import TTSFactory
-from core.util import check_for_signal
-from core.util.log import LOG
 from core.messagebus.message import Message
+from core.tts import TTSFactory
 
 # from core.tts.remote_tts import RemoteTTSException
 from core.tts.mimic3_tts import Mimic3
+from core.util import check_for_signal, create_signal
+from core.util.log import LOG
+from core.util.metrics import Stopwatch
 
 bus = None  # messagebus connection
 config = None
@@ -61,6 +61,7 @@ def handle_speak(event):
         # faster on longer phrases.
         # HACK: this works for now but should it be here and should all messages be
         # tracked?
+        LOG.info(f"Speaking utterance: {utterance}")
         llm.message_history.add_ai_message(utterance)
         # NOTE: is there an efficient way of getting the previous utterance?
         global interrupted_utterance
@@ -115,13 +116,23 @@ def mute_and_speak(utterance, ident, listen=False):
         tts_hash = hash(str(config.get("tts", "")))
 
     LOG.info("Speak: " + utterance)
-    try:
-        tts.execute(utterance, ident, listen)
-    # except RemoteTTSException as e:
-    #     LOG.error(e)
-    #     mimic_fallback_tts(utterance, ident, listen)
-    except Exception:
-        LOG.exception("TTS execution failed.")
+    # NOTE: Only elevenlabs supports streaming for now so if the conditions are not met
+    # don't stream just generate audio file and play
+    if (
+        config.get("Audio", {}).get("stream_tts", {})
+        and tts.tts_name == "ElevenLabsTTS"
+    ):
+        LOG.debug("Streaming Audio")
+        create_signal("isSpeaking")
+        tts.begin_audio()
+        tts.stream_tts(utterance)
+        tts.end_audio(listen)
+        check_for_signal("isSpeaking")
+    else:
+        try:
+            tts.execute(utterance, ident, listen)
+        except Exception:
+            LOG.exception("TTS execution failed.")
 
 
 # TODO: check mimic3 is the fallback and if it works
@@ -163,6 +174,7 @@ def handle_stop(event):
     if check_for_signal("isSpeaking", -1):
         tts.playback.set_interrupted_utterance(interrupted_utterance)
         tts.playback.clear()  # Clear here to get instant stop
+        bus.emit("core.mic.stop_listen")
         _last_stop_signal = time.time()
         bus.emit(
             Message("core.interrupted_utterance", {"utterance": interrupted_utterance})

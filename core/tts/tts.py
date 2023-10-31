@@ -1,32 +1,31 @@
-from copy import deepcopy
 import os
+import os.path
 import random
 import re
 from abc import ABCMeta, abstractmethod
+from copy import deepcopy
+from os.path import dirname, exists, isdir, join
 from pathlib import Path
+from queue import Empty, Queue
 from threading import Thread
 from warnings import warn
-
-import os.path
-from os.path import dirname, exists, isdir, join
-
 
 # from core.enclosure.api import EnclosureAPI
 from core.configuration import Configuration
 from core.messagebus.message import Message
-from core.util.metrics import Stopwatch
 from core.util import (
-    play_wav,
-    play_mp3,
     check_for_signal,
     create_signal,
+    play_mp3,
+    play_wav,
     resolve_resource_file,
 )
 from core.util.file_utils import get_temp_path
 from core.util.log import LOG
+from core.util.metrics import Stopwatch
 from core.util.plugins import load_plugin
-from queue import Queue, Empty
-from .cache import hash_sentence, TextToSpeechCache
+
+from .cache import TextToSpeechCache, hash_sentence
 
 _TTS_ENV = deepcopy(os.environ)
 _TTS_ENV["PULSE_PROP"] = "media.role=phone"
@@ -114,7 +113,7 @@ class PlaybackThread(Thread):
         The queue messages is a tuple containing
         snd_type: 'mp3' or 'wav' telling the loop what format the data is in
         data: path to temporary audio data
-        videmes: list of visemes to display while playing
+        visemes: list of visemes to display while playing
         listen: if listening should be triggered at the end of the sentence.
 
         Playback of audio is started and the visemes are sent over the bus
@@ -174,20 +173,9 @@ class PlaybackThread(Thread):
             # Send end of speech signals to the system
             context = {"client_name": "core_audio_pbthread", "source": "llm"}
             self.bus.emit(Message("recognizer_loop:audio_output_end", context=context))
-            # For every end of speech if speech is interrupted do not listen
-            LOG.info(f"interrupted utt: {self.interrupted_utterance}")
-            LOG.info(
-                f"interrupted utt in playback thread is None:\
-                {self.interrupted_utterance is None} and\
-                    listen is {listen}"
-            )
 
-            # the new wakeword will handle listening
-            if listen and (self.interrupted_utterance is None):
-                LOG.info("triggering listen")
+            if listen:
                 self.bus.emit(Message("core.mic.listen", context=context))
-            else:
-                LOG.info("not triggering listen")
 
             # Clear cache for all attached tts objects
             # This is basically the only safe time
@@ -339,6 +327,16 @@ class TTS(metaclass=ABCMeta):
 
         Returns:
             tuple: (wav_file, phoneme)
+        """
+        pass
+
+    def stream_tts(self, sententce):
+        """Abstract method that a tts implementation needs to implement.
+
+        Should stream synthesized speech.
+
+        Args:
+            sentence(str): Sentence to synthesize.
         """
         pass
 
@@ -582,8 +580,8 @@ class TTSFactory:
     from TTS engine plugins.
     """
 
-    from core.tts.mimic3_tts import Mimic3
     from core.tts.elevenlabs_tts import ElevenLabsTTS
+    from core.tts.mimic3_tts import Mimic3
 
     CLASSES = {"mimic3": Mimic3, "elevenlabs": ElevenLabsTTS}
 
