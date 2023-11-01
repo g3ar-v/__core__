@@ -13,16 +13,11 @@ from core.util import camel_case_split
 from core.util.json_helper import load_commented_json, merge_dict
 from core.util.log import LOG
 
-from .locations import (
-    DEFAULT_CONFIG,
-    SYSTEM_CONFIG,
-    USER_CONFIG
-)
+from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG, USER_CONFIG
 
 
 def is_remote_list(values):
-    """Check if list corresponds to a backend formatted collection of dicts
-    """
+    """Check if list corresponds to a backend formatted collection of dicts"""
     for v in values:
         if not isinstance(v, dict):
             return False
@@ -77,7 +72,8 @@ def translate_list(config, values):
 
 class LocalConf(dict):
     """Config dictionary from file."""
-    _lock = ComboLock(get_temp_path('local-conf.lock'))
+
+    _lock = ComboLock(get_temp_path("local-conf.lock"))
 
     def __init__(self, path):
         super(LocalConf, self).__init__()
@@ -128,13 +124,17 @@ class LocalConf(dict):
                 os.makedirs(config_dir)
 
             if self.is_valid or force:
-                with open(path, 'w') as f:
+                with open(path, "w") as f:
                     json.dump(self, f, indent=2)
                 result = True
             else:
-                LOG.warning((f'"{path}" was not a valid config file when '
-                             'loaded, will not save config. Please correct '
-                             'the json or remove it to allow updates.'))
+                LOG.warning(
+                    (
+                        f'"{path}" was not a valid config file when '
+                        "loaded, will not save config. Please correct "
+                        "the json or remove it to allow updates."
+                    )
+                )
                 result = False
         return result
 
@@ -149,8 +149,9 @@ class RemoteConf(LocalConf):
     def __init__(self, cache=None):
         super(RemoteConf, self).__init__(None)
 
-        cache = cache or join(xdg.BaseDirectory.xdg_cache_home, 'mycroft',
-                              'web_cache.json')
+        cache = cache or join(
+            xdg.BaseDirectory.xdg_cache_home, "core", "web_cache.json"
+        )
 
     def reload(self):
         try:
@@ -176,6 +177,7 @@ class RemoteConf(LocalConf):
 
 class Configuration:
     """Namespace for operations on the configuration singleton."""
+
     __config = {}  # Cached config
     __patch = {}  # Patch config that skills can update to override config
 
@@ -220,20 +222,20 @@ class Configuration:
             # Then use XDG config
             # This includes both the user config and
             # /etc/xdg/mycroft/mycroft.conf
-            for conf_dir in xdg.BaseDirectory.load_config_paths('core'):
-                configs.append(LocalConf(join(conf_dir, 'core.conf')))
+            for conf_dir in xdg.BaseDirectory.load_config_paths("core"):
+                configs.append(LocalConf(join(conf_dir, "core.conf")))
 
             # Then check the old user config
             # if isfile(OLD_USER_CONFIG):
-                # _log_old_location_deprecation()
-                # configs.append(LocalConf(OLD_USER_CONFIG))
+            # _log_old_location_deprecation()
+            # configs.append(LocalConf(OLD_USER_CONFIG))
 
             # Then use the system config (/etc/mycroft/mycroft.conf)
             configs.append(LocalConf(SYSTEM_CONFIG))
 
             # Then use remote config
-            if remote:
-                configs.append(RemoteConf())
+            # if remote:
+            #     configs.append(RemoteConf())
 
             # Then use the config that comes with the package
             configs.append(LocalConf(DEFAULT_CONFIG))
