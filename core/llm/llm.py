@@ -1,20 +1,31 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
 import os
+from typing import Any
 
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import LLMChain
-from langchain.llms.openai import OpenAI
+from langchain.chat_models import ChatOpenAI
+from langchain.llms import LlamaCpp
 from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
 from pymongo import MongoClient
 
 from core.configuration import Configuration
 from core.util.log import LOG
 
-model = "gpt-3.5-turbo"
 config = Configuration.get()
 
 
-class LLM:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class LLM(metaclass=Singleton):
     conn_string = config["microservices"].get("mongo_conn_string")
 
     def __init__(self):
@@ -25,7 +36,26 @@ class LLM:
             "langsmith_key"
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
-        self.model = OpenAI(temperature=1, max_tokens=85)
+        # select LLM for CORE system
+        if config.get("llm").get("model_type") == "local":
+            self.model = LlamaCpp(
+                model_path=config.get("llm").get("local").get("model_dir"),
+                n_gpu_layers=1,
+                n_batch=512,
+                n_ctx=2048,
+                f16_kv=True,
+                verbose=True,
+            )
+        else:
+            # NOTE: is it possible to access the OpenAI arguments here? to control how
+            # tokens are generated for various conversations.
+            self.model = ChatOpenAI(
+                temperature=0.7,
+                max_tokens=256,
+                model="gpt-3.5-turbo",
+                streaming=False,
+                callbacks=[StreamingStdOutCallbackHandler()],
+            )
         MongoClient(self.conn_string)
         self.message_history = MongoDBChatMessageHistory(
             connection_string=self.conn_string,
@@ -33,9 +63,11 @@ class LLM:
             session_id="main",
             collection_name="chat_history",
         )
+        # TODO: load user from config
         self.chat_history = ConversationBufferWindowMemory(
             memory_key="chat_history",
             chat_memory=self.message_history,
+            user_prefix="Victor",
             ai_prefix="Jarvis",
             k=3,
         )
@@ -44,9 +76,7 @@ class LLM:
 
     # TODO: use a local llm to produce response
 
-    # NOTE: why is this static? could it be a method
-    @staticmethod
-    def use_llm(**kwargs):
+    def use_llm(self, **kwargs):
         """
         Use the Language Model to generate a response based
         on the given prompt and input.
@@ -67,10 +97,17 @@ class LLM:
         context = kwargs.get("context")
         query = kwargs.get("query")
         curr_conv = kwargs.get("curr_conv")
+        date_str = kwargs.get("date_str")
+        rel_mem = kwargs.get("rel_mem")
+        # llm = OpenAI(temperature=1, max_tokens=70)
+        gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
 
-        llm = OpenAI(temperature=1, max_tokens=70)
-        gptchain = LLMChain(llm=llm, verbose=True, prompt=prompt)
-
-        response = gptchain.predict(context=context, query=query, curr_conv=curr_conv)
+        response = gptchain.predict(
+            context=context,
+            query=query,
+            curr_conv=curr_conv,
+            rel_mem=rel_mem,
+            date_str=date_str,
+        )
         LOG.info(f"LLM response: {response}")
         return response
