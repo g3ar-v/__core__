@@ -8,9 +8,8 @@ import platform
 import posixpath
 from shutil import rmtree
 import struct
-import tempfile
 from threading import Timer, Thread
-from time import time, sleep
+from time import sleep
 from urllib.error import HTTPError
 import xdg.BaseDirectory
 
@@ -446,6 +445,6 @@ class HotWordFactory:
         module = config.get("module", "precise")
         return (
             cls.load_module(module, hotword, config, lang, loop)
-            or cls.load_module("pocketsphinx", hotword, config, lang, loop)
-            or cls.CLASSES["pocketsphinx"]()
+            or cls.load_module("porcupine", hotword, config, lang, loop)
+            or cls.CLASSES["porcupine"]()
         )

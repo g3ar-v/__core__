@@ -78,7 +78,7 @@ def handle_unknown():
     context = {"client_name": "core_listener", "source": "audio"}
     # query = "Say something like 'I didn't understand what you said'"
     # phrase = "you couldn't recognise what I said"
-    # data = LLM.use_llm(prompt=stat_report_prompt, query=query, context=phrase)
+    # data = self.llm.use_llm(prompt=stat_report_prompt, query=query, context=phrase)
 
     # bus.emit(Message("speak", data, context))
     bus.emit(Message("core.speech.recognition.unknown", context=context))

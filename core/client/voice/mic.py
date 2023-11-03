@@ -78,8 +78,12 @@ class MutableStream:
 
     def iter_chunks(self):
         """Yield chunks of audio data from the deque."""
+        # If muted during read return empty buffer. This ensures no
+        # reads occur while the stream is stopped
         with self.read_lock:
             while True:
+                if self.muted:
+                    return self.muted_buffer
                 while self.chunk_deque:
                     yield self.chunk_deque.popleft()
 
@@ -101,6 +105,7 @@ class MutableStream:
         # If muted during read return empty buffer. This ensures no
         # reads occur while the stream is stopped
         if self.muted:
+            LOG.debug("returning self.muted_buffer")
             return self.muted_buffer
 
         frames = deque()
@@ -254,11 +259,13 @@ class MutableMicrophone(Microphone):
 
     def mute(self):
         self.muted = True
+        LOG.debug("muting microphone...")
         if self.stream:
             self.stream.mute()
 
     def unmute(self):
         self.muted = False
+        LOG.debug("unmuting microphone...")
         if self.stream:
             self.stream.unmute()
 
@@ -548,13 +555,21 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
         emitter.emit("recognizer_loop:wakeword")
 
-    def _wait_until_wake_word(self, source: AudioSource, sec_per_buffer: float):
+    def _wait_until_wake_word(
+        self, source: AudioSource, sec_per_buffer: float
+    ) -> WakeWordData:
         """
         Listens continuously on source until a wake word is spoken.
 
         Args:
             source (AudioSource):  Source producing the audio chunks.
             sec_per_buffer (float):  Fractional number of seconds in each chunk.
+
+        Returns:
+            WakeWordData: A named tuple containing the audio data, a boolean indicating
+            if the wake word was found, a boolean indicating if the stop signal was
+            received, and the end audio frames.
+
         """
 
         # The maximum audio in seconds to keep for transcribing a phrase
@@ -681,6 +696,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         else:
             return False
 
+    def play_end_listening_sound(self):
+        if self.config.get("confirm_listening_end"):
+            audio_file = resolve_resource_file(
+                self.config.get("sounds").get("end_sound")
+            )
+            LOG.info(audio_file)
+            play_wav(audio_file).wait()
+
     def listen(
         self,
         source: AudioSource,
@@ -705,8 +728,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
         assert isinstance(source, AudioSource), "Source must be an AudioSource"
 
+        # self.record_sound_chunk()
         # bytes_per_sec = source.SAMPLE_RATE * source.SAMPLE_WIDTH
-        LOG.debug(f"CHUNK size: {source.CHUNK}")
         sec_per_buffer = float(source.CHUNK) / source.SAMPLE_RATE
 
         # Every time a new 'listen()' request begins, reset the threshold
@@ -748,12 +771,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         emitter.emit("recognizer_loop:record_end")
 
         # Play a wav file to indicate audio recording has ended
-        if self.config.get("confirm_listening_end"):
-            audio_file = resolve_resource_file(
-                self.config.get("sounds").get("end_sound")
-            )
-            LOG.info(audio_file)
-            play_wav(audio_file).wait()
+        self.play_end_listening_sound()
 
         return audio_data
 

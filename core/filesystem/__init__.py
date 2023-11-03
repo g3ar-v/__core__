@@ -13,9 +13,10 @@
 # limitations under the License.
 #
 import os
-import shutil
-from os.path import join, expanduser, isdir
-import xdg.BaseDirectory
+from os.path import join, isdir
+
+# import xdg.BaseDirectory
+from core.configuration.locations import get_core_config_dir
 
 
 class FileSystemAccess:
@@ -34,8 +35,8 @@ class FileSystemAccess:
         if not isinstance(path, str) or len(path) == 0:
             raise ValueError("path must be initialized as a non empty string")
 
-        path = join(xdg.BaseDirectory.save_config_path('core'), path)
-        
+        path = join(get_core_config_dir(), path)
+
         if not isdir(path):
             os.makedirs(path)
         return path
