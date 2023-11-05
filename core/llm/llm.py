@@ -3,7 +3,6 @@
 import os
 from typing import Any
 
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import LlamaCpp
@@ -51,10 +50,9 @@ class LLM(metaclass=Singleton):
             # tokens are generated for various conversations.
             self.model = ChatOpenAI(
                 temperature=0.7,
-                max_tokens=256,
+                max_tokens=85,
                 model="gpt-3.5-turbo",
                 streaming=False,
-                callbacks=[StreamingStdOutCallbackHandler()],
             )
         MongoClient(self.conn_string)
         self.message_history = MongoDBChatMessageHistory(
@@ -71,6 +69,7 @@ class LLM(metaclass=Singleton):
             ai_prefix="Jarvis",
             k=3,
         )
+        # self.message_history.clear()
 
         # self.collection = client[db_name][collection_name]
 
@@ -99,7 +98,20 @@ class LLM(metaclass=Singleton):
         curr_conv = kwargs.get("curr_conv")
         date_str = kwargs.get("date_str")
         rel_mem = kwargs.get("rel_mem")
-        # llm = OpenAI(temperature=1, max_tokens=70)
+        # stream = kwargs.get("stream")
+
+        # stdout = sys.stdout
+        # stringio = StringIO()
+        # sys.stdout = stringio
+
+        def token_generator(llm):
+            buffer = []
+            for token in llm.stream():
+                buffer.append(token)
+                if token == "\n":
+                    yield buffer
+                    buffer = []
+
         gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
 
         response = gptchain.predict(
@@ -109,5 +121,6 @@ class LLM(metaclass=Singleton):
             rel_mem=rel_mem,
             date_str=date_str,
         )
+
         LOG.info(f"LLM response: {response}")
         return response

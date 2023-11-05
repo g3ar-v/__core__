@@ -91,7 +91,7 @@ class IntentService:
             LOG.exception(
                 "Failed to create padatious handlers " "({})".format(repr(err))
             )
-        self.common_qa = QAService(bus)
+        self.persona = QAService(bus)
         self.fallback = FallbackService(bus)
 
         self.bus.on("register_vocab", self.handle_register_vocab)
@@ -108,18 +108,19 @@ class IntentService:
         self.bus.on("core.speech.recognition.unknown", self.reset_converse)
         self.bus.on("core.skills.loaded", self.update_skill_name_dict)
 
-        def remove_active_skill_handler(message):
-            skill_id = message.data["skill_id"]
-            self.remove_active_skill(skill_id)
-            LOG.debug("Removing active skill: " + skill_id)
-
         def add_active_skill_handler(message):
             skill_id = message.data["skill_id"]
             self.add_active_skill(skill_id)
             LOG.debug("Adding active skill: " + skill_id)
 
+        def remove_active_skill_handler(message):
+            skill_id = message.data["skill_id"]
+            self.remove_active_skill(skill_id)
+            LOG.debug("Removing active skill: " + skill_id)
+
         self.bus.on("active_skill_request", add_active_skill_handler)
         self.bus.on("remove_active_skill", remove_active_skill_handler)
+
         self.active_skills = []  # [skill_id , timestamp]
         # HACK: set to 0.5 for qa to not loop for a long time and let padatious handle
         # intent
@@ -278,7 +279,7 @@ class IntentService:
                 self._converse,
                 padatious_matcher.match_high,
                 self.adapt_service.match_intent,
-                self.common_qa.match,
+                self.persona.match,
                 self.fallback.high_prio,
                 padatious_matcher.match_medium,
                 self.fallback.medium_prio,

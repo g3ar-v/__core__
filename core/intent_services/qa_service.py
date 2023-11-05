@@ -1,33 +1,41 @@
 import re
-import time
 from itertools import chain
-from threading import Event, Lock
+from threading import Lock
+from typing import Any
+from uuid import UUID
+
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.chains import LLMChain
+from langchain.chat_models import ChatOpenAI
+from langchain.schema.output import LLMResult
 
 import core.intent_services
+from core.llm import LLM, main_persona_prompt
 from core.messagebus.message import Message, dig_for_message
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
+from core.util.time import now_local
 
 EXTENSION_TIME = 10
 
 
 class QAService:
-    """Intent service for handling query skills.
-    The best answer is selected from response of all skills queried
+    """
+    Core persona of the system, provides conversation and retrieval of
+    relevant information
     """
 
+    # TODO: add to active skill list for convesation
+    # TODO: fix "I don't understand at the end"
     def __init__(self, bus):
         self.bus = bus
-        self.skill_id = "common_query.query_skill"
-        self.query_replies = {}  # cache of received replies
-        self.query_extensions = {}  # maintains query timeout extensions
+        self.skill_id = "persona"
         self.lock = Lock()
-        self.waiting = True
         self.answered = False
         self._vocabs = {}
-        self.searching = Event()
-        self.bus.on("question:query.response", self.handle_query_response)
-        self.bus.on("common_query.question", self.handle_question)
+        self.llm = LLM()
+        # self.bus.on("question:query.response", self.handle_query_response)
+        # self.bus.on("common_query.question", self.handle_question)
         # self.bus.on("")
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
@@ -73,17 +81,6 @@ class QAService:
 
         return match
 
-    def is_question_like(self, utterance, lang):
-        # skip utterances with less than 3 words
-        # NOTE: removing this code cause it could filter out one line answers that
-        # make sense
-        # if len(utterance.split(" ")) < 3:
-        #     return False
-        # skip utterances meant for common play
-        if self.voc_match(utterance, "common_play", lang):
-            return False
-        return True
-
     def match(self, utterances, lang, message):
         """Send common query request and select best response
 
@@ -104,163 +101,127 @@ class QAService:
             if self.is_question_like(utterance, lang):
                 message.data["lang"] = lang  # only used for speak
                 message.data["utterance"] = utterance
-                answered = self.handle_question(message)
+                answered = self.handle_query_response(utterance)
                 if answered:
                     match = core.intent_services.IntentMatch(
-                        "CommonQuery", None, {}, None
+                        "persona", None, {}, self.skill_id
                     )
                 break
+            self.bus.emit(
+                Message(
+                    "active_skill_request",
+                    {"skill_id": self.skill_id},
+                )
+            )
         return match
 
-    def handle_question(self, message):
-        """Send the phrase to the CommonQuerySkills and prepare for handling
-        the replies.
-        """
-        self.searching.set()
-        self.waiting = True
-        self.answered = False
-        utt = message.data.get("utterance")
-
-        self.query_replies[utt] = []
-        self.query_extensions[utt] = []
-        LOG.info("Searching for {}".format(utt))
-        # Send the query to anyone listening for them
-        msg = message.reply("question:query", data={"phrase": utt})
-        if "skill_id" not in msg.context:
-            msg.context["skill_id"] = self.skill_id
-        self.bus.emit(msg)
-
-        self.timeout_time = time.time() + 1
-
-        # If not waiting or the time has been exceeded
-        while self.searching.is_set():
-            if not self.waiting or time.time() > self.timeout_time + 1:
-                break
-
-            time.sleep(1)
-
-        self._query_timeout(message)
-        return self.answered
+    def is_question_like(self, utterance, lang):
+        # skip utterances meant for common play
+        if self.voc_match(utterance, "common_play", lang):
+            return False
+        return True
 
     def handle_query_response(self, message):
-        search_phrase = message.data["phrase"]
-        skill_id = message.data["skill_id"]
-        searching = message.data.get("searching")
-        answer = message.data.get("answer")
+        today = now_local()
+        date_str = today.strftime("%B %d, %Y")
+        time_str = today.strftime("%I:%M %p")
 
-        # Manage requests for time to complete searches
-        if searching:
-            # extend the timeout by seconds
-            self.timeout_time = time.time() + EXTENSION_TIME
+        class CustomCallback(BaseCallbackHandler):
+            def __init__(self, bus, skill_id) -> None:
+                # self.outputs = outputs
+                self.buffer = ""
+                self.bus = bus
+                self.skill_id = skill_id
+                self.completed = False
 
-            # TODO: Perhaps block multiple extensions?
-            if (
-                search_phrase in self.query_extensions
-                and skill_id not in self.query_extensions[search_phrase]
-            ):
-                self.query_extensions[search_phrase].append(skill_id)
-        elif search_phrase in self.query_extensions:
-            # Search complete, don't wait on this skill any longer
-            if answer and search_phrase in self.query_replies:
-                LOG.info("Answer from {}".format(skill_id))
-                self.query_replies[search_phrase].append(message.data)
+            async def on_llm_new_token(
+                self,
+                token: str,
+                *,
+                run_id,
+                parent_run_id=None,
+                **kwargs: Any,
+            ) -> None:
+                self.buffer += token
+                # LOG.info(f"tokens: {self.buffer}")
+                if token in ["\n", "."]:  # if token is a newline or a full-stop
+                    LOG.info(f"returning string: {self.buffer}")
+                    self.speak(self.buffer)
+                    self.buffer = ""  # reset the buffer
 
-            # Remove the skill from list of extensions
-            if skill_id in self.query_extensions[search_phrase]:
-                self.query_extensions[search_phrase].remove(skill_id)
+            async def on_llm_end(
+                self,
+                response: LLMResult,
+                *,
+                run_id: UUID,
+                parent_run_id: UUID | None = None,
+                **kwargs: Any,
+            ) -> Any:
+                self.bus.emit(Message("core.mic.listen"))
 
-            # No waiting for any more skill
-            if not self.query_extensions[search_phrase]:
-                self._query_timeout(
-                    message.reply("question:query.timeout", message.data)
-                )
+            def speak(self, utterance, expect_response=False, message=None):
+                """Speak a sentence.
 
-        else:
-            LOG.warning("{} Answered too slowly," "will be ignored.".format(skill_id))
+                Args:
+                    utterance (str): sentence system should speak
+                """
+                # registers the skill as being active
+                # self.enclosure.register(self.skill_id)
 
-    def _query_timeout(self, message):
-        if not self.searching.is_set():
-            LOG.warning("got a common query response outside search window")
-            return  # not searching, ignore timeout event
-        self.searching.clear()
+                message = message or dig_for_message()
+                # lang = get_message_lang(message)
+                data = {
+                    "utterance": utterance,
+                    "expect_response": expect_response,
+                    "meta": {"skill": self.skill_id},
+                }
 
-        # Prevent any late-comers from retriggering this query handler
-        with self.lock:
-            LOG.info("Timeout occured check responses")
-            search_phrase = message.data.get("phrase", "")
-            if search_phrase in self.query_extensions:
-                self.query_extensions[search_phrase] = []
-            # self.enclosure.mouth_reset()
+                m = Message("speak", data)
+                m.context["skill_id"] = self.skill_id
+                self.bus.emit(m)
 
-            # Look at any replies that arrived before the timeout
-            # Find response(s) with the highest confidence
-            best = None
-            ties = []
-            if search_phrase in self.query_replies:
-                for handler in self.query_replies[search_phrase]:
-                    if not best or handler["conf"] > best["conf"]:
-                        best = handler
-                        ties = []
-                    elif handler["conf"] == best["conf"]:
-                        ties.append(handler)
+        outputs = []
+        model = ChatOpenAI(
+            temperature=0.7,
+            max_tokens=85,
+            model="gpt-3.5-turbo",
+            streaming=True,
+            callbacks=[CustomCallback(self.bus, self.skill_id)],
+        )
+        gptchain = LLMChain(llm=model, verbose=True, prompt=main_persona_prompt)
 
-            if best:
-                if ties:
-                    # TODO: Ask user to pick between ties or do it automagically
-                    pass
+        # response = gptchain.predict(
+        #     context=context,
+        #     query=query,
+        #     curr_conv=curr_conv,
+        #     rel_mem=rel_mem,
+        #     date_str=date_str,
+        # )
+        # for response in callback.string_generator():
+        LOG.info(f"output: {outputs}")
+        # return outputs
 
-                # invoke best match
-                # self.speak(best['answer'], expect_response=True if best['answer'].
-                # endswith("?") or "?" in best['answer'] else False)
-                self.speak(best["answer"], expect_response=True)
+        # sys.stdout = stdout
+        # token_list = stringio.getvalue().split("\x1b[0m")
+        # for tokens in token_generator(model):
+        #     LOG.info(f"output: {tokens}")
 
-                # self.bus.emit(Message("core.mic.listen"))
-                LOG.info("Handling with: " + str(best["skill_id"]))
-                self.bus.emit(
-                    message.forward(
-                        "question:action",
-                        data={
-                            "skill_id": best["skill_id"],
-                            "phrase": search_phrase,
-                            "callback_data": best.get("callback_data"),
-                        },
-                    )
-                )
-                # This allows a smooth conversation but there's an issue when ending the conversation
-                # TODO: When user utterance is no or nevermind remove from active skill and handle with padatious
-                # HACK: allow qa_service which is not a skill to converse
-                self.bus.emit(
-                    Message(
-                        "active_skill_request",
-                        {"skill_id": best["skill_id"]},
-                    )
-                )
-                self.answered = True
-            else:
-                self.answered = False
-            self.waiting = False
-            if search_phrase in self.query_replies:
-                del self.query_replies[search_phrase]
-            if search_phrase in self.query_extensions:
-                del self.query_extensions[search_phrase]
-
-    def speak(self, utterance, expect_response=False, message=None):
-        """Speak a sentence.
-
-        Args:
-            utterance (str): sentence system should speak
-        """
-        # registers the skill as being active
-        # self.enclosure.register(self.skill_id)
-
-        message = message or dig_for_message()
-        # lang = get_message_lang(message)
-        data = {
-            "utterance": utterance,
-            "expect_response": expect_response,
-            "meta": {"skill": self.skill_id},
-        }
-
-        m = Message("speak", data)
-        m.context["skill_id"] = self.skill_id
-        self.bus.emit(m)
+        chat_history = self.llm.chat_history.load_memory_variables({})["chat_history"]
+        try:
+            gptchain.predict(
+                curr_conv=chat_history,
+                rel_mem=None,
+                date_str=date_str + ", " + time_str,
+                query=message,
+            )
+            # LOG.info(f"persona is handling utterance: {responses}")
+            # LOG.info(f"type of output: {responses}")
+            # LOG.info(f"predictions: {prediction}")
+            # self.speak(prediction)
+            # for response in responses:
+            # self.speak(response)
+            self.answered = True
+            return self.answered
+        except Exception as e:
+            LOG.error("error in llm response: {}".format(e))
+            return None

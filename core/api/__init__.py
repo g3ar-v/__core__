@@ -550,3 +550,24 @@ class MetricsApi(BaseApi):
 
     def report_metric(self, name, data):
         return self.backend.metrics_upload(name, data)
+
+
+class EmailApi(BaseApi):
+    """Web API wrapper for sending email"""
+
+    def __init__(self, url=None, version="v1", identity_file=None, backend_type=None):
+        super().__init__(url, version, identity_file, backend_type)
+
+    def validate_backend_type(self):
+        if not API_REGISTRY[self.backend_type]["email"]:
+            raise ValueError(
+                f"{self.__class__.__name__} not available for {self.backend_type}"
+            )
+        # if self.backend_type == BackendType.OFFLINE:
+        #     self.url = self.credentials["smtp"]["host"]
+        # else:
+        #     self.url = self.backend_url
+        self.url = self.credentials["smtp"]["host"]
+
+    def send_email(self, title, body, sender):
+        return self.backend.email_send(title, body, sender)
