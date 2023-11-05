@@ -14,31 +14,27 @@
 #
 """"Load, update and manage skills on this device."""
 import os
-import time
-from inspect import signature
 from glob import glob
-from threading import Thread, Event, Lock
-from time import sleep, monotonic
+from inspect import signature
+from threading import Event, Lock, Thread
+from time import monotonic, sleep
 
-from core.api import is_paired
-from core.messagebus.client import MessageBusClient
 from core import Message
 from core.configuration import Configuration
-from core.llm.llm import LLM
-from core.util.log import LOG
-from core.util.file_utils import FileWatcher
-from core.util.process_utils import StatusCallbackMap, ProcessStatus, ProcessState
 from core.configuration.locations import get_core_config_dir
+from core.llm.llm import LLM
+from core.messagebus.client import MessageBusClient
+from core.util.file_utils import FileWatcher
+from core.util.log import LOG
+from core.util.process_utils import ProcessState, ProcessStatus, StatusCallbackMap
+
+from .msm_wrapper import build_msm_config
 
 # from ovos_config.config import Configuration
-
-from .msm_wrapper import create_msm as msm_creator, build_msm_config
+from .msm_wrapper import create_msm as msm_creator
 
 # from ovos_utils.process_utils import ProcessStatus, StatusCallbackMap, ProcessState
-
 from .skill_loader import SkillLoader
-from .skill_updater import SkillUpdater
-from .settings import SkillSettingsDownloader
 
 SKILL_MAIN_MODULE = "__init__.py"
 
@@ -180,7 +176,6 @@ class SkillManager(Thread):
         self._internet_loaded = Event()
         self._allow_state_reloads = True
         self.upload_queue = UploadQueue()
-        self.skill_updater = SkillUpdater()
 
         self.config = Configuration.get()
         # self.sysconf = SysConf.get()
@@ -191,7 +186,6 @@ class SkillManager(Thread):
         self.initial_load_complete = False
         self.num_install_retries = 0
         self.empty_skill_dirs = set()  # Save a record of empty skill dirs.
-        self.settings_downloader = SkillSettingsDownloader(self.bus)
 
         self._define_message_bus_events()
         self.daemon = True
@@ -236,7 +230,6 @@ class SkillManager(Thread):
         # load skills waiting for connectivity
         # self.bus.on("core.internet.connected", self.handle_internet_connected)
         # self.bus.on("core.internet.disconnected", self.handle_internet_disconnected)
-        self.bus.on("core.skills.settings.update", self.settings_downloader.download)
 
     def handle_check_device_readiness(self, message):
         ready = False
@@ -244,8 +237,7 @@ class SkillManager(Thread):
             try:
                 ready = self.is_device_ready()
             except TimeoutError:
-                if is_paired():
-                    LOG.warning("System should already have reported ready!")
+                LOG.warning("System should already have reported ready!")
                 sleep(5)
 
         LOG.info("System is all loaded and ready to roll!")
@@ -296,20 +288,8 @@ class SkillManager(Thread):
 
         return msm_instance
 
-    def schedule_now(self, _):
-        self.skill_updater.next_download = time() - 1
-
-    def _start_settings_update(self):
-        LOG.info("Start settings update")
-        self.skill_updater.post_manifest(reload_skills_manifest=True)
-        self.upload_queue.start()
-        LOG.info("All settings meta has been processed or upload has started")
-        self.settings_downloader.download()
-        LOG.info("Skill settings downloading has started")
-
-    def handle_paired(self, _):
-        """Trigger upload of skills manifest after pairing."""
-        self._start_settings_update()
+    # def schedule_now(self, _):
+    #     self.skill_updater.next_download = time() - 1
 
     def _get_internal_skill_bus(self):
         if not self.config["websocket"].get("shared_connection", True):
@@ -409,8 +389,9 @@ class SkillManager(Thread):
                         self.upload_queue.put(skill_loader)
             except Exception:
                 LOG.exception(
-                    "Unhandled exception occured while "
-                    "reloading {}".format(skill_dir)
+                    "Unhandled exception occured while " "reloading {}".format(
+                        skill_dir
+                    )
                 )
 
     def _load_new_skills(self):
@@ -418,8 +399,6 @@ class SkillManager(Thread):
         for skill_dir in self._get_skill_directories():
             if skill_dir not in self.skill_loaders:
                 loader = self._load_skill(skill_dir)
-                if loader:
-                    self.upload_queue.put(loader)
 
     def _get_skill_loader(self, skill_directory, init_bus=True):
         bus = None
@@ -480,20 +459,6 @@ class SkillManager(Thread):
             except Exception:
                 LOG.exception("Failed to shutdown skill " + skill.id)
             del self.skill_loaders[skill_dir]
-
-        # If skills were removed make sure to update the manifest on the
-        # core backend.
-        if removed_skills:
-            self.skill_updater.post_manifest(reload_skills_manifest=True)
-
-    def _update_skills(self):
-        """Update skills once an hour if update is enabled"""
-        do_skill_update = (
-            time() >= self.skill_updater.next_download
-            and self.skills_config["auto_update"]
-        )
-        if do_skill_update:
-            self.skill_updater.update_skills()
 
     def is_alive(self, message=None):
         """Respond to is_alive status request."""
@@ -617,10 +582,6 @@ class SkillManager(Thread):
         self.bus.emit(reply)
 
     def _emit_converse_response(self, result, message, skill_loader):
-        # NOTE: this could work but it doesn't catch responses that are not conversation
-        # response = result.get("text")
-        # LOG.info("main response: " + response)
-        # self.llm.message_history.add_ai_message(response)
         reply = message.reply(
             "skill.converse.response",
             data=dict(skill_id=skill_loader.skill_id, result=result),

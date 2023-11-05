@@ -9,34 +9,29 @@ from lingua_franca import load_languages
 
 import core.lock
 from core import dialog
-from core.api import DeviceApi, is_paired, BackendDown
-
-# from backend_client.pairing import is_paired
-# from backend_client.exceptions import BackendDown
 from core.audio import wait_while_speaking
 from core.configuration import Configuration
+from core.intent_services import IntentService
 from core.messagebus.message import Message
+
+# from core.util.process_utils import ProcessStatus, StatusCallbackMap
+from core.skills.api import SkillApi
+from core.skills.event_scheduler import EventScheduler
+from core.skills.fallback_skill import FallbackSkill
+from core.skills.skill_manager import (
+    SkillManager,
+    on_alive,
+    on_error,
+    on_ready,
+    on_started,
+    on_stopping,
+)
 from core.util import (
     reset_sigint_handler,
     start_message_bus_client,
     wait_for_exit_signal,
 )
-from core.intent_services import IntentService
 from core.util.log import LOG
-
-# from core.util.process_utils import ProcessStatus, StatusCallbackMap
-
-from core.skills.api import SkillApi
-from core.skills.fallback_skill import FallbackSkill
-from core.skills.event_scheduler import EventScheduler
-from core.skills.skill_manager import (
-    SkillManager,
-    on_alive,
-    on_ready,
-    on_error,
-    on_started,
-    on_stopping,
-)
 
 RASPBERRY_PI_PLATFORMS = "picroft"
 
@@ -72,17 +67,6 @@ class DevicePrimer(object):
             # self._ensure_device_is_paired()
             # self._update_device_attributes_on_backend()
 
-    def _get_pairing_status(self):
-        """Set an instance attribute indicating the device's pairing status"""
-        try:
-            self.is_paired = is_paired(ignore_errors=False)
-        except BackendDown:
-            LOG.error("Cannot complete device updates due to backend issues.")
-            self.backend_down = True
-
-        if self.is_paired:
-            LOG.info("Device is paired")
-
     def _update_system_clock(self):
         """Force a sync of the local clock with the Network Time Protocol.
 
@@ -108,31 +92,6 @@ class DevicePrimer(object):
         """Notify user of inability to communicate with the backend."""
         self._speak_dialog(dialog_id="backend.down")
         self.bus.emit(Message("backend.down"))
-
-    def _ensure_device_is_paired(self):
-        """Determine if device is paired, if not automatically start pairing.
-
-        Pairing cannot be performed if there is no connection to the back end.
-        So skip pairing if the backend is down.
-        """
-        if not self.is_paired and not self.backend_down:
-            LOG.info("Device not paired, invoking the pairing skill")
-            payload = dict(utterances=["pair my device"], lang="en-us")
-            self.bus.emit(Message("recognizer_loop:utterance", payload))
-
-    def _update_device_attributes_on_backend(self):
-        """Communicate version information to the backend.
-
-        The backend tracks core version, enclosure version, platform build
-        and platform name for each device, if it is known.
-        """
-        if self.is_paired:
-            LOG.info("Sending updated device attributes to the backend...")
-            try:
-                api = DeviceApi()
-                api.update_version()
-            except Exception:
-                self._notify_backend_down()
 
     def _update_system(self):
         """Emit an update event that will be handled by the admin service."""
