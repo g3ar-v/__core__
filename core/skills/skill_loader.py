@@ -12,7 +12,7 @@ from core.util.log import LOG
 
 from .settings import SettingsMetaUploader
 
-SKILL_MAIN_MODULE = '__init__.py'
+SKILL_MAIN_MODULE = "__init__.py"
 
 
 def remove_submodule_refs(module_name):
@@ -26,15 +26,15 @@ def remove_submodule_refs(module_name):
         module_name: name of skill module.
     """
     submodules = []
-    LOG.debug('Skill module: {}'.format(module_name))
+    LOG.debug("Skill module: {}".format(module_name))
     # Collect found submodules
     for m in sys.modules:
-        if m.startswith(module_name + '.'):
+        if m.startswith(module_name + "."):
             submodules.append(m)
     # Remove all references them to in sys.modules
     for m in submodules:
-        LOG.debug('Removing sys.modules ref for {}'.format(m))
-        del(sys.modules[m])
+        LOG.debug("Removing sys.modules ref for {}".format(m))
+        del sys.modules[m]
 
 
 def load_skill_module(path, skill_id):
@@ -47,7 +47,7 @@ def load_skill_module(path, skill_id):
         path: Path to the skill main file (__init__.py)
         skill_id: skill_id used as skill identifier in the module list
     """
-    module_name = skill_id.replace('.', '_')
+    module_name = skill_id.replace(".", "_")
 
     remove_submodule_refs(module_name)
 
@@ -85,13 +85,13 @@ def _get_last_modified_time(path):
     """
     all_files = []
     for root_dir, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
         for f in files:
             ignore_file = (
-                    f.endswith('.pyc') or
-                    f == 'settings.json' or
-                    f.startswith('.') or
-                    f.endswith('.qmlc')
+                f.endswith(".pyc")
+                or f == "settings.json"
+                or f.startswith(".")
+                or f.endswith(".qmlc")
             )
             if not ignore_file:
                 all_files.append(os.path.join(root_dir, f))
@@ -101,7 +101,7 @@ def _get_last_modified_time(path):
     # Ensure modification times are valid
     bad_times = _bad_mod_times(mod_times)
     if bad_times:
-        raise OSError('{} had bad modification times'.format(bad_times))
+        raise OSError("{} had bad modification times".format(bad_times))
     if all_files:
         return max(os.path.getmtime(f) for f in all_files)
     else:
@@ -126,7 +126,7 @@ class SkillLoader:
     @property
     def is_blacklisted(self):
         """Boolean value representing whether or not a skill is blacklisted."""
-        blacklist = self.config['skills'].get('blacklisted_skills', [])
+        blacklist = self.config["skills"].get("blacklisted_skills", [])
         if self.skill_id in blacklist:
             return True
         else:
@@ -144,8 +144,9 @@ class SkillLoader:
             self.last_modified = self.last_loaded
             if not self.modtime_error_log_written:
                 self.modtime_error_log_written = True
-                LOG.error('Failed to get last_modification time '
-                          '({})'.format(repr(err)))
+                LOG.error(
+                    "Failed to get last_modification time " "({})".format(repr(err))
+                )
         else:
             self.modtime_error_log_written = False
 
@@ -154,20 +155,17 @@ class SkillLoader:
         # create local reference to avoid threading issues
         instance = self.instance
 
-        reload_allowed = (
-                self.active and
-                (instance is None or instance.reload_skill)
-        )
+        reload_allowed = self.active and (instance is None or instance.reload_skill)
         return modified and reload_allowed
 
     def reload(self):
-        LOG.info('ATTEMPTING TO RELOAD SKILL: ' + self.skill_id)
+        LOG.info("ATTEMPTING TO RELOAD SKILL: " + self.skill_id)
         if self.instance:
             self._unload()
         return self._load()
 
     def load(self):
-        LOG.info('ATTEMPTING TO LOAD SKILL: ' + self.skill_id)
+        LOG.info("ATTEMPTING TO LOAD SKILL: " + self.skill_id)
         return self._load()
 
     def _unload(self):
@@ -196,10 +194,10 @@ class SkillLoader:
         try:
             self.instance.default_shutdown()
         except Exception:
-            log_msg = 'An error occurred while shutting down {}'
+            log_msg = "An error occurred while shutting down {}"
             LOG.exception(log_msg.format(self.instance.name))
         else:
-            LOG.info('Skill {} shut down successfully'.format(self.skill_id))
+            LOG.info("Skill {} shut down successfully".format(self.skill_id))
 
     def _garbage_collect(self):
         """Invoke Python garbage collector to remove false references"""
@@ -216,7 +214,7 @@ class SkillLoader:
     def _emit_skill_shutdown_event(self):
         message = Message(
             "core.skills.shutdown",
-            data=dict(path=self.skill_directory, id=self.skill_id)
+            data=dict(path=self.skill_directory, id=self.skill_id),
         )
         self.bus.emit(message)
 
@@ -237,8 +235,7 @@ class SkillLoader:
         return self.loaded
 
     def _prepare_settings_meta(self):
-        settings_meta = SettingsMetaUploader(self.skill_directory,
-                                             self.instance.name)
+        settings_meta = SettingsMetaUploader(self.skill_directory, self.instance.name)
         self.instance.settings_meta = settings_meta
 
     def _prepare_for_load(self):
@@ -247,25 +244,25 @@ class SkillLoader:
         self.instance = None
 
     def _skip_load(self):
-        log_msg = 'Skill {} is blacklisted - it will not be loaded'
+        log_msg = "Skill {} is blacklisted - it will not be loaded"
         LOG.info(log_msg.format(self.skill_id))
 
     def _load_skill_source(self):
         """Use Python's import library to load a skill's source code."""
         main_file_path = os.path.join(self.skill_directory, SKILL_MAIN_MODULE)
         if not os.path.exists(main_file_path):
-            error_msg = 'Failed to load {} due to a missing file.'
+            error_msg = "Failed to load {} due to a missing file."
             LOG.error(error_msg.format(self.skill_id))
         else:
             try:
                 skill_module = load_skill_module(main_file_path, self.skill_id)
             except Exception as e:
-                LOG.exception('Failed to load skill: '
-                              '{} ({})'.format(self.skill_id, repr(e)))
+                LOG.exception(
+                    "Failed to load skill: " "{} ({})".format(self.skill_id, repr(e))
+                )
             else:
-                module_is_skill = (
-                    hasattr(skill_module, 'create_skill') and
-                    callable(skill_module.create_skill)
+                module_is_skill = hasattr(skill_module, "create_skill") and callable(
+                    skill_module.create_skill
                 )
                 if module_is_skill:
                     return skill_module
@@ -276,7 +273,7 @@ class SkillLoader:
         try:
             self.instance = skill_module.create_skill()
         except Exception as e:
-            log_msg = 'Skill __init__ failed with {}'
+            log_msg = "Skill __init__ failed with {}"
             LOG.exception(log_msg.format(repr(e)))
             self.instance = None
 
@@ -288,28 +285,23 @@ class SkillLoader:
                 # Set up intent handlers
                 # TODO: can this be a public method?
                 self.instance._register_decorated()
-                self.instance.register_resting_screen()
                 self.instance.initialize()
             except Exception as e:
                 # If an exception occurs, make sure to clean up the skill
                 self.instance.default_shutdown()
                 self.instance = None
-                log_msg = 'Skill initialization failed with {}'
+                log_msg = "Skill initialization failed with {}"
                 LOG.exception(log_msg.format(repr(e)))
 
         return self.instance is not None
 
     def _check_for_first_run(self):
         """The very first time a skill is run, speak the intro."""
-        first_run = self.instance.settings.get(
-            "__core_skill_firstrun",
-            True
-        )
+        first_run = self.instance.settings.get("__core_skill_firstrun", True)
         if first_run:
             LOG.info("First run of " + self.skill_id)
             self.instance.settings["__core_skill_firstrun"] = False
-            save_settings(self.instance.settings_write_path,
-                          self.instance.settings)
+            save_settings(self.instance.settings_write_path, self.instance.settings)
             intro = self.instance.get_intro_message()
             if intro:
                 self.instance.speak(intro)
@@ -317,20 +309,20 @@ class SkillLoader:
     def _communicate_load_status(self):
         if self.loaded:
             message = Message(
-                'core.skills.loaded',
+                "core.skills.loaded",
                 data=dict(
                     path=self.skill_directory,
                     id=self.skill_id,
                     name=self.instance.name,
-                    modified=self.last_modified
-                )
+                    modified=self.last_modified,
+                ),
             )
             self.bus.emit(message)
-            LOG.info('Skill {} loaded successfully'.format(self.skill_id))
+            LOG.info("Skill {} loaded successfully".format(self.skill_id))
         else:
             message = Message(
-                'core.skills.loading_failure',
-                data=dict(path=self.skill_directory, id=self.skill_id)
+                "core.skills.loading_failure",
+                data=dict(path=self.skill_directory, id=self.skill_id),
             )
             self.bus.emit(message)
-            LOG.error('Skill {} failed to load'.format(self.skill_id))
+            LOG.error("Skill {} failed to load".format(self.skill_id))

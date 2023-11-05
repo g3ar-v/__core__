@@ -24,10 +24,11 @@ from core.api import is_paired
 from core.messagebus.client import MessageBusClient
 from core import Message
 from core.configuration import Configuration
+from core.llm.llm import LLM
 from core.util.log import LOG
 from core.util.file_utils import FileWatcher
 from core.util.process_utils import StatusCallbackMap, ProcessStatus, ProcessState
-from core.configuration.locations import get_xdg_config_save_path
+from core.configuration.locations import get_core_config_dir
 
 # from ovos_config.config import Configuration
 
@@ -158,6 +159,7 @@ class SkillManager(Thread):
         """
         super(SkillManager, self).__init__()
         self.bus = bus
+        self.llm = LLM()
         self._settings_watchdog = None
         # Set watchdog to argument or function returning None
         self._watchdog = watchdog or (lambda: None)
@@ -199,7 +201,7 @@ class SkillManager(Thread):
 
     def _init_filewatcher(self):
         # monitor skill settings files for changes
-        sspath = f"{get_xdg_config_save_path('core')}/skills/"
+        sspath = f"{get_core_config_dir('core')}/skills/"
         os.makedirs(sspath, exist_ok=True)
         self._settings_watchdog = FileWatcher(
             [sspath],
@@ -352,7 +354,7 @@ class SkillManager(Thread):
         LOG.debug("removed git locks")
         self._connected_event.wait()
         LOG.debug("internet is available")
-        self.load_priority()
+        # self.load_priority()
         self.status.set_alive()
         self._load_on_startup()
         self.bus.emit(Message("core.skills.initialized"))
@@ -615,6 +617,10 @@ class SkillManager(Thread):
         self.bus.emit(reply)
 
     def _emit_converse_response(self, result, message, skill_loader):
+        # NOTE: this could work but it doesn't catch responses that are not conversation
+        # response = result.get("text")
+        # LOG.info("main response: " + response)
+        # self.llm.message_history.add_ai_message(response)
         reply = message.reply(
             "skill.converse.response",
             data=dict(skill_id=skill_loader.skill_id, result=result),

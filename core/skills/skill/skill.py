@@ -1,21 +1,19 @@
 """Common functionality relating to the implementation of skills."""
 
-from copy import deepcopy
-import sys
 import re
+import sys
 import traceback
+from copy import deepcopy
 from itertools import chain
 from os import walk
-from os.path import join, abspath, dirname, basename, exists
+from os.path import abspath, basename, dirname, exists, join
 from pathlib import Path
-from threading import Event, Timer, Lock
-
-from xdg import BaseDirectory
+from threading import Event, Lock, Timer
 
 from adapt.intent import Intent, IntentBuilder
+from xdg import BaseDirectory
 
 from core import dialog
-
 from core.api import EmailApi
 from core.audio import wait_while_speaking
 
@@ -24,28 +22,29 @@ from core.audio import wait_while_speaking
 from core.configuration import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
+from core.llm import LLM
 from core.messagebus.message import Message, dig_for_message
 
 # from core.metrics import report_metric
-from core.util import resolve_resource_file, play_audio_file, camel_case_split
-from core.util.log import LOG
-from core.util.format import pronounce_number, join_list
-from core.util.parse import match_one, extract_number
+from core.util import camel_case_split, play_audio_file, resolve_resource_file
+from core.util.format import join_list, pronounce_number
 from core.util.intent_service_interface import IntentServiceInterface
+from core.util.log import LOG
+from core.util.parse import extract_number, match_one
 
-from .event_container import EventContainer, create_wrapper, get_handler_name
 from ..event_scheduler import EventSchedulerInterface
 from ..settings import get_local_settings, save_settings
 from ..skill_data import (
-    load_vocabulary,
     load_regex,
-    to_alnum,
-    munge_regex,
+    load_vocabulary,
     munge_intent_parser,
-    read_vocab_file,
-    read_value_file,
+    munge_regex,
     read_translated_file,
+    read_value_file,
+    read_vocab_file,
+    to_alnum,
 )
+from .event_container import EventContainer, create_wrapper, get_handler_name
 
 
 def simple_trace(stack_trace):
@@ -113,6 +112,7 @@ class Skill:
         # self.gui = SkillGUI(self)
 
         self._bus = None
+        self.llm = LLM()
         # self._enclosure = None
         self.bind(bus)
         # global configuration. (dict)
@@ -669,47 +669,6 @@ class Skill:
     def remove_from_active_skill_list(self):
         """Revert skill to default state if it's in active_skill list"""
         self.bus.emit(Message("remove_active_skill", {"skill_id": self.skill_id}))
-
-    def _handle_collect_resting(self, _=None):
-        """Handler for collect resting screen messages.
-
-        Sends info on how to trigger this skills resting page.
-        """
-        self.log.info("Registering resting screen")
-        message = Message(
-            "mycroft.mark2.register_idle",
-            data={"name": self.resting_name, "id": self.skill_id},
-        )
-        self.bus.emit(message)
-
-    def register_resting_screen(self):
-        """Registers resting screen from the resting_screen_handler decorator.
-
-        This only allows one screen and if two is registered only one
-        will be used.
-        """
-        for attr_name in get_non_properties(self):
-            method = getattr(self, attr_name)
-            if hasattr(method, "resting_handler"):
-                self.resting_name = method.resting_handler
-                self.log.info(
-                    "Registering resting screen {} for {}.".format(
-                        method, self.resting_name
-                    )
-                )
-
-                # Register for handling resting screen
-                msg_type = "{}.{}".format(self.skill_id, "idle")
-                self.add_event(msg_type, method)
-                # Register handler for resting screen collect message
-                self.add_event(
-                    "mycroft.mark2.collect_idle", self._handle_collect_resting
-                )
-
-                # Do a send at load to make sure the skill is registered
-                # if reloaded
-                self._handle_collect_resting()
-                break
 
     def _register_decorated(self):
         """Register all intent handlers that are decorated with an intent.
@@ -1372,8 +1331,9 @@ class Skill:
             self.shutdown()
         except Exception as e:
             LOG.error(
-                "Skill specific shutdown function encountered "
-                "an error: {}".format(repr(e))
+                "Skill specific shutdown function encountered " "an error: {}".format(
+                    repr(e)
+                )
             )
 
         self.settings_change_callback = None
