@@ -168,7 +168,13 @@ function edit_config() {
 
 function signal_reload_config() {
     # Enter the venv
-    source "$DIR/../venv-activate.sh" -q
+    if [ -z "$CONDA_DEFAULT_ENV" ]
+    then
+        echo "conda is not activated, activating it now"
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate core 
+    fi
+    # source "$DIR/../venv-activate.sh" -q
 
     # Post a messagebus notification to reload the config file
     python -m core.messagebus.send "configuration.updated"  "{}" > /dev/null
@@ -189,7 +195,14 @@ function get_config() {
     fi
 
     # Load all the configuration(s)
-    json_config=$( source "$DIR/../venv-activate.sh" -q && python -c "import json; from core.configuration import Configuration; print(json.dumps(Configuration.get()))" )
+    # json_config=$( source "$DIR/../venv-activate.sh" -q && python -c "import json; from core.configuration import Configuration; print(json.dumps(Configuration.get()))" )
+    if [ -z "$CONDA_DEFAULT_ENV" ]
+    then
+        echo "conda is not activated, activating it now"
+        source $(conda info --base)/etc/profile.d/conda.sh
+        conda activate core 
+    fi
+    json_config=$(python -c "import json; from core.configuration import Configuration; print(json.dumps(Configuration.get()))" )
 
     # Read the given variable from the mix
     echo "${json_config}" | jq -r "${value}"

@@ -1,5 +1,6 @@
 #! /bin/zsh
 
+# NOTE: htop, conda, AI should all be installed before running this
 tmux send-keys 'echo "new-session"' C-m
 tmux new-session -d -s trevor 
 # tmux attach-session -c ~/Documents/trevor-core/ -t trevor 
@@ -7,19 +8,20 @@ tmux new-session -d -s trevor
 # setup core
 tmux rename-window 'core'
 tmux send-keys 'echo "pane 1"' C-m
-tmux send-keys "cd $HOME/Documents/__core__/" C-m
+tmux send-keys "cd $JARVIS_PATH" C-m
 tmux send-keys "conda activate core" C-m
 # tmux send-keys "source venv-activate.sh -q" C-m
-tmux send-keys 'nvim setup.py' C-m
-tmux select-window -t @0
-tmux split-window -h -l 25%
-tmux send-keys "cd $HOME/Documents/__core__/" C-m
+# tmux send-keys 'nvim setup.py' C-m
+# tmux select-window -t @0
+tmux split-window -h -l 50%
+tmux send-keys "cd $JARVIS_PATH" C-m
+tmux send-keys "conda activate core" C-m
 # tmux send-keys "source venv-activate.sh -q" C-m
 tmux send-keys "conda activate core" C-m
 tmux select-pane -t %1
-tmux send-keys "source venv-activate.sh -q" C-m
+# tmux send-keys "source venv-activate.sh -q" C-m
 tmux send-keys './start-core.sh debug cli' C-m
-tmux split-window -v -l 50%
+# tmux split-window -v -l 50%
 
 # setup skills window
 tmux new-window -c /opt/core/skills/ -n skills
@@ -29,6 +31,7 @@ tmux select-pane -t %2
 tmux send-keys 'core-start cli' C-m
 tmux split-window -v -l 50%
 tmux send-keys 'cd /opt/core/skills' C-m
+tmux send-keys "conda activate core" C-m
 
 # setup backend window
 # tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
@@ -41,10 +44,13 @@ tmux send-keys 'cd /opt/core/skills' C-m
 
 # setup test window
 # create monitor for activity in Skills window
-tmux new-window -c ~/Documents/__core__/test/ -n test
-tmux split-window -h -l 27%
+tmux new-window -c ~/Documents/__core__/test/ -n log
+tmux split-window -h -l 83%
+# TODO: get core log directory for both linux and mac
+tmux send-keys 'cd private/var/log/core' C-m
 tmux select-pane -t %2
-tmux send-keys 'htop' C-m
+tmux send-keys 'htop --filter python' C-m
+
 tmux split-window -v -l 50%
 
 tmux select-window -t trevor:0

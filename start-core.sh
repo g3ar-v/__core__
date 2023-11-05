@@ -14,6 +14,7 @@ else
 fi
 
 DIR="$( pwd )"
+export CONDA_ENV_NAME="core"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
 function found_exe() {
@@ -87,9 +88,11 @@ name_to_script_path() {
 
 source_venv() {
     # Enter Python virtual environment, unless under Docker
-    echo "Entering virtual environment ${VIRTUALENV_ROOT}"
+    # echo "Entering virtual environment ${VIRTUALENV_ROOT}"
     if [ ! -f "/.dockerenv" ] ; then
-        . "${VIRTUALENV_ROOT}/bin/activate"
+        # . "${VIRTUALENV_ROOT}/bin/activate"
+        source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
+        echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
     fi
 }
 
@@ -97,7 +100,7 @@ first_time=true
 init_once() {
     if ($first_time) ; then
         echo "Initializing..."
-        "${DIR}/scripts/prepare-msm.sh"
+        # "${DIR}/scripts/prepare-msm.sh"
         source_venv
         first_time=false
     fi
@@ -112,7 +115,7 @@ launch_process() {
 
     # Launch process in foreground
     echo "Starting $1"
-    python3 -m ${_module} "$@"
+    python -m ${_module} "$@"
 }
 
 require_process() {
@@ -149,7 +152,7 @@ launch_background() {
     fi
 
     # Launch process in background, sending logs to standard location
-    python3 -m ${_module} "$@" >> "/var/log/core/${1}.log" 2>&1 &
+    python -m ${_module} "$@" >> "/var/log/core/${1}.log" 2>&1 &
 }
 
 launch_all() {

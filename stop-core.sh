@@ -22,13 +22,13 @@ script=${script##*/}
 cd -P "$( dirname "$SOURCE" )" || exit 1 # quit if change of folder fails
 
 help() {
-    echo "${script}:  Mycroft service stopper"
+    echo "${script}:  System service stopper"
     echo "usage: ${script} [service]"
     echo
     echo "Service:"
     echo "  all       ends core services: bus, audio, skills, voice"
     echo "  (none)    same as \"all\""
-    echo "  bus       stop the Mycroft messagebus service"
+    echo "  bus       stop the System messagebus service"
     echo "  audio     stop the audio playback service"
     echo "  skills    stop the skill service"
     echo "  voice     stop voice capture service"

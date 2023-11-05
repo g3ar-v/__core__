@@ -315,9 +315,16 @@ function install_venv() {
     # sudo conda install python="$PYTHON"
     if [[ ! $(conda env list | grep -w $CONDA_ENV_NAME) ]]; then
         echo "$HIGHLIGHT Conda environment ($CONDA_ENV_NAME) does not exist. Creating..." $RESET
-        sudo conda create --name $CONDA_ENV_NAME python=3.9
+        sudo conda create --name $CONDA_ENV_NAME python=3.11
     else
         echo "$HIGHLIGHT Not creating ($CONDA_ENV_NAME) environment as it already exists." $RESET
+        echo 'Do you want to delete the existing conda environment? y/N' | tee -a /var/log/core/setup.log
+        read -rn1 delete_env
+        if [[ $delete_env == 'y' ]] ; then
+        echo # create a gap in the terminal
+            sudo conda remove --name $CONDA_ENV_NAME --all
+            sudo conda create --name $CONDA_ENV_NAME python=3.11
+        fi
     fi
     
     # NOTE: 
@@ -336,12 +343,10 @@ fi
 # this repo only.
 git config commit.template .gitmessage
 
-# Check whether to build mimic (it takes a really long time!)
-if [[ ! -x ${VIRTUALENV_ROOT}/bin/activate ]] ; then
-    if ! install_venv ; then
-        echo 'Failed to set up virtualenv for core, exiting setup.' | tee -a /var/log/core/setup.log
-        exit 1
-    fi
+# Virtual Environment env setup 
+if ! install_venv ; then
+    echo 'Failed to set up virtualenv for core, exiting setup.' | tee -a /var/log/core/setup.log
+    exit 1
 fi
 
 # Start the virtual environment
