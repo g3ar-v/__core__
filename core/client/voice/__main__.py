@@ -5,7 +5,6 @@ from threading import Lock
 from core import dialog
 from core.client.voice.listener import RecognizerLoop
 from core.configuration import Configuration
-from core.identity import IdentityManager
 from core.lock import Lock as PIDLock  # Create/Support PID locking file
 from core.messagebus.message import Message
 from core.util import (
@@ -147,7 +146,7 @@ def handle_paired(event):
     This is done here to make sure it's only done in a single place.
     TODO: Is there a reason this isn't done directly in the pairing skill?
     """
-    IdentityManager.update(event.data)
+    pass
 
 
 def handle_audio_start(event):

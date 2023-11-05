@@ -16,8 +16,6 @@ from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
 from core.util.time import now_local
 
-EXTENSION_TIME = 10
-
 
 class QAService:
     """
@@ -34,9 +32,6 @@ class QAService:
         self.answered = False
         self._vocabs = {}
         self.llm = LLM()
-        # self.bus.on("question:query.response", self.handle_query_response)
-        # self.bus.on("common_query.question", self.handle_question)
-        # self.bus.on("")
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -180,7 +175,6 @@ class QAService:
                 m.context["skill_id"] = self.skill_id
                 self.bus.emit(m)
 
-        outputs = []
         model = ChatOpenAI(
             temperature=0.7,
             max_tokens=85,
@@ -190,22 +184,6 @@ class QAService:
         )
         gptchain = LLMChain(llm=model, verbose=True, prompt=main_persona_prompt)
 
-        # response = gptchain.predict(
-        #     context=context,
-        #     query=query,
-        #     curr_conv=curr_conv,
-        #     rel_mem=rel_mem,
-        #     date_str=date_str,
-        # )
-        # for response in callback.string_generator():
-        LOG.info(f"output: {outputs}")
-        # return outputs
-
-        # sys.stdout = stdout
-        # token_list = stringio.getvalue().split("\x1b[0m")
-        # for tokens in token_generator(model):
-        #     LOG.info(f"output: {tokens}")
-
         chat_history = self.llm.chat_history.load_memory_variables({})["chat_history"]
         try:
             gptchain.predict(
@@ -214,12 +192,7 @@ class QAService:
                 date_str=date_str + ", " + time_str,
                 query=message,
             )
-            # LOG.info(f"persona is handling utterance: {responses}")
-            # LOG.info(f"type of output: {responses}")
-            # LOG.info(f"predictions: {prediction}")
-            # self.speak(prediction)
-            # for response in responses:
-            # self.speak(response)
+
             self.answered = True
             return self.answered
         except Exception as e:

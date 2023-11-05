@@ -73,8 +73,6 @@ class LLM(metaclass=Singleton):
 
         # self.collection = client[db_name][collection_name]
 
-    # TODO: use a local llm to produce response
-
     def use_llm(self, **kwargs):
         """
         Use the Language Model to generate a response based
@@ -98,19 +96,6 @@ class LLM(metaclass=Singleton):
         curr_conv = kwargs.get("curr_conv")
         date_str = kwargs.get("date_str")
         rel_mem = kwargs.get("rel_mem")
-        # stream = kwargs.get("stream")
-
-        # stdout = sys.stdout
-        # stringio = StringIO()
-        # sys.stdout = stringio
-
-        def token_generator(llm):
-            buffer = []
-            for token in llm.stream():
-                buffer.append(token)
-                if token == "\n":
-                    yield buffer
-                    buffer = []
 
         gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
 
