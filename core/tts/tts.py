@@ -582,8 +582,9 @@ class TTSFactory:
 
     from core.tts.elevenlabs_tts import ElevenLabsTTS
     from core.tts.mimic3_tts import Mimic3
+    from core.tts.openai_tts import OpenAITTS
 
-    CLASSES = {"mimic3": Mimic3, "elevenlabs": ElevenLabsTTS}
+    CLASSES = {"mimic3": Mimic3, "elevenlabs": ElevenLabsTTS, "openai": OpenAITTS}
 
     @staticmethod
     def create():
