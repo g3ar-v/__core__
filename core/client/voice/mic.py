@@ -696,13 +696,15 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         else:
             return False
 
-    def play_end_listening_sound(self):
+    def play_end_listening_sound(self, source):
         if self.config.get("confirm_listening_end"):
             audio_file = resolve_resource_file(
                 self.config.get("sounds").get("end_sound")
             )
             LOG.info(audio_file)
+            source.mute()
             play_wav(audio_file).wait()
+            source.unmute()
 
     def listen(
         self,
@@ -771,7 +773,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         emitter.emit("recognizer_loop:record_end")
 
         # Play a wav file to indicate audio recording has ended
-        self.play_end_listening_sound()
+        self.play_end_listening_sound(source)
 
         return audio_data
 

@@ -226,7 +226,7 @@ class STT(metaclass=ABCMeta):
         self.config = config_stt.get(config_stt.get("module"), {})
         self.credential = self.config.get("credential", {})
         self.recognizer = Recognizer()
-        self.can_stream = True
+        self.can_stream = False
 
     @property
     def available_languages(self) -> set:
@@ -276,7 +276,7 @@ def load_stt_plugin(module_name):
     Returns:
         class: STT plugin class
     """
-    return load_plugin("core.plugin.stt", module_name)
+    return load_plugin("mycroft.plugin.stt", module_name)
 
 
 # TODO: implement whisper object
