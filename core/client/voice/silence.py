@@ -1,13 +1,14 @@
 import audioop
 import math
 import typing
-import onnxruntime
-import numpy as np
-
-from enum import Enum
-from dataclasses import dataclass
 from collections import deque
-from os.path import join, dirname
+from dataclasses import dataclass
+from enum import Enum
+from os.path import dirname, join
+
+import numpy as np
+import onnxruntime
+
 from core import LOG
 
 
@@ -63,8 +64,6 @@ class SilenceDetector:
     current_energy_threshold: Optional[float] = None
         Energy threshold above which audio is considered speech
 
-    silence_method: SilenceMethod = "vad_only"
-        Method for deciding if an audio chunk contains silence or speech
     """
 
     def __init__(
@@ -80,7 +79,7 @@ class SilenceDetector:
         max_energy: typing.Optional[float] = None,
         max_current_ratio_threshold: typing.Optional[float] = None,
         current_energy_threshold: typing.Optional[float] = None,
-        vad_method=None,
+        vad_config=None,
     ):
         self.sample_rate = sample_rate
         self.sample_width = 2  # 16-bit
@@ -97,9 +96,13 @@ class SilenceDetector:
         self.dynamic_max_energy = max_energy is None
         self.max_current_ratio_threshold = max_current_ratio_threshold
         self.current_energy_threshold = current_energy_threshold
+        self.vad_config = vad_config
 
         # Voice detector
-        self.vad = vad_method
+        try:
+            self.vad = SileroVAD(self.vad_config)
+        except Exception as e:
+            LOG.error("Failed to load VAD: " + repr(e))
         self.seconds_per_buffer = (
             self.chunk_size / self.sample_width
         ) / self.sample_rate
@@ -378,6 +381,7 @@ class SileroVAD:
         audio_array = np.frombuffer(chunk, dtype=np.int16)
         return self.vad(audio_array)[0] < self.vad_threshold
 
+
 # NOTE: has this become redundant?
 class NoiseTracker:
     """Noise tracker, used to deterimine if an audio utterance is complete.
@@ -493,5 +497,3 @@ class NoiseTracker:
         return (
             self._quiet_enough() and self.silence_duration > self.silence_after_loud
         ) and (self._loud_enough() or too_much_silence)
-
-

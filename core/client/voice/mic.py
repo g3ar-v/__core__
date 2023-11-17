@@ -18,9 +18,10 @@ from core.util import (
     resolve_resource_file,
 )
 from core.util.log import LOG
+from core.util.metrics import Stopwatch
 
 from .data_structures import CyclicAudioBuffer, RollingMean
-from .silence import SilenceDetector, SilenceResultType, SileroVAD
+from .silence import SilenceDetector, SilenceResultType
 
 WakeWordData = namedtuple("WakeWordData", ["audio", "found", "stopped", "end_audio"])
 
@@ -374,32 +375,23 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # The maximum seconds a phrase can be recorded,
         # provided there is noise the entire time
+        # Get recording timeout value
         self.recording_timeout = listener_config.get("recording_timeout", 10.0)
-
         vad_config = listener_config.get("VAD", {})
-        # LOG.info("Using VAD parameters: {}".format(vad_config))
-        try:
-            vad_method = SileroVAD(vad_config)
-        except Exception as e:
-            LOG.error("Failed to load VAD: " + repr(e))
-
-        # The maximum time it will continue to record silence
-        # when not enough noise has been detected
-        self.recording_timeout_with_silence = listener_config.get(
-            "recording_timeout_with_silence", 3.0
-        )
+        LOG.info("silence duration: " + repr(vad_config.get("silence_seconds")))
 
         self.silence_detector = SilenceDetector(
             speech_seconds=vad_config.get("speech_seconds", 0.1),
             silence_seconds=vad_config.get("silence_seconds", 0.5),
             min_seconds=vad_config.get("min_seconds", 1),
-            max_seconds=self.recording_timeout,
+            # NOTE: set to none for infinite reccording if speech continues
+            max_seconds=None,
             before_seconds=vad_config.get("before_seconds", 0.5),
             current_energy_threshold=vad_config.get("initial_energy_threshold", 1000.0),
             max_current_ratio_threshold=vad_config.get(
                 "max_current_ratio_threshold", 2
             ),
-            vad_method=vad_method,
+            vad_config=vad_config,
         )
 
     def record_sound_chunk(self, source):
@@ -456,7 +448,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
 
         # Maximum number of chunks to record before timing out
-        int(self.recording_timeout / sec_per_buffer)
+        # int(self.recording_timeout / sec_per_buffer)
+
         num_chunks = 0
 
         # bytearray to store audio in, initialized with a single sample of
@@ -467,22 +460,36 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         if stream:
             stream.stream_start()
 
-        for chunk in source.stream.iter_chunks():
-            if self._stop_recording or check_for_signal("buttonPress"):
-                break
+        stopwatch = Stopwatch()
+        with stopwatch:
+            for chunk in source.stream.iter_chunks():
+                if self._stop_recording or check_for_signal("buttonPress"):
+                    break
 
-            if stream:
-                stream.stream_chunk(chunk)
-            result = self.silence_detector.process(chunk)
+                if stream:
+                    stream.stream_chunk(chunk)
+                result = self.silence_detector.process(chunk)
 
-            if result.type in {SilenceResultType.PHRASE_END, SilenceResultType.TIMEOUT}:
-                break
-            # Periodically write the energy level to the mic level file.
-            if num_chunks % 10 == 0:
-                self._watchdog()
-                self.write_mic_level(result.energy, source)
-            num_chunks += 1
+                if result.type in {
+                    SilenceResultType.SPEECH,
+                    SilenceResultType.PHRASE_START,
+                }:
+                    LOG.debug("voice recognition state: " + repr(result.type))
 
+                if result.type in {
+                    SilenceResultType.PHRASE_END,
+                    SilenceResultType.TIMEOUT,
+                }:
+                    LOG.debug("voice recognition state: " + repr(result.type))
+                    break
+                # Periodically write the energy level to the mic level file.
+                if num_chunks % 10 == 0:
+                    self._watchdog()
+                    self.write_mic_level(result.energy, source)
+                num_chunks += 1
+
+        LOG.debug("The recorded phrase duration is: " + str(stopwatch))
+        # return audio_data
         return self.silence_detector.stop()
 
     def write_mic_level(self, energy, source):
