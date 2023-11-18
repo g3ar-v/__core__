@@ -2,7 +2,7 @@ import json
 import time
 from copy import deepcopy
 from queue import Empty, Queue
-from threading import Thread, Lock
+from threading import Lock, Thread
 
 import pyaudio
 import speech_recognition as sr
@@ -82,8 +82,8 @@ class AudioProducer(Thread):
         self.loop = loop
         self.stream_handler = None
         # if self.loop.stt.can_stream:
-        if False:
-            self.stream_handler = AudioStreamHandler(self.loop.queue)
+        # if False:
+        self.stream_handler = AudioStreamHandler(self.loop.queue)
         # self.state = state
         # self.queue = queue
         # self.mic = mic
@@ -101,6 +101,8 @@ class AudioProducer(Thread):
                     audio = self.loop.responsive_recognizer.listen(
                         source, self.loop, self.stream_handler
                     )
+                    # NOTE: from ignorance I'd say this is a fallback if streaming
+                    # doesn't work
                     if audio is not None:
                         self.loop.queue.put((AUDIO_DATA, audio))
                     else:
@@ -178,6 +180,7 @@ class AudioConsumer(Thread):
             return
 
         tag, data = message
+        # LOG.debug("audio consumer read data: " + repr(tag))
 
         if tag == AUDIO_DATA:
             if data is not None:
@@ -186,11 +189,11 @@ class AudioConsumer(Thread):
                 else:
                     self.process(data)
         elif tag == STREAM_START:
-            self.stt.stream_start()
+            self.loop.stt.stream_start()
         elif tag == STREAM_DATA:
-            self.stt.stream_data(data)
+            self.loop.stt.stream_data(data)
         elif tag == STREAM_STOP:
-            self.stt.stream_stop()
+            self.loop.stt.stream_stop()
         else:
             LOG.error("Unknown audio queue type %r" % message)
 

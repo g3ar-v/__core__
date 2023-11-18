@@ -466,21 +466,21 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                 if self._stop_recording or check_for_signal("buttonPress"):
                     break
 
-                if stream:
-                    stream.stream_chunk(chunk)
                 result = self.silence_detector.process(chunk)
 
                 if result.type in {
                     SilenceResultType.SPEECH,
                     SilenceResultType.PHRASE_START,
                 }:
-                    LOG.debug("voice recognition state: " + repr(result.type))
+                    # LOG.debug("voice recognition state: " + repr(result.type))
+                    if stream:
+                        stream.stream_chunk(chunk)
 
                 if result.type in {
                     SilenceResultType.PHRASE_END,
                     SilenceResultType.TIMEOUT,
                 }:
-                    LOG.debug("voice recognition state: " + repr(result.type))
+                    # LOG.debug("voice recognition state: " + repr(result.type))
                     break
                 # Periodically write the energy level to the mic level file.
                 if num_chunks % 10 == 0:
