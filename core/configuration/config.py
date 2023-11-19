@@ -1,73 +1,15 @@
 import json
 import os
-import re
 from os.path import exists, isfile, join, dirname
 
 import xdg.BaseDirectory
 
-from core import dialog
-from core.messagebus.message import Message
 from core.util.combo_lock import ComboLock
 from core.util.file_utils import get_temp_path
-from core.util import camel_case_split
 from core.util.json_helper import load_commented_json, merge_dict
 from core.util.log import LOG
 
-from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG, USER_CONFIG
-
-
-def is_remote_list(values):
-    """Check if list corresponds to a backend formatted collection of dicts"""
-    for v in values:
-        if not isinstance(v, dict):
-            return False
-        if "@type" not in v.keys():
-            return False
-    return True
-
-
-def translate_remote(config, setting):
-    """Translate config names from server to equivalents for mycroft-core.
-
-    Args:
-        config:     base config to populate
-        settings:   remote settings to be translated
-    """
-    IGNORED_SETTINGS = ["uuid", "@type", "active", "user", "device"]
-
-    for k, v in setting.items():
-        if k not in IGNORED_SETTINGS:
-            # Translate the CamelCase values stored remotely into the
-            # Python-style names used within mycroft-core.
-            key = re.sub(r"Setting(s)?", "", k)
-            key = camel_case_split(key).replace(" ", "_").lower()
-            if isinstance(v, dict):
-                config[key] = config.get(key, {})
-                translate_remote(config[key], v)
-            elif isinstance(v, list):
-                if is_remote_list(v):
-                    if key not in config:
-                        config[key] = {}
-                    translate_list(config[key], v)
-                else:
-                    config[key] = v
-            else:
-                config[key] = v
-
-
-def translate_list(config, values):
-    """Translate list formated by mycroft server.
-
-    Args:
-        config (dict): target config
-        values (list): list from mycroft server config
-    """
-    for v in values:
-        module = v["@type"]
-        if v.get("active"):
-            config["module"] = module
-        config[module] = config.get(module, {})
-        translate_remote(config[module], v)
+from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG
 
 
 class LocalConf(dict):
@@ -94,7 +36,7 @@ class LocalConf(dict):
                 for key in config:
                     self.__setitem__(key, config[key])
 
-                LOG.debug("Configuration {} loaded".format(path))
+                # LOG.debug("Configuration {} loaded".format(path))
             except Exception as e:
                 LOG.error("Error loading configuration '{}'".format(path))
                 LOG.error(repr(e))
@@ -142,37 +84,37 @@ class LocalConf(dict):
         merge_dict(self, conf)
 
 
-class RemoteConf(LocalConf):
-    # _lock = ComboLock(get_temp_path('remote-conf.lock'))
-    """Config dictionary fetched from local backend"""
+# class RemoteConf(LocalConf):
+#     # _lock = ComboLock(get_temp_path('remote-conf.lock'))
+#     """Config dictionary fetched from local backend"""
 
-    def __init__(self, cache=None):
-        super(RemoteConf, self).__init__(None)
+#     def __init__(self, cache=None):
+#         super(RemoteConf, self).__init__(None)
 
-        cache = cache or join(
-            xdg.BaseDirectory.xdg_cache_home, "core", "web_cache.json"
-        )
+#         cache = cache or join(
+#             xdg.BaseDirectory.xdg_cache_home, "core", "web_cache.json"
+#         )
 
-    def reload(self):
-        try:
-            from core.api import is_paired
-            from core.api import RemoteConfigManager
+#     def reload(self):
+#         try:
+#             from core.api import is_paired
+#             from core.api import RemoteConfigManager
 
-            if not is_paired():
-                self.load_local(self.path)
-                return
+#             if not is_paired():
+#                 self.load_local(self.path)
+#                 return
 
-            remote = RemoteConfigManager()
+#             remote = RemoteConfigManager()
 
-            remote.download()
-            for key in remote.config:
-                self.__setitem__(key, remote.config[key])
+#             remote.download()
+#             for key in remote.config:
+#                 self.__setitem__(key, remote.config[key])
 
-            self.store(self.path)
+#             self.store(self.path)
 
-        except Exception as e:
-            LOG.error(f"Exception fetching remote configuration: {e}")
-            self.load_local(self.path)
+#         except Exception as e:
+#             LOG.error(f"Exception fetching remote configuration: {e}")
+#             self.load_local(self.path)
 
 
 class Configuration:
@@ -225,12 +167,7 @@ class Configuration:
             for conf_dir in xdg.BaseDirectory.load_config_paths("core"):
                 configs.append(LocalConf(join(conf_dir, "core.conf")))
 
-            # Then check the old user config
-            # if isfile(OLD_USER_CONFIG):
-            # _log_old_location_deprecation()
-            # configs.append(LocalConf(OLD_USER_CONFIG))
-
-            # Then use the system config (/etc/mycroft/mycroft.conf)
+            # Then use the system config (/etc/core/core.conf)
             configs.append(LocalConf(SYSTEM_CONFIG))
 
             # Then use remote config
@@ -255,13 +192,13 @@ class Configuration:
             merge_dict(base, c)
 
         # copy into cache
-        if cache:
-            Configuration.__config.clear()
-            for key in base:
-                Configuration.__config[key] = base[key]
-            return Configuration.__config
-        else:
-            return base
+        # if cache:
+        #     Configuration.__config.clear()
+        #     for key in base:
+        #         Configuration.__config[key] = base[key]
+        #     return Configuration.__config
+        # else:
+        return base
 
     @staticmethod
     def set_config_update_handlers(bus):
