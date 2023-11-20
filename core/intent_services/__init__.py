@@ -79,7 +79,7 @@ class IntentService:
     def __init__(self, bus):
         # Dictionary for translating a skill id to a name
         self.bus = bus
-        self.llm = LLM()
+        self.llm = LLM(bus)
 
         self.intent_api = IntentQueryApi()
         self.skill_names = {}
@@ -309,7 +309,8 @@ class IntentService:
                     reply.data["utterances"] = utterances
                     self.bus.emit(reply)
                 # NOTE: should prevent user utterance from already being in chat_history
-                self.llm.message_history.add_user_message(flatten_list(combined)[0])
+                if self.llm.message_history:
+                    self.llm.message_history.add_user_message(flatten_list(combined)[0])
             else:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task

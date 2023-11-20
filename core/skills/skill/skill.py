@@ -111,9 +111,9 @@ class Skill:
         # self.gui = SkillGUI(self)
 
         self._bus = None
-        self.llm = LLM()
         # self._enclosure = None
         self.bind(bus)
+        self.llm = LLM(bus)
         # global configuration. (dict)
         self.config_core = Configuration.get()
 

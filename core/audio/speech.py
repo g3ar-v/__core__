@@ -17,7 +17,7 @@ bus = None  # messagebus connection
 config = None
 tts = None
 tts_hash = None
-llm = LLM()
+llm = LLM(bus)
 lock = Lock()
 mimic_fallback_obj = None
 
@@ -62,7 +62,8 @@ def handle_speak(event):
         # HACK: this works for now but should it be here and should all messages be
         # tracked?
         LOG.info(f"Speaking utterance: {utterance}")
-        llm.message_history.add_ai_message(utterance)
+        if llm.message_history:
+            llm.message_history.add_ai_message(utterance)
         # NOTE: is there an efficient way of getting the previous utterance?
         global interrupted_utterance
         interrupted_utterance = utterance
@@ -115,7 +116,6 @@ def mute_and_speak(utterance, ident, listen=False):
         tts.init(bus)
         tts_hash = hash(str(config.get("tts", "")))
 
-    LOG.info("Speak: " + utterance)
     # NOTE: Only elevenlabs supports streaming for now so if the conditions are not met
     # don't stream just generate audio file and play
     if (
@@ -174,6 +174,9 @@ def handle_stop(event):
     if check_for_signal("isSpeaking", -1):
         tts.playback.set_interrupted_utterance(interrupted_utterance)
         tts.playback.clear()  # Clear here to get instant stop
+        # bus.emit(
+        #     Message("core.speech.interruption", {"utterance": interrupted_utterance})
+        # )
         bus.emit("core.mic.stop_listen")
         _last_stop_signal = time.time()
         bus.emit(

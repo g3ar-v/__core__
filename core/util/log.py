@@ -1,12 +1,11 @@
-
 """
-Mycroft Logging module.
+System Logging module.
 
 This module provides the LOG pseudo function quickly creating a logger instance
 for use.
 
 The default log level of the logger created here can ONLY be set in
-/etc/mycroft/mycroft.conf or ~/.config/mycroft/mycroft.conf
+/etc/core/core.conf or ~/.config/core/core.conf
 
 The default log level can also be programatically be changed by setting the
 LOG.level parameter.
@@ -42,7 +41,7 @@ class LOG:
 
     _custom_name = None
     handler = None
-    level = logging.getLevelName('INFO')
+    level = logging.getLevelName("INFO")
 
     # Copy actual logging methods from logging.Logger
     # Usage: LOG.debug(message)
@@ -54,28 +53,27 @@ class LOG:
 
     @classmethod
     def init(cls):
-        """ Initializes the class, sets the default log level and creates
+        """Initializes the class, sets the default log level and creates
         the required handlers.
         """
         log_message_format = (
-            '{asctime} | {levelname:8} | {process:5} | {name} | {message}'
+            "{asctime} | {levelname:8} | {name} | {message} | {process:5} |"
         )
 
-        formatter = logging.Formatter(log_message_format, style='{')
-        formatter.default_msec_format = '%s.%03d'
+        formatter = logging.Formatter(log_message_format, style="{")
+        formatter.default_msec_format = "%s.%03d"
         cls.handler = logging.StreamHandler(sys.stdout)
         cls.handler.setFormatter(formatter)
 
-        config = core.configuration.Configuration.get(cache=False,
-                                                         remote=False)
-        if config.get('log_format'):
-            formatter = logging.Formatter(config.get('log_format'), style='{')
+        config = core.configuration.Configuration.get()
+        if config.get("log_format"):
+            formatter = logging.Formatter(config.get("log_format"), style="{")
             cls.handler.setFormatter(formatter)
 
-        cls.level = logging.getLevelName(config.get('log_level', 'INFO'))
+        cls.level = logging.getLevelName(config.get("log_level", "INFO"))
 
         # Enable logging in external modules
-        cls.create_logger('').setLevel(cls.level)
+        cls.create_logger("").setLevel(cls.level)
 
     @classmethod
     def create_logger(cls, name):
@@ -108,10 +106,10 @@ class LOG:
                 # ...
                 record = stack[2]
                 mod = inspect.getmodule(record[0])
-                module_name = mod.__name__ if mod else ''
-                name = module_name + ':' + record[3] + ':' + str(record[2])
+                module_name = mod.__name__ if mod else ""
+                name = module_name + ":" + record[3] + ":" + str(record[2])
             except Exception:
                 # The location couldn't be determined
-                name = 'Mycroft'
+                name = "core"
 
         func(cls.create_logger(name), *args, **kwargs)

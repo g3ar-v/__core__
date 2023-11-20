@@ -1,16 +1,18 @@
 import time
 
+
 class Stopwatch:
     """
-        Simple time measuring class.
+    Simple time measuring class.
     """
+
     def __init__(self):
         self.timestamp = None
         self.time = None
 
     def start(self):
         """
-            Start a time measurement
+        Start a time measurement
         """
         self.timestamp = time.time()
 
@@ -22,7 +24,7 @@ class Stopwatch:
 
     def stop(self):
         """
-            Stop a running time measurement. returns the measured time
+        Stop a running time measurement. returns the measured time
         """
         cur_time = time.time()
         start_time = self.timestamp
@@ -31,13 +33,13 @@ class Stopwatch:
 
     def __enter__(self):
         """
-            Start stopwatch when entering with-block.
+        Start stopwatch when entering with-block.
         """
         self.start()
 
     def __exit__(self, tpe, value, tb):
         """
-            Stop stopwatch when exiting with-block.
+        Stop stopwatch when exiting with-block.
         """
         self.stop()
 
@@ -46,6 +48,4 @@ class Stopwatch:
         if self.timestamp:
             return str(self.time or cur_time - self.timestamp)
         else:
-            return 'Not started'
-
-
+            return "Not started"

@@ -1,20 +1,23 @@
 import re
 from itertools import chain
 from threading import Lock
-from typing import Any
-from uuid import UUID
 
-from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
+
+# from langchain.callbacks import StopStream
 from langchain.chat_models import ChatOpenAI
-from langchain.schema.output import LLMResult
+from langchain.llms import LlamaCpp
+from lingua_franca.format import nice_date_time
 
 import core.intent_services
+from core.configuration import Configuration
 from core.llm import LLM, main_persona_prompt
-from core.messagebus.message import Message, dig_for_message
+from core.llm.llm import CustomCallback
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
 from core.util.time import now_local
+
+config = Configuration.get()
 
 
 class QAService:
@@ -30,8 +33,9 @@ class QAService:
         self.skill_id = "persona"
         self.lock = Lock()
         self.answered = False
+        self.interrupted = False
         self._vocabs = {}
-        self.llm = LLM()
+        self.llm = LLM(bus)
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -98,16 +102,9 @@ class QAService:
                 message.data["utterance"] = utterance
                 answered = self.handle_query_response(utterance)
                 if answered:
-                    match = core.intent_services.IntentMatch(
-                        "persona", None, {}, self.skill_id
-                    )
+                    match = core.intent_services.IntentMatch("persona", None, {}, None)
                 break
-            self.bus.emit(
-                Message(
-                    "active_skill_request",
-                    {"skill_id": self.skill_id},
-                )
-            )
+
         return match
 
     def is_question_like(self, utterance, lang):
@@ -118,78 +115,40 @@ class QAService:
 
     def handle_query_response(self, message):
         today = now_local()
-        date_str = today.strftime("%B %d, %Y")
-        time_str = today.strftime("%I:%M %p")
+        date = nice_date_time(today)
 
-        class CustomCallback(BaseCallbackHandler):
-            def __init__(self, bus, skill_id) -> None:
-                # self.outputs = outputs
-                self.buffer = ""
-                self.bus = bus
-                self.skill_id = skill_id
-                self.completed = False
-
-            async def on_llm_new_token(
-                self,
-                token: str,
-                *,
-                run_id,
-                parent_run_id=None,
-                **kwargs: Any,
-            ) -> None:
-                self.buffer += token
-                # LOG.info(f"tokens: {self.buffer}")
-                if token in ["\n", "."]:  # if token is a newline or a full-stop
-                    LOG.info(f"returning string: {self.buffer}")
-                    self.speak(self.buffer)
-                    self.buffer = ""  # reset the buffer
-
-            async def on_llm_end(
-                self,
-                response: LLMResult,
-                *,
-                run_id: UUID,
-                parent_run_id: UUID | None = None,
-                **kwargs: Any,
-            ) -> Any:
-                self.bus.emit(Message("core.mic.listen"))
-
-            def speak(self, utterance, expect_response=False, message=None):
-                """Speak a sentence.
-
-                Args:
-                    utterance (str): sentence system should speak
-                """
-                # registers the skill as being active
-                # self.enclosure.register(self.skill_id)
-
-                message = message or dig_for_message()
-                # lang = get_message_lang(message)
-                data = {
-                    "utterance": utterance,
-                    "expect_response": expect_response,
-                    "meta": {"skill": self.skill_id},
-                }
-
-                m = Message("speak", data)
-                m.context["skill_id"] = self.skill_id
-                self.bus.emit(m)
-
-        model = ChatOpenAI(
-            temperature=0.7,
-            max_tokens=85,
-            model="gpt-3.5-turbo",
-            streaming=True,
-            callbacks=[CustomCallback(self.bus, self.skill_id)],
+        # NOTE:
+        # use offline or online model
+        if config.get("llm", {}).get("model_type", {}) == "online":
+            model = ChatOpenAI(
+                temperature=0.7,
+                max_tokens=256,
+                model="gpt-3.5-turbo",
+                streaming=True,
+                callbacks=[CustomCallback(self.bus, None)],
+            )
+        else:
+            model_name = config.get("llm", {}).get("model_type", {})
+            model = LlamaCpp(
+                model_path=config.get("llm", {}).get(model_name, {}).get("model_dir"),
+                n_gpu_layers=1,
+                n_batch=512,
+                n_ctx=2048,
+                f16_kv=True,
+                verbose=True,
+                streaming=True,
+                callbacks=[CustomCallback(self.bus, None)],
+            )
+        gptchain = LLMChain(
+            llm=model or self.llm.model, verbose=True, prompt=main_persona_prompt
         )
-        gptchain = LLMChain(llm=model, verbose=True, prompt=main_persona_prompt)
 
         chat_history = self.llm.chat_history.load_memory_variables({})["chat_history"]
         try:
             gptchain.predict(
                 curr_conv=chat_history,
                 rel_mem=None,
-                date_str=date_str + ", " + time_str,
+                date_str=date,
                 query=message,
             )
 
