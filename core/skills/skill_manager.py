@@ -26,7 +26,6 @@ from core.llm.llm import LLM
 from core.messagebus.client import MessageBusClient
 from core.util.file_utils import FileWatcher
 from core.util.log import LOG
-from core.util.process_utils import ProcessState, ProcessStatus, StatusCallbackMap
 
 from .msm_wrapper import build_msm_config
 
@@ -114,26 +113,6 @@ def _shutdown_skill(instance):
         LOG.exception(f"Failed to shut down skill: {instance.skill_id}")
 
 
-def on_started():
-    LOG.info("Skills Manager is starting up.")
-
-
-def on_alive():
-    LOG.info("Skills Manager is alive.")
-
-
-def on_ready():
-    LOG.info("Skills Manager is ready.")
-
-
-def on_error(e="Unknown"):
-    LOG.info(f"Skills Manager failed to launch ({e})")
-
-
-def on_stopping():
-    LOG.info("Skills Manager is shutting down...")
-
-
 class SkillManager(Thread):
     _msm = None
 
@@ -141,11 +120,6 @@ class SkillManager(Thread):
         self,
         bus,
         watchdog=None,
-        alive_hook=on_alive,
-        started_hook=on_started,
-        ready_hook=on_ready,
-        error_hook=on_error,
-        stopping_hook=on_stopping,
     ):
         """Constructor
 
@@ -155,19 +129,10 @@ class SkillManager(Thread):
         """
         super(SkillManager, self).__init__()
         self.bus = bus
-        self.llm = LLM()
+        # self.llm = LLM()
         self._settings_watchdog = None
         # Set watchdog to argument or function returning None
         self._watchdog = watchdog or (lambda: None)
-        callbacks = StatusCallbackMap(
-            on_started=started_hook,
-            on_alive=alive_hook,
-            on_ready=ready_hook,
-            on_error=error_hook,
-            on_stopping=stopping_hook,
-        )
-        self.status = ProcessStatus("skills", bus, callback_map=callbacks)
-        self.status.set_started()
 
         self._lock = Lock()
         self._setup_event = Event()
@@ -176,6 +141,9 @@ class SkillManager(Thread):
         self._internet_loaded = Event()
         self._allow_state_reloads = True
         self.upload_queue = UploadQueue()
+
+        self._alive_status = False  # Set True when all skills have been loaded
+        self._loaded_status = False  # True after all skills has loaded
 
         self.config = Configuration.get()
         # self.sysconf = SysConf.get()
@@ -280,13 +248,13 @@ class SkillManager(Thread):
 
         return self._msm
 
-    @staticmethod
-    def create_msm():
-        LOG.debug("instantiating msm via static method...")
-        msm_config = build_msm_config(Configuration.get())
-        msm_instance = msm_creator(msm_config)
+    #    @staticmethod
+    #     def create_msm():
+    #         LOG.debug("instantiating msm via static method...")
+    #         msm_config = build_msm_config(Configuration.get())
+    #         msm_instance = msm_creator(msm_config)
 
-        return msm_instance
+    #         return msm_instance
 
     # def schedule_now(self, _):
     #     self.skill_updater.next_download = time() - 1
@@ -304,27 +272,6 @@ class SkillManager(Thread):
             bus = self.bus
         return bus
 
-    def load_priority(self):
-        skills = {skill.name: skill for skill in self.msm.all_skills}
-        priority_skills = self.skills_config.get("priority_skills", [])
-        for skill_name in priority_skills:
-            skill = skills.get(skill_name)
-            if skill is not None:
-                if not skill.is_local:
-                    try:
-                        self.msm.install(skill)
-                    except Exception:
-                        log_msg = "Downloading priority skill: {} failed"
-                        LOG.exception(log_msg.format(skill_name))
-                        continue
-                loader = self._load_skill(skill.path)
-                if loader:
-                    self.upload_queue.put(loader)
-            else:
-                LOG.error("Priority skill {} can't be found".format(skill_name))
-
-        self._alive_status = True
-
     def handle_initial_training(self, message):
         self.initial_load_complete = True
 
@@ -332,18 +279,13 @@ class SkillManager(Thread):
         """Load skills and update periodically from disk and internet."""
         self._remove_git_locks()
         LOG.debug("removed git locks")
-        self._connected_event.wait()
-        LOG.debug("internet is available")
         # self.load_priority()
-        self.status.set_alive()
         self._load_on_startup()
-        self.bus.emit(Message("core.skills.initialized"))
 
         # wait for initial intents training
         LOG.debug("Waiting for initial training")
         while not self.initial_load_complete:
             sleep(0.5)
-        self.status.set_ready()
 
         if not self._connected_event.is_set():
             LOG.info("Offline Skills loaded, waiting for Internet to load more!")
@@ -374,9 +316,9 @@ class SkillManager(Thread):
 
     def _load_on_startup(self):
         """Handle initial skill load."""
-        LOG.info("Loading offline skills...")
-        self.bus.emit(Message("core.skills.initialized"))
         self._load_new_skills()
+        self.bus.emit(Message("core.skills.initialized"))
+        self._loaded_status = True
 
     def _reload_modified_skills(self):
         """Handle reload of recently changed skill(s)"""
@@ -399,6 +341,9 @@ class SkillManager(Thread):
         for skill_dir in self._get_skill_directories():
             if skill_dir not in self.skill_loaders:
                 loader = self._load_skill(skill_dir)
+                if loader:
+                    self.upload_queue.put(loader)
+        self._alive_status = True
 
     def _get_skill_loader(self, skill_directory, init_bus=True):
         bus = None
@@ -462,11 +407,11 @@ class SkillManager(Thread):
 
     def is_alive(self, message=None):
         """Respond to is_alive status request."""
-        return self.status.state >= ProcessState.ALIVE
+        return self._alive_status
 
     def is_all_loaded(self, message=None):
         """Respond to all_loaded status request."""
-        return self.status.state == ProcessState.READY
+        return self._loaded_status
 
     def send_skill_list(self, _):
         """Send list of loaded skills."""
@@ -524,7 +469,7 @@ class SkillManager(Thread):
 
     def stop(self):
         """Tell the manager to shutdown."""
-        self.status.set_stopping()
+        # self.status.set_stopping()
         self._stop_event.set()
 
         # Do a clean shutdown of all skills
