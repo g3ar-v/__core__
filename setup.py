@@ -5,10 +5,18 @@ from setuptools import find_packages, setup
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
+
+def required(requirements_file):
+    """Read requirements file and remove comments and empty lines."""
+    with open(os.path.join(BASEDIR, requirements_file), "r") as f:
+        requirements = f.read().splitlines()
+        return [pkg for pkg in requirements if pkg.strip() and not pkg.startswith("#")]
+
+
 setup(
     name="core",
     version="4.0.0",
-    install_requires="requirements/requirements.txt",
+    install_requires=required("requirements/requirements.txt"),
     packages=find_packages(include=["core*"]),
     include_package_data=True,
     entry_points={
