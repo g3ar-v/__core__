@@ -2,32 +2,22 @@ import re
 from itertools import chain
 from threading import Lock
 
-from langchain.chains import LLMChain
-
-# from langchain.callbacks import StopStream
-from langchain.chat_models import ChatOpenAI
-from langchain.llms import LlamaCpp
-from lingua_franca.format import nice_date_time
-
 import core.intent_services
 from core.configuration import Configuration
 from core.llm import LLM, main_persona_prompt
-from core.llm.llm import CustomCallback
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
-from core.util.time import now_local
 
 config = Configuration.get()
 
 
+# TODO: create a fallback timer to skip function after a while
 class QAService:
     """
     Core persona of the system, provides conversation and retrieval of
     relevant information
     """
 
-    # TODO: add to active skill list for convesation
-    # TODO: fix "I don't understand at the end"
     def __init__(self, bus):
         self.bus = bus
         self.skill_id = "persona"
@@ -36,6 +26,7 @@ class QAService:
         self.interrupted = False
         self._vocabs = {}
         self.llm = LLM(bus)
+        self.intent_data = None
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -102,58 +93,26 @@ class QAService:
                 message.data["utterance"] = utterance
                 answered = self.handle_query_response(utterance)
                 if answered:
-                    match = core.intent_services.IntentMatch("persona", None, {}, None)
+                    # NOTE: imported in format to prevent circular import error
+                    match = core.intent_services.IntentMatch(
+                        "persona", None, self.intent_data, None
+                    )
                 break
 
         return match
 
-    def is_question_like(self, utterance, lang):
+    def is_question_like(self, utterance, lang) -> bool:
         # skip utterances meant for common play
         if self.voc_match(utterance, "common_play", lang):
             return False
         return True
 
-    def handle_query_response(self, message):
-        today = now_local()
-        date = nice_date_time(today)
-
-        # NOTE:
-        # use offline or online model
-        if config.get("llm", {}).get("model_type", {}) == "online":
-            model = ChatOpenAI(
-                temperature=0.7,
-                max_tokens=256,
-                model="gpt-3.5-turbo",
-                streaming=True,
-                callbacks=[CustomCallback(self.bus, None)],
-            )
-        else:
-            model_name = config.get("llm", {}).get("model_type", {})
-            model = LlamaCpp(
-                model_path=config.get("llm", {}).get(model_name, {}).get("model_dir"),
-                n_gpu_layers=1,
-                n_batch=512,
-                n_ctx=2048,
-                f16_kv=True,
-                verbose=True,
-                streaming=True,
-                callbacks=[CustomCallback(self.bus, None)],
-            )
-        gptchain = LLMChain(
-            llm=model or self.llm.model, verbose=True, prompt=main_persona_prompt
-        )
-
-        chat_history = self.llm.chat_history.load_memory_variables({})["chat_history"]
+    def handle_query_response(self, message) -> bool:
         try:
-            gptchain.predict(
-                curr_conv=chat_history,
-                rel_mem=None,
-                date_str=date,
-                query=message,
-            )
-
+            response = self.llm.llm_response(query=message, prompt=main_persona_prompt)
+            self.intent_data = response
             self.answered = True
             return self.answered
         except Exception as e:
-            LOG.error("error in llm response: {}".format(e))
-            return None
+            LOG.error("error in QA response: {}".format(e))
+            return False

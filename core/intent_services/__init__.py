@@ -3,8 +3,11 @@ import time
 from collections import namedtuple
 from copy import copy
 
+from core.audio import wait_while_speaking
 from core.configuration import Configuration, set_default_lf_lang
+from core.dialog import dialog
 from core.llm import LLM
+from core.messagebus.message import Message
 from core.util import flatten_list
 from core.util.intent_service_interface import IntentQueryApi, open_intent_envelope
 from core.util.log import LOG
@@ -107,6 +110,7 @@ class IntentService:
         # Converse method
         self.bus.on("core.speech.recognition.unknown", self.reset_converse)
         self.bus.on("core.skills.loaded", self.update_skill_name_dict)
+        self.bus.on("intent.service.response.latency", self.handle_response_latency)
 
         def add_active_skill_handler(message):
             skill_id = message.data["skill_id"]
@@ -148,6 +152,14 @@ class IntentService:
     @property
     def registered_intents(self):
         return [parser.__dict__ for parser in self.adapt_service.engine.intent_parsers]
+
+    def handle_response_latency(self, event):
+        """Core is taking too long to process information"""
+        LOG.info("Info taking too long")
+        data = {"utterance": dialog.get("taking_too_long")}
+        context = {"client_name": "intent_service", "source": "audio"}
+        self.bus.emit(Message("speak", data, context))
+        wait_while_speaking()
 
     def update_skill_name_dict(self, message):
         """Messagebus handler, updates dict of id to skill name conversions."""

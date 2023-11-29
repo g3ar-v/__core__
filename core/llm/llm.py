@@ -1,20 +1,24 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
 import os
+import re
 from typing import Any
 from uuid import UUID
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import LlamaCpp
 from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
 from langchain.schema.output import LLMResult
+from langchain.vectorstores import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
 
 from core.configuration import Configuration
 from core.messagebus.message import Message, dig_for_message
 from core.util.log import LOG
+from core.util.time import now_local
 
 config = Configuration.get()
 
@@ -29,23 +33,23 @@ class Singleton(type):
 
 
 # TODO: handle listen if response has a question
-# NOTE: should this Class handle speech
+# NOTE: how can I handle listen when it is needed?
 class CustomCallback(BaseCallbackHandler):
     """
     Custom callback handler for LLM token and response events.
     """
 
-    def __init__(self, bus, interrupted) -> None:
+    def __init__(self, bus) -> None:
         # self.outputs = outputs
         self.buffer = ""
         self.bus = bus
-        self.interrupted = interrupted
+        self.interrupted = False
         self.completed = False
+        self.bus.on("llm.speech.interruption", self.handle_interruption)
 
-    #     self.bus.on("core.speech.interruption", self.handle_interruption)
+    def handle_interruption(self):
+        self.interrupted = True
 
-    # def handle_interruption(self):
-    #     self.interrupted = True
     #     self.bus.emit("core.audio.speech.stop")
 
     async def on_llm_new_token(
@@ -59,10 +63,20 @@ class CustomCallback(BaseCallbackHandler):
         self.buffer += token
         # LOG.info(f"tokens: {self.buffer}")
         if token in ["\n", ".", "?", "!"]:  # if token is a newline or a full-stop
-            LOG.info(f"returning string: {self.buffer}")
+            # LOG.info(f"returning string: {self.buffer}")
             if not self.interrupted:
+                # remove llm prefixes from response token
+                if ":" in self.buffer:
+                    LOG.info("removing `:` in llm response")
+                    self.buffer = re.sub(
+                        r"(\w+):",
+                        "",
+                        self.buffer,
+                    )
                 self.speak(self.buffer)
-                self.buffer = ""  # reset the buffer
+            else:
+                LOG.info("not speaking because speech has been interrupted")
+            self.buffer = ""  # reset the buffer
 
     async def on_llm_end(
         self,
@@ -92,13 +106,26 @@ class CustomCallback(BaseCallbackHandler):
         m = Message("speak", data)
         self.bus.emit(m)
 
+    # TODO: handle interruption while language model is streaming
 
-# TODO: handle interruption while language model is streaming
+
 class LLM(metaclass=Singleton):
-    conn_string = config["microservices"].get("mongo_conn_string")
+    """
+    The LLM class is a singleton that manages the language model for the system.
+    It sets up the necessary environment variables, connects to the MongoDB database,
+    and initializes the chat history and vector search (relevant memory).
+
+    Attributes:
+        bus: The message bus for the system.
+        connection_string: The connection string for the MongoDB database.
+        message_history: The MongoDBChatMessageHistory object for storing chat history.
+        chat_history: The ConversationBufferWindowMemory object for storing recent chat history.
+        vector_search: The MongoDBAtlasVectorSearch object for performing vector searches.
+    """
 
     def __init__(self, bus):
         self.bus = bus
+        self.connection_string = config["microservices"].get("mongo_conn_string")
         os.environ["OPENAI_API_KEY"] = config.get("microservices").get("openai_key")
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
@@ -107,10 +134,11 @@ class LLM(metaclass=Singleton):
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
 
-        MongoClient(self.conn_string)
+        # TODO: backup when online mongodb fails
+        MongoClient(self.connection_string)
         try:
             self.message_history = MongoDBChatMessageHistory(
-                connection_string=self.conn_string,
+                connection_string=self.connection_string,
                 database_name="jarvis",
                 session_id="main",
                 collection_name="chat_history",
@@ -118,18 +146,49 @@ class LLM(metaclass=Singleton):
         except Exception as e:
             LOG.error(f"Error connecting to MongoDB: {e}")
             self.message_history = None
-        # TODO: load user from config
+
+        user_name = config["user_preference"].get("user_name")
+        system_name = config["system_name"]
         self.chat_history = ConversationBufferWindowMemory(
             memory_key="chat_history",
             chat_memory=self.message_history,
-            user_prefix="user",
-            ai_prefix="assistant",
+            user_prefix=user_name,
+            ai_prefix=system_name,
             k=3,
         )
+        # create vectorstore access
+        self.vector_search = MongoDBAtlasVectorSearch.from_connection_string(
+            self.connection_string,
+            "jarvis.chat_history",
+            OpenAIEmbeddings(disallowed_special=()),
+            index_name="default",
+        )
+
+    def set_model(self):
+        if config.get("llm", {}).get("model_type", {}) == "online":
+            self.model = ChatOpenAI(
+                temperature=1,
+                max_tokens=128,
+                model="gpt-3.5-turbo",
+                streaming=True,
+                callbacks=[CustomCallback(self.bus)],
+            )
+        else:
+            model_name = config.get("llm", {}).get("model_type", {})
+            self.model = LlamaCpp(
+                model_path=config.get("llm", {}).get(model_name, {}).get("model_dir"),
+                n_gpu_layers=1,
+                n_batch=512,
+                n_ctx=2048,
+                f16_kv=True,
+                verbose=True,
+                streaming=True,
+                callbacks=[CustomCallback(self.bus)],
+            )
 
     def llm_response(self, **kwargs):
         """
-        Use the Language Model to generate and speak a response based
+        Use a Language Model to generate and speak a response based
         on the given prompt and input.
 
         Args:
@@ -150,41 +209,26 @@ class LLM(metaclass=Singleton):
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
-        curr_conv = kwargs.get("curr_conv")
-        date_str = kwargs.get("date_str")
-        rel_mem = kwargs.get("rel_mem")
 
-        # TODO: make this function stream and not stream output
-        if config.get("llm", {}).get("model_type", {}) == "online":
-            model = ChatOpenAI(
-                temperature=0.7,
-                max_tokens=128,
-                model="gpt-3.5-turbo",
-                streaming=True,
-                callbacks=[CustomCallback(self.bus, None)],
-            )
-        else:
-            model_name = config.get("llm", {}).get("model_type", {})
-            model = LlamaCpp(
-                model_path=config.get("llm", {}).get(model_name, {}).get("model_dir"),
-                n_gpu_layers=1,
-                n_batch=512,
-                n_ctx=2048,
-                f16_kv=True,
-                verbose=True,
-                streaming=True,
-                callbacks=[CustomCallback(self.bus, None)],
-            )
-
+        relevant_memory = None
+        # NOTE: a use case for using the function without a query
+        if query:
+            documents = self.vector_search.similarity_search(query, k=2)
+            relevant_memory = documents[0].page_content
         try:
-            gptchain = LLMChain(llm=model, verbose=True, prompt=prompt)
+            today = now_local()
+            # date = nice_date_time(today)
 
-            gptchain.predict(
+            self.set_model()
+            gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
+
+            response = gptchain.predict(
                 context=context,
                 query=query,
-                curr_conv=curr_conv,
-                rel_mem=rel_mem,
-                date_str=date_str,
+                curr_conv=self.chat_history.load_memory_variables({})["chat_history"],
+                rel_mem=relevant_memory,
+                date_str=today,
             )
+            return response
         except Exception as e:
             LOG.error("error in llm response: {}".format(e))

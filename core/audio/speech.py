@@ -174,10 +174,11 @@ def handle_stop(event):
     if check_for_signal("isSpeaking", -1):
         tts.playback.set_interrupted_utterance(interrupted_utterance)
         tts.playback.clear()  # Clear here to get instant stop
-        # bus.emit(
-        #     Message("core.speech.interruption", {"utterance": interrupted_utterance})
-        # )
-        bus.emit("core.mic.stop_listen")
+        # sent to llm to handle interruption by ending llm streaming thread
+        bus.emit(
+            Message("llm.speech.interruption", {"utterance": interrupted_utterance})
+        )
+        # bus.emit(Message("core.mic.stop_listen", {}))
         _last_stop_signal = time.time()
         bus.emit(
             Message("core.interrupted_utterance", {"utterance": interrupted_utterance})
