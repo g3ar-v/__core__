@@ -189,7 +189,7 @@ class SilenceDetector:
         while len(self.current_chunk) > self.chunk_size:
             # Extract chunk
             chunk = self.current_chunk[: self.chunk_size]
-            self.current_chunk = self.current_chunk[self.chunk_size :]
+            self.current_chunk = self.current_chunk[self.chunk_size:]
             if self.skip_buffers_left > 0:
                 # Skip audio at beginning
                 self.skip_buffers_left -= 1

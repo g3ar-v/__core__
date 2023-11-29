@@ -378,7 +378,9 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # Get recording timeout value
         self.recording_timeout = listener_config.get("recording_timeout", 10.0)
         vad_config = listener_config.get("VAD", {})
-        LOG.info("silence duration: " + repr(vad_config.get("silence_seconds")))
+        LOG.debug(
+            "the set silence duration: " + repr(vad_config.get("silence_seconds"))
+        )
 
         self.silence_detector = SilenceDetector(
             speech_seconds=vad_config.get("speech_seconds", 0.1),
@@ -473,6 +475,9 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     SilenceResultType.PHRASE_START,
                 }:
                     # LOG.debug("voice recognition state: " + repr(result.type))
+                    # NOTE: ensures streamed chunk only gets audiodata with speech for
+                    # transcription
+                    stopwatch.lap()
                     if stream:
                         stream.stream_chunk(chunk)
 
@@ -480,7 +485,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     SilenceResultType.PHRASE_END,
                     SilenceResultType.TIMEOUT,
                 }:
-                    # LOG.debug("voice recognition state: " + repr(result.type))
+                    LOG.debug("voice recognition state: " + repr(result.type))
                     break
                 # Periodically write the energy level to the mic level file.
                 if num_chunks % 10 == 0:
@@ -488,7 +493,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     self.write_mic_level(result.energy, source)
                 num_chunks += 1
 
-        LOG.debug("The recorded phrase duration is: " + str(stopwatch))
+        LOG.debug("The recorded silence duration is: " + str(stopwatch))
         # return audio_data
         return self.silence_detector.stop()
 
@@ -611,6 +616,11 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         said_wake_word = False
         audio_data = silence
+
+        # NOTE: this should only be used if an event wants to detect user speech to
+        # avoid too much resources used for real-time speech detection
+        # self.silence_detector.start()
+        # counter = 0
         while not said_wake_word and not self._stop_signaled:
             for chunk in source.stream.iter_chunks():
                 if self._skip_wake_word():
@@ -621,6 +631,25 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                 # chunk = self.record_sound_chunk(source)
                 audio_buffer.append(chunk)
                 ww_frames.append(chunk)
+                # HACK: for detecting silence
+                # result = self.silence_detector.process(chunk)
+                #
+                # if result.type == SilenceResultType.SPEECH:
+                #     # Continue processing chunks while speech is detected
+                #     # NOTE: assuming a count is in deci seconds,
+                #
+                #     counter += 1
+                #     # LOG.debug(
+                #     #     "result of speech when waiting for wakeword"
+                #     #     + repr(result)
+                #     #     + "and counter value: "
+                #     #     + repr(counter)
+                #     # )
+                #     if counter == 40:
+                #         LOG.info("Speech detected")
+                #         counter = 0
+                # elif result.type == SilenceResultType.PHRASE_END:
+                #     counter = 0
 
                 buffers_since_check += 1.0
 
@@ -764,8 +793,9 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         LOG.debug("Recording...")
         # If enabled, play a wave file with a short sound to audibly
         # indicate recording has begun.
-        # NOTE: Aim is to avoid interference of the activation sound with system speech
         if self.config.get("confirm_listening"):
+            # NOTE: Aim is to avoid interference of the activation
+            # sound with system speech
             wait_while_speaking()
             if self.mute_and_confirm_listening(source):
                 # Clear frames from wakeword detections since they're

@@ -81,15 +81,8 @@ class AudioProducer(Thread):
         self.daemon = True
         self.loop = loop
         self.stream_handler = None
-        # if self.loop.stt.can_stream:
-        # if False:
-        self.stream_handler = AudioStreamHandler(self.loop.queue)
-        # self.state = state
-        # self.queue = queue
-        # self.mic = mic
-        # self.recognizer = recognizer
-        # self.emitter = emitter
-        # self.stream_handler = stream_handler
+        if self.loop.stt.can_stream:
+            self.stream_handler = AudioStreamHandler(self.loop.queue)
 
     def run(self):
         restart_attempts = 0
@@ -159,12 +152,6 @@ class AudioConsumer(Thread):
         super(AudioConsumer, self).__init__()
         self.daemon = True
         self.loop = loop
-        # self.queue = queue
-        # self.state = state
-        # self.emitter = emitter
-        # self.stt = stt
-        # self.wakeup_recognizer = wakeup_recognizer
-        # self.wakeword_recognizer = wakeword_recognizer
 
     def run(self):
         while self.loop.state.running:
@@ -233,8 +220,11 @@ class AudioConsumer(Thread):
     def transcribe(self, audio):
         try:
             # Invoke the STT engine on the audio clip
+            stopwatch = Stopwatch()
             with self.loop.lock:
-                text = self.loop.stt.execute(audio)
+                with stopwatch:
+                    text = self.loop.stt.execute(audio)
+                LOG.info("time to process speech: " + str(stopwatch))
                 if text is not None:
                     text = text.lower().strip()
                     LOG.debug("STT: " + text)
@@ -247,7 +237,7 @@ class AudioConsumer(Thread):
         except ConnectionError as e:
             LOG.error("Connection Error: {0}".format(e))
 
-            self.emitter.emit("recognizer_loop:no_internet")
+            self.loop.emit("recognizer_loop:no_internet")
         except RequestException as e:
             LOG.error(e.__class__.__name__ + ": " + str(e))
         except Exception as e:
@@ -256,11 +246,9 @@ class AudioConsumer(Thread):
             LOG.error("Speech Recognition could not understand audio")
             return None
 
-        if is_connected():
-            dialog_name = "backend.down"
-        else:
+        if not is_connected():
             dialog_name = "not connected to the internet"
-        self.loop.emit("speak", {"utterance": dialog.get(dialog_name)})
+            self.__speak(dialog_name)
 
     def __speak(self, utterance):
         payload = {"utterance": utterance}
