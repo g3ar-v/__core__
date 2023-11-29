@@ -15,14 +15,14 @@ class OpenAITTS(TTS):
 
     def get_tts(self, sentence, wav_file):
         response = self.client.audio.speech.create(
-            model="tts-1",
-            voice="onyx",
+            model=self.config.get("model", {}),
+            voice=self.config.get("voice", {}),
             input=sentence,
         )
         # audio = response.choices[0].message["content"]
         response.stream_to_file(wav_file)
         # Path(wav_file).write_bytes(audio)
-        LOG.info(wav_file)
+        # LOG.info(wav_file)
         return (wav_file, None)
 
 

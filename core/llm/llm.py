@@ -66,6 +66,7 @@ class CustomCallback(BaseCallbackHandler):
             # LOG.info(f"returning string: {self.buffer}")
             if not self.interrupted:
                 # remove llm prefixes from response token
+                # NOTE: affects responses with bullet points
                 if ":" in self.buffer:
                     LOG.info("removing `:` in llm response")
                     self.buffer = re.sub(
@@ -152,7 +153,7 @@ class LLM(metaclass=Singleton):
         self.chat_history = ConversationBufferWindowMemory(
             memory_key="chat_history",
             chat_memory=self.message_history,
-            user_prefix=user_name,
+            human_prefix=user_name,
             ai_prefix=system_name,
             k=3,
         )
