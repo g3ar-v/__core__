@@ -49,8 +49,7 @@ tmux split-window -h -l 83%
 # TODO: get core log directory for both linux and mac
 tmux send-keys 'cd private/var/log/core' C-m
 tmux select-pane -t %2
-tmux send-keys 'htop --filter python' C-m
-
+tmux send-keys 'htop -F "python "' C-m
 tmux split-window -v -l 50%
 
 tmux select-window -t trevor:0

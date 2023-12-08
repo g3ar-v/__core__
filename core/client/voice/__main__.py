@@ -26,9 +26,6 @@ def handle_record_begin():
     """Forward internal bus message to external bus."""
     LOG.info("Begin Recording...")
     context = {"client_name": "core_listener", "source": "audio"}
-    # Forward message to stop any existing speech synthesis
-    # NOTE: is the right place to handle stoping speech
-    # bus.emit(Message("core.wakeword", context=context))
     bus.emit(Message("recognizer_loop:record_begin", context=context))
 
 
@@ -54,10 +51,8 @@ def handle_awoken():
 
 def handle_wakeword():
     LOG.info("Wakeword Detected")
-    # TODO: find a way to pause instead of stop
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("core.wakeword", context=context))
-    # bus.emit(Message("recognizer_loop:wakeword", context=context))
 
 
 def handle_utterance(event):
@@ -107,11 +102,17 @@ def handle_wake_up(event):
 def handle_mic_mute(event):
     """Mute the listener system."""
     loop.mute()
+    data = {"utterance": dialog.get("microphone.muted")}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("speak", data, context))
 
 
 def handle_mic_unmute(event):
     """Unmute the listener system."""
     loop.unmute()
+    data = {"utterance": dialog.get("microphone.unmuted")}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("speak", data, context))
 
 
 def handle_info_taking_too_long(event):
