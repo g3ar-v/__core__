@@ -9,7 +9,7 @@ from core.util.file_utils import get_temp_path
 from core.util.json_helper import load_commented_json, merge_dict
 from core.util.log import LOG
 
-from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG
+from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG, USER_CONFIG
 
 
 class LocalConf(dict):
