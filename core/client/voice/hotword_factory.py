@@ -35,10 +35,6 @@ class NoModelAvailable(Exception):
     pass
 
 
-class PreciseUnavailable(Exception):
-    pass
-
-
 def msec_to_sec(msecs):
     """Convert milliseconds to seconds.
 
@@ -109,184 +105,8 @@ class HotWordEngine:
         """
 
 
-class PreciseHotword(HotWordEngine):
-    """Precise is the default wake word engine for Mycroft.
-
-    Precise is developed by Mycroft AI and produces quite good wake word
-    spotting when trained on a decent dataset.
-    """
-
-    def __init__(self, key_phrase="hey mycroft", config=None, lang="en-us"):
-        super().__init__(key_phrase, config, lang)
-        from precise_runner import PreciseRunner, PreciseEngine, ReadWriteStream
-
-        # We need to save to a writeable location, but the key we need
-        # might be stored in a different, unwriteable, location
-        # Make sure we pick the key we need from wherever it's located,
-        # but save to a writeable location only
-        local_conf = LocalConf(
-            join(xdg.BaseDirectory.xdg_config_home, "mycroft", "mycroft.conf")
-        )
-
-        for conf_dir in xdg.BaseDirectory.load_config_paths("mycroft"):
-            conf = LocalConf(join(conf_dir, "mycroft.conf"))
-            # If the current config contains the precise key use it,
-            # otherwise continue to the next file
-            if conf.get("precise", None) is not None:
-                local_conf["precise"] = conf.get("precise", None)
-                break
-
-        # If the key is not found yet, it might still exist on the old
-        # (deprecated) location
-        # if local_conf.get('precise', None) is None:
-        # local_conf = LocalConf(OLD_USER_CONFIG)
-
-        if not local_conf.get("precise", {}).get("use_precise", True):
-            raise PreciseUnavailable
-
-        if (
-            local_conf.get("precise", {}).get("dist_url")
-            == "http://bootstrap.mycroft.ai/artifacts/static/daily/"
-        ):
-            del local_conf["precise"]["dist_url"]
-            local_conf.store()
-            Configuration.updated(None)
-
-        self.download_complete = True
-
-        self.show_download_progress = Timer(0, lambda: None)
-        precise_config = Configuration.get()["precise"]
-
-        precise_exe = self.update_precise(precise_config)
-
-        local_model = self.config.get("local_model_file")
-        if local_model:
-            self.precise_model = expanduser(local_model)
-        else:
-            self.precise_model = self.install_model(
-                precise_config["model_url"], key_phrase.replace(" ", "-")
-            ).replace(".tar.gz", ".pb")
-
-        self.has_found = False
-        self.stream = ReadWriteStream()
-
-        def on_activation():
-            self.has_found = True
-
-        trigger_level = self.config.get("trigger_level", 3)
-        sensitivity = self.config.get("sensitivity", 0.5)
-
-        self.runner = PreciseRunner(
-            PreciseEngine(precise_exe, self.precise_model),
-            trigger_level,
-            sensitivity,
-            stream=self.stream,
-            on_activation=on_activation,
-        )
-        self.runner.start()
-
-    def update_precise(self, precise_config):
-        """Continously try to download precise until successful"""
-        precise_exe = None
-        while not precise_exe:
-            try:
-                precise_exe = self.install_exe(precise_config["dist_url"])
-            except TriggerReload:
-                raise
-            except Exception as e:
-                LOG.error("Precise could not be downloaded({})".format(repr(e)))
-                if exists(self.install_destination):
-                    precise_exe = self.install_destination
-                else:
-                    # Wait one minute before retrying
-                    sleep(60)
-        return precise_exe
-
-    @property
-    def folder(self):
-        old_path = join(expanduser("~"), ".core", "precise")
-        if os.path.isdir(old_path):
-            return old_path
-        return xdg.BaseDirectory.save_data_path("core", "precise")
-
-    @property
-    def install_destination(self):
-        return join(self.folder, "precise-engine", "precise-engine")
-
-    def install_exe(self, url: str) -> str:
-        url = url.format(arch=platform.machine())
-        if not url.endswith(".tar.gz"):
-            url = requests.get(url).text.strip()
-        if install_package(
-            url, self.folder, on_download=self.on_download, on_complete=self.on_complete
-        ):
-            raise TriggerReload
-        return self.install_destination
-
-    def install_model(self, url: str, wake_word: str) -> str:
-        model_url = url.format(wake_word=wake_word)
-        model_file = join(self.folder, posixpath.basename(model_url))
-        try:
-            install_package(
-                model_url,
-                self.folder,
-                on_download=lambda: LOG.info("Updated precise model"),
-            )
-        except (HTTPError, ValueError):
-            if isfile(model_file):
-                LOG.info("Couldn't find remote model.  Using local file")
-            else:
-                raise NoModelAvailable("Failed to download model:", model_url)
-        return model_file
-
-    @staticmethod
-    def _snd_msg(cmd):
-        with suppress(OSError):
-            with open("/dev/ttyAMA0", "w") as f:
-                print(cmd, file=f)
-
-    def on_download(self):
-        LOG.info("Downloading Precise executable...")
-        if isdir(join(self.folder, "precise-stream")):
-            rmtree(join(self.folder, "precise-stream"))
-        for old_package in glob(join(self.folder, "precise-engine_*.tar.gz")):
-            os.remove(old_package)
-        self.download_complete = False
-        self.show_download_progress = Timer(5, self.during_download, args=[True])
-        self.show_download_progress.start()
-
-    def during_download(self, first_run=False):
-        LOG.info("Still downloading executable...")
-        if first_run:  # TODO: Localize
-            self._snd_msg("mouth.text=Updating listener...")
-        if not self.download_complete:
-            self.show_download_progress = Timer(30, self.during_download)
-            self.show_download_progress.start()
-
-    def on_complete(self):
-        LOG.info("Precise download complete!")
-        self.download_complete = True
-        self.show_download_progress.cancel()
-        self._snd_msg("mouth.reset")
-
-    def update(self, chunk):
-        self.stream.write(chunk)
-
-    def found_wake_word(self, frame_data):
-        if self.has_found:
-            self.has_found = False
-            return True
-        return False
-
-    def stop(self):
-        if self.runner:
-            self.runner.stop()
-
-
 class PorcupineHotWord(HotWordEngine):
-    """Hotword engine using picovoice's Porcupine hot word engine.
-
-    """
+    """Hotword engine using picovoice's Porcupine hot word engine."""
 
     def __init__(self, key_phrase="hey mycroft", config=None, lang="en-us"):
         super().__init__(key_phrase, config, lang)
@@ -343,12 +163,12 @@ class PorcupineHotWord(HotWordEngine):
         while True:
             if len(self.audio_buffer) >= self.porcupine.frame_length:
                 result = self.porcupine.process(
-                    self.audio_buffer[0:self.porcupine.frame_length]
+                    self.audio_buffer[0 : self.porcupine.frame_length]
                 )
                 # result will be the index of the found keyword or -1 if
                 # nothing has been found.
                 self.has_found |= result >= 0
-                self.audio_buffer = self.audio_buffer[self.porcupine.frame_length:]
+                self.audio_buffer = self.audio_buffer[self.porcupine.frame_length :]
             else:
                 return
 
@@ -389,7 +209,6 @@ class HotWordFactory:
     """
 
     CLASSES = {
-        "precise": PreciseHotword,
         "porcupine": PorcupineHotWord,
     }
 
@@ -418,11 +237,7 @@ class HotWordFactory:
                     "Could not found find model for {} on {}.".format(hotword, module)
                 )
                 instance = None
-            except PreciseUnavailable:
-                LOG.warning(
-                    "Settings prevent Precise Engine use, " "falling back to default."
-                )
-                instance = None
+
             except Exception:
                 LOG.exception("Could not create hotword. Falling back to default.")
                 instance = None

@@ -184,7 +184,6 @@ class AudioConsumer(Thread):
         else:
             LOG.error("Unknown audio queue type %r" % message)
 
-    # TODO: Localization
     def wake_up(self, audio):
         if self.loop.wakeup_recognizer.found_wake_word(audio.frame_data):
             self.loop.state.sleeping = False
@@ -194,7 +193,6 @@ class AudioConsumer(Thread):
     def _audio_length(audio):
         return float(len(audio.frame_data)) / (audio.sample_rate * audio.sample_width)
 
-    # TODO: Localization
     def process(self, audio):
         if self._audio_length(audio) >= self.MIN_AUDIO_SIZE:
             stopwatch = Stopwatch()

@@ -123,11 +123,15 @@ def handle_info_taking_too_long(event):
     bus.emit(Message("speak", data, context))
 
 
+# NOTE: unmute mic if system needs to get response from user, should this be the
+# implementation or is there a better way?
 def handle_mic_listen(_):
     """Handler for core.mic.listen.
 
     Starts listening as if wakeword was spoken.
     """
+    if loop.is_muted():
+        loop.unmute()
     loop.responsive_recognizer.trigger_listen()
 
 
@@ -139,15 +143,6 @@ def handle_mic_get_status(event):
     """Query microphone mute status."""
     data = {"muted": loop.is_muted()}
     bus.emit(event.response(data))
-
-
-def handle_paired(event):
-    """Update identity information with pairing data.
-
-    This is done here to make sure it's only done in a single place.
-    TODO: Is there a reason this isn't done directly in the pairing skill?
-    """
-    pass
 
 
 def handle_audio_start(event):
@@ -217,7 +212,6 @@ def connect_bus_events(bus):
     bus.on("core.mic.listen", handle_mic_listen)
     bus.on("core.mic.stop_listen", handle_stop_listen)
     # bus.on("core.wakeword", handle_wakeword)
-    bus.on("core.paired", handle_paired)
     bus.on("recognizer_loop:audio_output_start", handle_audio_start)
     bus.on("recognizer_loop:audio_output_timeout", handle_info_taking_too_long)
     bus.on("recognizer_loop:audio_output_end", handle_audio_end)
