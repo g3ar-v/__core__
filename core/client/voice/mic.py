@@ -635,12 +635,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             and not self._stop_signaled
             and not self._skip_wake_word()
         ):
-            # for chunk in source.stream.iter_chunks():
             chunk = self.record_sound_chunk(source)
-            # if self._skip_wake_word():
-            #     return WakeWordData(audio_data, False, self._stop_signaled, ww_frames)
-            #
-            # chunk = self.record_sound_chunk(source)
             audio_buffer.append(chunk)
             ww_frames.append(chunk)
             # HACK: for detecting silence
@@ -663,7 +658,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             # elif result.type == SilenceResultType.PHRASE_END:
             #     counter = 0
 
-            # if self.loop
             energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
             audio_mean.append_sample(energy)
 
@@ -689,7 +683,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                 buffers_since_check -= buffers_per_check
                 audio_data = audio_buffer.get_last(test_size) + silence
                 said_wake_word = self.wake_word_recognizer.found_wake_word(audio_data)
-        # self._listen_triggered = False
         return WakeWordData(audio_data, said_wake_word, self._stop_signaled, ww_frames)
 
     @staticmethod
