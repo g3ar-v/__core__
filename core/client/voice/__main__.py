@@ -1,8 +1,9 @@
 # NOTE: Most consumers and producers registered handle messages for the voice system
 # only
+import os
 from threading import Lock
 
-from core import dialog
+from core import CORE_ROOT_PATH, dialog
 from core.client.voice.listener import RecognizerLoop
 from core.configuration import Configuration
 from core.lock import Lock as PIDLock  # Create/Support PID locking file
@@ -13,6 +14,7 @@ from core.util import (
     start_message_bus_client,
     wait_for_exit_signal,
 )
+from core.util.file_utils import FileWatcher
 from core.util.log import LOG
 from core.util.process_utils import ProcessStatus, StatusCallbackMap
 
@@ -164,28 +166,38 @@ def handle_stop(event):
     loop.force_unmute()
 
 
-def handle_open():
-    """Reset UI to indicate ready for speech processing"""
-    # EnclosureAPI(bus).reset
-    pass
+# def handle_open():
+#     """Reset UI to indicate ready for speech processing"""
+#     # EnclosureAPI(bus).reset
+#     pass
 
 
 def on_ready():
     data = {"utterance": dialog.get("voice.available")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.info("Speech client is ready.")
+    LOG.info("Voice client is ready.")
 
 
 def on_stopping():
     data = {"utterance": dialog.get("voice.shutting")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.info("Speech service is shutting down...")
+    LOG.info("Voice service is shutting down...")
 
 
 def on_error(e="Unknown"):
-    LOG.error("Audio service failed to launch ({}).".format(repr(e)))
+    data = {"utterance": dialog.get("voice.launch_failure")}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("speak", data, context))
+    LOG.error("Voice service failed to launch ({}).".format(repr(e)))
+
+
+def on_change(path: str):
+    data = {"utterance": dialog.get("voice_file.changed")}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("speak", data, context))
+    LOG.info("Voice client code has changed")
 
 
 def connect_loop_events(loop):
@@ -217,11 +229,21 @@ def connect_bus_events(bus):
     bus.on("recognizer_loop:audio_output_end", handle_audio_end)
 
 
+def _init_filewatcher():
+    # monitor voice module files for changes
+    LOG.info("Initiating watchdog for voice component")
+    sspath = f"{CORE_ROOT_PATH}/core/client/voice/"
+    os.makedirs(sspath, exist_ok=True)
+    return FileWatcher(
+        [sspath], callback=on_change, recursive=True, ignore_creation=True
+    )
+
+
 def main(
     ready_hook=on_ready,
     error_hook=on_error,
     stopping_hook=on_stopping,
-    watchdog=lambda: None,
+    watchdog=None,
 ):
     global bus
     global loop
@@ -240,6 +262,7 @@ def main(
         # Register handlers on internal RecognizerLoop bus
         loop = RecognizerLoop(watchdog)
         connect_loop_events(loop)
+        file_watchdog = _init_filewatcher()
         create_daemon(loop.run)
         status.set_started()
 
@@ -248,6 +271,8 @@ def main(
     else:
         status.set_ready()
         wait_for_exit_signal()
+        if file_watchdog:
+            file_watchdog.shutdown()
         status.set_stopping()
 
 

@@ -2,7 +2,7 @@ import audioop
 import os
 import random
 from collections import deque, namedtuple
-from threading import Event, Lock
+from threading import Lock
 from time import sleep
 
 import pyaudio
@@ -57,25 +57,21 @@ class MutableStream:
         self.muted_buffer = b"".join([b"\x00" * self.SAMPLE_WIDTH])
         self.read_lock = Lock()
 
-        self.chunk = bytes(self.bytes_per_buffer)
-        self.chunk_ready = Event()
         self.muted = muted
-
-        # The size of this queue is important.
-        # Too small, and chunks could be missed.
-        # Too large, and there will be a delay in wake word recognition.
-        self.chunk_deque = deque(maxlen=8)
-
-        # Begin listening
-        self.wrapped_stream.start_stream()
+        if muted:
+            self.mute()
 
     def mute(self):
         """Stop the stream and set the muted flag."""
-        self.muted = True
+        with self.read_lock:
+            self.muted = True
+            self.wrapped_stream.stop_stream()
 
     def unmute(self):
         """Start the stream and clear the muted flag."""
-        self.muted = False
+        with self.read_lock:
+            self.muted = False
+            self.wrapped_stream.start_stream()
 
     def iter_chunks(self):
         """Yield chunks of audio data from the deque."""
@@ -103,26 +99,32 @@ class MutableStream:
         Returns:
             bytes: Data read from the device.
         """
-        # If muted during read return empty buffer. This ensures no
-        # reads occur while the stream is stopped
-        if self.muted:
-            LOG.debug("returning self.muted_buffer")
-            return self.muted_buffer
 
         frames = deque()
         remaining = size
 
-        for chunk in self.iter_chunks():
-            frames.append(chunk)
-            remaining -= len(chunk)
-            if remaining <= 0:
-                break
+        with self.read_lock:
+            while remaining > 0:
+                # If muted during read return empty buffer. This ensures no
+                # reads occur while the stream is stopped
+                if self.muted:
+                    LOG.debug("returning self.muted_buffer")
+                    return self.muted_buffer
+
+                to_read = min(self.wrapped_stream.get_read_available(), remaining)
+                if to_read <= 0:
+                    sleep(0.01)
+                    continue
+                result = self.wrapped_stream.read(to_read, exception_on_overflow=of_exc)
+                frames.append(result)
+                remaining -= to_read
 
         input_latency = self.wrapped_stream.get_input_latency()
-        if input_latency > 0.2:
+        # NOTE: initially 0.2 but for mac I get input latency to 0.4
+        if input_latency > 0.5:
             pass
             # LOG.warning("High input latency: %f" % input_latency)
-            # LOG.debug("High input latency: %f" % input_latency)
+            LOG.warning("High input latency: %f" % input_latency)
         audio = b"".join(list(frames))
         return audio
 
@@ -224,7 +226,7 @@ class MutableMicrophone(Microphone):
             format=self.format,
             rate=self.SAMPLE_RATE,
             frames_per_buffer=self.CHUNK,
-            stream_callback=self._stream_callback,
+            # stream_callback=self._stream_callback,
             input=True,  # stream is an input stream
         )
 
@@ -450,7 +452,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
 
         # Maximum number of chunks to record before timing out
-        # int(self.recording_timeout / sec_per_buffer)
+        max_chunks = int(self.recording_timeout / sec_per_buffer)
 
         num_chunks = 0
 
@@ -464,11 +466,18 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         stopwatch = Stopwatch()
         with stopwatch:
-            for chunk in source.stream.iter_chunks():
+            # for chunk in source.stream.iter_chunks():
+            while num_chunks < max_chunks:
                 if self._stop_recording or check_for_signal("buttonPress"):
                     break
 
+                if ww_frames:
+                    chunk = ww_frames.popleft()
+                else:
+                    chunk = self.record_sound_chunk(source)
+
                 result = self.silence_detector.process(chunk)
+                num_chunks += 1
 
                 if result.type in {
                     SilenceResultType.SPEECH,
@@ -621,70 +630,67 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # avoid too much resources used for real-time speech detection
         # self.silence_detector.start()
         # counter = 0
-        while not said_wake_word and not self._stop_signaled:
-            for chunk in source.stream.iter_chunks():
-                if self._skip_wake_word():
-                    return WakeWordData(
-                        audio_data, False, self._stop_signaled, ww_frames
-                    )
+        while (
+            not said_wake_word
+            and not self._stop_signaled
+            and not self._skip_wake_word()
+        ):
+            # for chunk in source.stream.iter_chunks():
+            chunk = self.record_sound_chunk(source)
+            # if self._skip_wake_word():
+            #     return WakeWordData(audio_data, False, self._stop_signaled, ww_frames)
+            #
+            # chunk = self.record_sound_chunk(source)
+            audio_buffer.append(chunk)
+            ww_frames.append(chunk)
+            # HACK: for detecting silence
+            # result = self.silence_detector.process(chunk)
+            #
+            # if result.type == SilenceResultType.SPEECH:
+            #     # Continue processing chunks while speech is detected
+            #     # NOTE: assuming a count is in deci seconds,
+            #
+            #     counter += 1
+            #     # LOG.debug(
+            #     #     "result of speech when waiting for wakeword"
+            #     #     + repr(result)
+            #     #     + "and counter value: "
+            #     #     + repr(counter)
+            #     # )
+            #     if counter == 40:
+            #         LOG.info("Speech detected")
+            #         counter = 0
+            # elif result.type == SilenceResultType.PHRASE_END:
+            #     counter = 0
 
-                # chunk = self.record_sound_chunk(source)
-                audio_buffer.append(chunk)
-                ww_frames.append(chunk)
-                # HACK: for detecting silence
-                # result = self.silence_detector.process(chunk)
-                #
-                # if result.type == SilenceResultType.SPEECH:
-                #     # Continue processing chunks while speech is detected
-                #     # NOTE: assuming a count is in deci seconds,
-                #
-                #     counter += 1
-                #     # LOG.debug(
-                #     #     "result of speech when waiting for wakeword"
-                #     #     + repr(result)
-                #     #     + "and counter value: "
-                #     #     + repr(counter)
-                #     # )
-                #     if counter == 40:
-                #         LOG.info("Speech detected")
-                #         counter = 0
-                # elif result.type == SilenceResultType.PHRASE_END:
-                #     counter = 0
+            # if self.loop
+            energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
+            audio_mean.append_sample(energy)
 
-                buffers_since_check += 1.0
+            if energy < self.energy_threshold * self.multiplier:
+                self._adjust_threshold(energy, sec_per_buffer)
+            # maintain the threshold using average
+            if self.energy_threshold < energy < audio_mean.value * 1.5:
+                # bump the threshold to just above this value
+                self.energy_threshold = energy * 1.2
 
-                # if self.loop
-                energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
-                audio_mean.append_sample(energy)
+            # Periodically output energy level stats. This can be used to
+            # visualize the microphone input, e.g. a needle on a meter.
+            if mic_write_counter % 3:
+                self._watchdog()
+                self.write_mic_level(energy, source)
+            mic_write_counter += 1
 
-                if energy < self.energy_threshold * self.multiplier:
-                    self._adjust_threshold(energy, sec_per_buffer)
-                # maintain the threshold using average
-                if self.energy_threshold < energy < audio_mean.value * 1.5:
-                    # bump the threshold to just above this value
-                    self.energy_threshold = energy * 1.2
+            buffers_since_check += 1.0
+            # Send chunk to wake_word_recognizer
+            self.wake_word_recognizer.update(chunk)
 
-                # Periodically output energy level stats. This can be used to
-                # visualize the microphone input, e.g. a needle on a meter.
-                if mic_write_counter % 3:
-                    self._watchdog()
-                    self.write_mic_level(energy, source)
-                mic_write_counter += 1
-
-                # buffers_since_check += 1.0
-                # Send chunk to wake_word_recognizer
-                self.wake_word_recognizer.update(chunk)
-
-                if buffers_since_check > buffers_per_check:
-                    buffers_since_check -= buffers_per_check
-                    audio_data = audio_buffer.get_last(test_size) + silence
-                    said_wake_word = self.wake_word_recognizer.found_wake_word(
-                        audio_data
-                    )
-                if said_wake_word:
-                    return WakeWordData(
-                        audio_data, said_wake_word, self._stop_signaled, ww_frames
-                    )
+            if buffers_since_check > buffers_per_check:
+                buffers_since_check -= buffers_per_check
+                audio_data = audio_buffer.get_last(test_size) + silence
+                said_wake_word = self.wake_word_recognizer.found_wake_word(audio_data)
+        # self._listen_triggered = False
+        return WakeWordData(audio_data, said_wake_word, self._stop_signaled, ww_frames)
 
     @staticmethod
     def _create_audio_data(raw_data, source):
