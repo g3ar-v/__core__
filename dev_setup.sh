@@ -57,9 +57,7 @@ function found_exe() {
 }
 
 # Parse the command line
-opt_forcemimicbuild=false
 opt_allowroot=false
-opt_skipmimicbuild=false
 opt_python=3.11
 param=''
 

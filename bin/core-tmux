@@ -8,13 +8,13 @@ tmux new-session -d -s trevor
 # setup core
 tmux rename-window 'core'
 tmux send-keys 'echo "pane 1"' C-m
-tmux send-keys "cd $JARVIS_PATH" C-m
+tmux send-keys "cd $AI_PATH" C-m
 tmux send-keys "conda activate core" C-m
 # tmux send-keys "source venv-activate.sh -q" C-m
 # tmux send-keys 'nvim setup.py' C-m
 # tmux select-window -t @0
 tmux split-window -h -l 50%
-tmux send-keys "cd $JARVIS_PATH" C-m
+tmux send-keys "cd $AI_PATH" C-m
 tmux send-keys "conda activate core" C-m
 # tmux send-keys "source venv-activate.sh -q" C-m
 tmux send-keys "conda activate core" C-m
@@ -24,30 +24,39 @@ tmux send-keys './start-core.sh debug cli' C-m
 # tmux split-window -v -l 50%
 
 # setup skills window
-tmux new-window -c /opt/core/skills/ -n skills
-# tmux send-keys 'cd /opt/core/skills' C-m
+tmux new-window -n skills
+tmux send-keys 'cd /opt/core/skills' C-m
+tmux split-window -h -l 27%
+tmux send-keys 'cd /opt/core/skills' C-m
+tmux select-pane -t %1
+tmux send-keys "conda activate core" C-m
+tmux send-keys 'cd /opt/core/skills' C-m
+tmux split-window -v -l 50%
+tmux send-keys 'core-cli-client' C-m
+
+# setup webUI window
+tmux new-window -n webUI
+tmux send-keys 'cd $WEBUI_PATH' C-m
+tmux split-window -h -l 27%
+tmux send-keys 'cd $WEBUI_PATH' C-m
+tmux select-pane -t %2
+tmux split-window -v -l 50%
+tmux send-keys 'cd $WEBUI_PATH' C-m
+tmux send-keys 'npm run dev' C-m
+
+# setup webAPI window
+tmux new-window -n API
+tmux send-keys 'cd /Users/g3ar/Projects/core-api/' C-m
 tmux split-window -h -l 27%
 tmux select-pane -t %2
-tmux send-keys 'core-start cli' C-m
-tmux split-window -v -l 50%
-tmux send-keys 'cd /opt/core/skills' C-m
-tmux send-keys "conda activate core" C-m
-
-# setup backend window
-# tmux new-window -c ~/Documents/ovos-personal-backend/ -n backend
-# tmux split-window -h -l 27%
-# tmux select-pane -t %2
-# tmux send-keys 'ovos-local-backend' C-m
-# tmux split-window -v -l 50%
-# tmux send-keys 'ovos-backend-manager' C-m
-
+tmux send-keys 'cd /Users/g3ar/Projects/core-api/' C-m
+tmux send-keys 'uvicorn app.api:app --host 0.0.0.0 --port 8080 --reload' C-m
 
 # setup test window
 # create monitor for activity in Skills window
-tmux new-window -c ~/Documents/__core__/test/ -n log
+tmux new-window -n log
+tmux send-keys 'cd /var/log/core' C-m
 tmux split-window -h -l 83%
-# TODO: get core log directory for both linux and mac
-tmux send-keys 'cd private/var/log/core' C-m
 tmux select-pane -t %2
 tmux send-keys 'htop -F "python "' C-m
 tmux split-window -v -l 50%

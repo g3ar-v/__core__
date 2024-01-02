@@ -18,26 +18,12 @@ SOURCE="${BASH_SOURCE[0]}"
 cd -P "$( dirname "$SOURCE" )" || exit
 DIR="$( pwd )"
 
-restart=0
+# Enter the Mycroft venv
+# source "$DIR/../venv-activate.sh" -q
 
-# Stopping any active Mycroft voice service...
-"$DIR/../stop-mycroft.sh" audio
-if [ $? -ge 100 ] ; then
-    restart=1
-fi
-"$DIR/../stop-mycroft.sh" voice
-if [ $? -ge 100 ] ; then
-    restart=1
-fi
+# Sets var 1 to stdin if no args were given
+set -- "${1:-$(</dev/stdin)}" "${@:2}"
 
-
-# Launch the standard audiotest
-"$DIR/../start-mycroft.sh" audiotest "$@"
-
-
-if [ $restart -eq 1 ]
-then
-    echo "Restarting Mycroft voice service..."
-    "$DIR/../start-mycroft.sh" audio
-    "$DIR/../start-mycroft.sh" voice
-fi
+# Send a message to be spoken
+data="$*"
+python -m core.messagebus.send "recognizer_loop:utterance"  "{\"utterances\": [\"$data\"], \"lang\": \"en-us\"}" >> /dev/null
