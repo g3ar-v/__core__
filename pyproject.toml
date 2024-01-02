@@ -16,7 +16,7 @@ line-ending = "auto"
 max-line-length = 88
 
 [tool.poetry]
-name = "__core__"
+name = "core"
 version = "4.0.0"
 description = "ai assistant"
 authors = ["victor <vfranktor@gmail.com>"]
@@ -60,7 +60,10 @@ ovos-stt-plugin-fasterwhisper = "^0.0.0"
 
 [tool.poetry.scripts]
 core-voice-client="core.client.voice.__main__:main"
-
+core-messagebus="core.messagebus.service.__main__:main"  # MESSAGEBUS
+core-skills="core.skills.__main__:main"  # SKILLS
+core-cli-client="core.client.text.__main__:main"# CORE contact with MB
+core-audio="core.audio.__main__:main"  # AUDIO OUTPUT
 
 [build-system]
 requires = ["poetry-core"]
