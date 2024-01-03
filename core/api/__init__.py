@@ -136,7 +136,6 @@ class Api:
     def build_url(self, params):
         path = params.get("path", "")
         version = params.get("version", self.version)
-        LOG.info(f"url {self.url}")
         return self.url + "/" + version + "/" + path
 
 

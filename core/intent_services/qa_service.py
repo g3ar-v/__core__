@@ -3,6 +3,8 @@ from itertools import chain
 from threading import Lock
 
 import core.intent_services
+from core.api import SystemApi
+from core.messagebus.message import Message, dig_for_message
 from core.configuration import Configuration
 from core.llm import LLM, main_persona_prompt
 from core.util import LOG, flatten_list
@@ -11,7 +13,8 @@ from core.util.resource_files import CoreResources
 config = Configuration.get()
 
 
-# TODO: create a fallback timer to skip function after a while
+# TODO: create a fallback timer to skip function after a while if information has not
+# been produced
 class QAService:
     """
     Core persona of the system, provides conversation and retrieval of
@@ -26,7 +29,7 @@ class QAService:
         self.interrupted = False
         self._vocabs = {}
         self.llm = LLM(bus)
-        self.intent_data = None
+        self.api = SystemApi()
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -95,7 +98,7 @@ class QAService:
                 if answered:
                     # NOTE: imported in format to prevent circular import error
                     match = core.intent_services.IntentMatch(
-                        "persona", None, self.intent_data, None
+                        "persona", "persona", None, None
                     )
                 break
 
@@ -109,10 +112,32 @@ class QAService:
 
     def handle_query_response(self, message) -> bool:
         try:
+            # TODO: implement a better way to listen for user utterance that is much
             response = self.llm.llm_response(query=message, prompt=main_persona_prompt)
-            self.intent_data = response
+            # self.llm.message_history.add_ai_message(response)
+            # self.api.send_system_utterance(response)
+
+            if "?" in response:
+                self.bus.emit(Message("core.mic.listen"))
+
             self.answered = True
             return self.answered
         except Exception as e:
             LOG.error("error in QA response: {}".format(e))
             return False
+
+    def speak(self, utterance, expect_response=False, message=None):
+        """Speak a sentence.
+
+        Args:
+            utterance (str): sentence system should speak
+        """
+
+        message = message or dig_for_message()
+        data = {
+            "utterance": utterance,
+            "expect_response": expect_response,
+        }
+
+        m = Message("speak", data)
+        self.bus.emit(m)

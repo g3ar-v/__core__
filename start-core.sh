@@ -256,7 +256,7 @@ case ${_opt} in
 #    ;;
 "unittest")
 	source_venv
-	pytest test/unittests/ --cov=mycroft "$@"
+	pytest test/unittests/ --cov=core "$@"
 	;;
 "singleunittest")
 	source_venv

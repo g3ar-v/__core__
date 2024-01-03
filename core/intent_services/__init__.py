@@ -4,6 +4,7 @@ from collections import namedtuple
 from copy import copy
 
 from core.audio import wait_while_speaking
+from core.api import SystemApi
 from core.configuration import Configuration, set_default_lf_lang
 from core.dialog import dialog
 from core.llm import LLM
@@ -73,10 +74,21 @@ def _normalize_all_utterances(utterances):
 
 
 class IntentService:
-    """Intent service. parses utterances using a variety of systems.
+    """IntentService provides intent parsing using multiple intent services.
 
-    The intent service also provides the internal API for registering and
-    querying the intent service.
+    It handles registering vocabularies, routing utterances to different
+    intent services, and selecting the best intent match.
+
+    Attributes:
+        bus: MessageBus used to communicate with other Mycroft components
+        llm: Handles queries to large language models
+        intent_api: Provides intent registration and query APIs
+        skill_names: Maps skill ids to names
+        adapt_service: Adapt intent parser using a neural network
+        padatious_service: Padatious intent parser using regex patterns
+        persona: Q&A parser for personal queries
+        fallback: Fallback parser when no other service matches
+        active_skills: Skills currently registered with vocabularies
     """
 
     def __init__(self, bus):
@@ -96,6 +108,7 @@ class IntentService:
             )
         self.persona = QAService(bus)
         self.fallback = FallbackService(bus)
+        self.api = SystemApi()
 
         self.bus.on("register_vocab", self.handle_register_vocab)
         self.bus.on("register_intent", self.handle_register_intent)
@@ -108,6 +121,7 @@ class IntentService:
         self.bus.on("clear_context", self.handle_clear_context)
 
         # Converse method
+        self.bus.on("core.wakeword", self.stop_system_speech)
         self.bus.on("core.speech.recognition.unknown", self.reset_converse)
         self.bus.on("core.skills.loaded", self.update_skill_name_dict)
         self.bus.on("intent.service.response.latency", self.handle_response_latency)
@@ -153,11 +167,17 @@ class IntentService:
     def registered_intents(self):
         return [parser.__dict__ for parser in self.adapt_service.engine.intent_parsers]
 
+    def stop_system_speech(self, event):
+        """Stop speech when wakeword is called to handle new utterance"""
+        self.bus.emit(Message("core.audio.speech.stop"))
+
     def handle_response_latency(self, event):
         """Core is taking too long to process information"""
         LOG.info("Info taking too long")
         data = {"utterance": dialog.get("taking_too_long")}
         context = {"client_name": "intent_service", "source": "audio"}
+        # HACK:: the llm_response seems to be a different thread
+        wait_while_speaking()
         self.bus.emit(Message("speak", data, context))
         wait_while_speaking()
 
@@ -277,8 +297,7 @@ class IntentService:
 
             utterances = message.data.get("utterances", [])
             combined = _normalize_all_utterances(utterances)
-            # NOTE: ideally where user_message is to be sent to DB, but due to unrefined
-            # form of the utternace, should all utterances be sent to database?
+            self.api.send_user_utterance(flatten_list(combined)[0])
 
             stopwatch = Stopwatch()
 
@@ -318,11 +337,15 @@ class IntentService:
                     # Add back original list of utterances for intent handlers
                     # match.intent_data only includes the utterance with the
                     # highest confidence.
+                    #
+                    # LOG.info(f"response data: {reply.data}")
                     reply.data["utterances"] = utterances
                     self.bus.emit(reply)
                 # NOTE: should prevent user utterance from already being in chat_history
                 if self.llm.message_history:
                     self.llm.message_history.add_user_message(flatten_list(combined)[0])
+                # TODO: send to UI only if message is not sent from UI
+
             else:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task

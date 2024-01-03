@@ -15,6 +15,7 @@ from langchain.schema.output import LLMResult
 from langchain.vectorstores import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
 
+from core.api import SystemApi
 from core.configuration import Configuration
 from core.messagebus.message import Message, dig_for_message
 from core.util.log import LOG
@@ -47,12 +48,12 @@ class CustomCallback(BaseCallbackHandler):
         self.completed = False
         self.bus.on("llm.speech.interruption", self.handle_interruption)
 
-    def handle_interruption(self):
+    def handle_interruption(self, message):
         self.interrupted = True
 
     #     self.bus.emit("core.audio.speech.stop")
 
-    async def on_llm_new_token(
+    def on_llm_new_token(
         self,
         token: str,
         *,
@@ -70,7 +71,7 @@ class CustomCallback(BaseCallbackHandler):
                 if ":" in self.buffer:
                     LOG.info("removing `:` in llm response")
                     self.buffer = re.sub(
-                        r"(\w+):",
+                        r"(Vasco|vasco:)",
                         "",
                         self.buffer,
                     )
@@ -120,12 +121,15 @@ class LLM(metaclass=Singleton):
         bus: The message bus for the system.
         connection_string: The connection string for the MongoDB database.
         message_history: The MongoDBChatMessageHistory object for storing chat history.
-        chat_history: The ConversationBufferWindowMemory object for storing recent chat history.
-        vector_search: The MongoDBAtlasVectorSearch object for performing vector searches.
+        chat_history: The ConversationBufferWindowMemory object for storing recent
+        chat history
+        vector_search: The MongoDBAtlasVectorSearch object for performing vector
+        searches.
     """
 
     def __init__(self, bus):
         self.bus = bus
+        self.api = SystemApi()
         self.connection_string = config["microservices"].get("mongo_conn_string")
         os.environ["OPENAI_API_KEY"] = config.get("microservices").get("openai_key")
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -155,7 +159,7 @@ class LLM(metaclass=Singleton):
             chat_memory=self.message_history,
             human_prefix=user_name,
             ai_prefix=system_name,
-            k=3,
+            k=3,  # if this is a lot then context window is exceeded
         )
         # create vectorstore access
         self.vector_search = MongoDBAtlasVectorSearch.from_connection_string(
@@ -169,7 +173,7 @@ class LLM(metaclass=Singleton):
         if config.get("llm", {}).get("model_type", {}) == "online":
             self.model = ChatOpenAI(
                 temperature=1,
-                max_tokens=128,
+                max_tokens=256,
                 model="gpt-3.5-turbo",
                 streaming=True,
                 callbacks=[CustomCallback(self.bus)],
@@ -206,19 +210,29 @@ class LLM(metaclass=Singleton):
 
         Returns:
             str: The generated response from the language model.
+            stream: returns tokens
         """
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
 
         relevant_memory = None
+        current_conversation = self.chat_history.load_memory_variables({})[
+            "chat_history"
+        ]
         # NOTE: a use case for using the function without a query
-        if query:
-            documents = self.vector_search.similarity_search(query, k=2)
-            relevant_memory = documents[0].page_content
+
+        # try:
+        #     if query:
+        #         documents = self.vector_search.similarity_search(query, k=2)
+        #         relevant_memory = documents[0].page_content
+        # except Exception as e:
+        #     LOG.info("relvant memory error: {}".format(e))
+        #     relevant_memory = None
+
         try:
             today = now_local()
-            # date = nice_date_time(today)
+            date_now = today.strftime("%Y-%m-%d %H:%M %p")
 
             self.set_model()
             gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
@@ -226,10 +240,13 @@ class LLM(metaclass=Singleton):
             response = gptchain.predict(
                 context=context,
                 query=query,
-                curr_conv=self.chat_history.load_memory_variables({})["chat_history"],
-                rel_mem=relevant_memory,
-                date_str=today,
+                curr_conv=current_conversation,
+                date_str=date_now,
             )
+            self.message_history.add_ai_message(response)
+            self.api.send_system_utterance(response)
+
             return response
+
         except Exception as e:
             LOG.error("error in llm response: {}".format(e))
