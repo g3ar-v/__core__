@@ -3,7 +3,6 @@ import io
 from math import ceil
 import xdg.BaseDirectory
 
-from .gui_server import start_qml_gui
 
 from core.tts import TTS
 
@@ -43,7 +42,7 @@ auto_scroll = True
 # for debugging odd terminals
 last_key = ""
 show_last_key = False
-show_gui = None  # None = not initialized, else True/False
+# show_gui = None  # None = not initialized, else True/False
 gui_text = []
 
 log_lock = Lock()
@@ -135,8 +134,8 @@ def handleNonAscii(text):
 filename = "core_cli.conf"
 
 
-def load_mycroft_config(bus):
-    """Load the mycroft config and connect it to updates over the messagebus."""
+def load_core_config(bus):
+    """Load the core config and connect it to updates over the messagebus."""
     Configuration.set_config_update_handlers(bus)
     return Configuration.get()
 
@@ -150,7 +149,7 @@ def connect_to_core():
     global bus
     global config
     bus = connect_to_messagebus()
-    config = load_mycroft_config(bus)
+    config = load_core_config(bus)
 
 
 def load_settings():
@@ -645,22 +644,22 @@ def _do_meter(height):
             )
 
 
-def _do_gui(gui_width):
-    curses.color_pair(2)  # dark red
-    x = curses.COLS - gui_width
-    y = 3
-    draw(x, y, " " + make_titlebar("= GUI", gui_width - 1) + " ", clr=CLR_HEADING)
-    cnt = len(gui_text) + 1
-    if cnt > curses.LINES - 15:
-        cnt = curses.LINES - 15
-    for i in range(0, cnt):
-        draw(x, y + 1 + i, " !", clr=CLR_HEADING)
-        if i < len(gui_text):
-            draw(x + 2, y + 1 + i, gui_text[i], pad=gui_width - 3)
-        else:
-            draw(x + 2, y + 1 + i, "*" * (gui_width - 3))
-        draw(x + (gui_width - 1), y + 1 + i, "!", clr=CLR_HEADING)
-    draw(x, y + cnt, " " + "-" * (gui_width - 2) + " ", clr=CLR_HEADING)
+# def _do_gui(gui_width):
+#     curses.color_pair(2)  # dark red
+#     x = curses.COLS - gui_width
+#     y = 3
+#     draw(x, y, " " + make_titlebar("= GUI", gui_width - 1) + " ", clr=CLR_HEADING)
+#     cnt = len(gui_text) + 1
+#     if cnt > curses.LINES - 15:
+#         cnt = curses.LINES - 15
+#     for i in range(0, cnt):
+#         draw(x, y + 1 + i, " !", clr=CLR_HEADING)
+#         if i < len(gui_text):
+#             draw(x + 2, y + 1 + i, gui_text[i], pad=gui_width - 3)
+#         else:
+#             draw(x + 2, y + 1 + i, "*" * (gui_width - 3))
+#         draw(x + (gui_width - 1), y + 1 + i, "!", clr=CLR_HEADING)
+#     draw(x, y + cnt, " " + "-" * (gui_width - 2) + " ", clr=CLR_HEADING)
 
 
 def set_screen_dirty():
@@ -846,8 +845,8 @@ def do_draw_main(scr):
         scr.addstr(y, 1, handleNonAscii(txt), clr)
         y += 1
 
-    if show_gui and curses.COLS > 20 and curses.LINES > 20:
-        _do_gui(curses.COLS - 20)
+    # if show_gui and curses.COLS > 20 and curses.LINES > 20:
+    #     _do_gui(curses.COLS - 20)
 
     # Command line at the bottom
     ln = line
@@ -1327,7 +1326,7 @@ def gui_main(stdscr):
     global last_key
     global history
     global screen_lock
-    global show_gui
+    # global show_gui
     global config
 
     scr = stdscr
@@ -1518,9 +1517,10 @@ def gui_main(stdscr):
             elif code == 6:  # Ctrl+F (Find)
                 line = ":find "
             elif code == 7:  # Ctrl+G (start GUI)
-                if show_gui is None:
-                    start_qml_gui(bus, gui_text)
-                show_gui = not show_gui
+                scr.erase()
+                # if show_gui is None:
+                #     start_qml_gui(bus, gui_text)
+                # show_gui = not show_gui
             elif code == 18:  # Ctrl+R (Redraw)
                 scr.erase()
             elif code == 24:  # Ctrl+X (Exit)
