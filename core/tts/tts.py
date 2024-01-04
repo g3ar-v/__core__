@@ -152,14 +152,21 @@ class PlaybackThread(Thread):
                     self.end_audio(listen)
                     self._processing_queue = False
 
+    # TODO: add dynamic source variable
     def begin_audio(self):
         """Perform befining of speech actions."""
         # Create signals informing start of speech
         if self.bus:
-            self.bus.emit(Message("recognizer_loop:audio_output_start"))
+            context = {
+                "client_name": "core_audio_pbthread",
+            }
+            self.bus.emit(
+                Message("recognizer_loop:audio_output_start", context=context)
+            )
         else:
             LOG.warning("Speech started before bus was attached.")
 
+    # TODO: add dynamic source variable
     def end_audio(self, listen):
         """Perform end of speech output actions.
 
@@ -171,7 +178,9 @@ class PlaybackThread(Thread):
         """
         if self.bus:
             # Send end of speech signals to the system
-            context = {"client_name": "core_audio_pbthread", "source": "llm"}
+            context = {
+                "client_name": "core_audio_pbthread",
+            }
             self.bus.emit(Message("recognizer_loop:audio_output_end", context=context))
 
             if listen:
@@ -459,10 +468,6 @@ class TTS(metaclass=ABCMeta):
                     phonemes = phoneme_file.load()
 
             else:
-                # TODO: this should be changed return the audio data from
-                #  the API call and then to call the add_to_cache method
-                #  of the TTS cache.  But this requires changing the public
-                #  API of the get_tts method in each engine.
                 audio_file = self.cache.define_audio_file(sentence_hash)
                 # TODO 21.08: remove mutation of audio_file.path.
                 returned_file, phonemes = self.get_tts(sentence, str(audio_file.path))

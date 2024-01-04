@@ -9,17 +9,19 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.llms import LlamaCpp
+
+# from langchain_community.llms import LlamaCpp
+
 from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
 from langchain.schema.output import LLMResult
 from langchain.vectorstores import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
-
 from core.api import SystemApi
 from core.configuration import Configuration
 from core.messagebus.message import Message, dig_for_message
 from core.util.log import LOG
 from core.util.time import now_local
+from core.util.network_utils import is_connected
 
 config = Configuration.get()
 
@@ -53,7 +55,7 @@ class CustomCallback(BaseCallbackHandler):
 
     #     self.bus.emit("core.audio.speech.stop")
 
-    def on_llm_new_token(
+    async def on_llm_new_token(
         self,
         token: str,
         *,
@@ -139,9 +141,10 @@ class LLM(metaclass=Singleton):
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
 
-        # TODO: backup when online mongodb fails
-        MongoClient(self.connection_string)
         try:
+            # TODO: backup when online mongodb fails
+            MongoClient(self.connection_string)
+
             self.message_history = MongoDBChatMessageHistory(
                 connection_string=self.connection_string,
                 database_name="jarvis",
@@ -154,23 +157,31 @@ class LLM(metaclass=Singleton):
 
         user_name = config["user_preference"].get("user_name")
         system_name = config["system_name"]
-        self.chat_history = ConversationBufferWindowMemory(
-            memory_key="chat_history",
-            chat_memory=self.message_history,
-            human_prefix=user_name,
-            ai_prefix=system_name,
-            k=3,  # if this is a lot then context window is exceeded
-        )
-        # create vectorstore access
-        self.vector_search = MongoDBAtlasVectorSearch.from_connection_string(
-            self.connection_string,
-            "jarvis.chat_history",
-            OpenAIEmbeddings(disallowed_special=()),
-            index_name="default",
-        )
+        if self.message_history:
+            self.chat_history = ConversationBufferWindowMemory(
+                memory_key="chat_history",
+                chat_memory=self.message_history,
+                human_prefix=user_name,
+                ai_prefix=system_name,
+                k=3,  # if this is a lot then context window is exceeded
+            )
+            # create vectorstore access
+            self.vector_search = MongoDBAtlasVectorSearch.from_connection_string(
+                self.connection_string,
+                "jarvis.chat_history",
+                OpenAIEmbeddings(disallowed_special=()),
+                index_name="default",
+            )
+        else:
+            self.chat_history = ConversationBufferWindowMemory(
+                memory_key="chat_history",
+                human_prefix=user_name,
+                ai_prefix=system_name,
+                k=3,  # if this is a lot then context window is exceeded
+            )
 
     def set_model(self):
-        if config.get("llm", {}).get("model_type", {}) == "online":
+        if config.get("llm", {}).get("model_type", {}) == "online" and is_connected():
             self.model = ChatOpenAI(
                 temperature=1,
                 max_tokens=256,
@@ -241,11 +252,10 @@ class LLM(metaclass=Singleton):
                 context=context,
                 query=query,
                 curr_conv=current_conversation,
+                rel_mem=relevant_memory,
                 date_str=date_now,
             )
-            self.message_history.add_ai_message(response)
-            self.api.send_system_utterance(response)
-
+            self.api.send_ai_utterance(response)
             return response
 
         except Exception as e:

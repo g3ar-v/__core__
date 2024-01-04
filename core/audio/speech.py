@@ -12,6 +12,7 @@ from core.tts.mimic3_tts import Mimic3
 from core.util import check_for_signal, create_signal
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
+from core.util.network_utils import InternetDown
 
 bus = None  # messagebus connection
 config = None
@@ -48,58 +49,28 @@ def handle_speak(event):
     else:
         ident = "unknown"
 
-    start = time.time()  # Time of speech request
+    # start = time.time()  # Time of speech request
     with lock:
         stopwatch = Stopwatch()
         stopwatch.start()
         utterance = event.data["utterance"]
         listen = event.data.get("expect_response", False)
-        # This is a bit of a hack for Picroft.  The analog audio on a Pi blocks
-        # for 30 seconds fairly often, so we don't want to break on periods
-        # (decreasing the chance of encountering the block).  But we will
-        # keep the split for non-Picroft installs since it give user feedback
-        # faster on longer phrases.
-        # HACK: this works for now but should it be here and should all messages be
-        # tracked?
+
+        # NOTE: removed ai messages from here and kept in qa service. To prevent
+        # tracking all system messages
         LOG.info(f"Speaking utterance: {utterance}")
-        if llm.message_history:
-            llm.message_history.add_ai_message(utterance)
-        # NOTE: is there an efficient way of getting the previous utterance?
+        # if llm.message_history:
+        #     llm.message_history.add_ai_message(utterance)
+        # HACK: is there an efficient way of getting the previous utterance?
         global interrupted_utterance
         interrupted_utterance = utterance
-        # TODO: Remove or make an option?  This is really a hack, anyway,
-        # so we likely will want to get rid of this when not running on Mimic
-        if (
-            config.get("enclosure", {}).get("platform") != "picroft"
-            and len(re.findall("<[^>]*>", utterance)) == 0
-        ):
-            chunks = tts.preprocess_utterance(utterance)
-            # Apply the listen flag to the last chunk, set the rest to False
-            chunks = [
-                (chunks[i], listen if i == len(chunks) - 1 else False)
-                for i in range(len(chunks))
-            ]
-            for chunk, listen in chunks:
-                # Check if somthing has aborted the speech
-                if _last_stop_signal > start or check_for_signal("buttonPress"):
-                    # Clear any newly queued speech
-                    tts.playback.clear()
-                    break
-                try:
-                    mute_and_speak(chunk, ident, listen)
-
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    LOG.error("Error in mute_and_speak", exc_info=True)
-        else:
-            mute_and_speak(utterance, ident, listen)
+        speak(utterance, ident, listen)
 
         stopwatch.stop()
 
 
-def mute_and_speak(utterance, ident, listen=False):
-    """Mute mic and start speaking the utterance using selected tts backend.
+def speak(utterance, ident, listen=False):
+    """start speaking the utterance using selected tts backend.
 
     Args:
         utterance:  The sentence to be spoken
@@ -131,11 +102,12 @@ def mute_and_speak(utterance, ident, listen=False):
     else:
         try:
             tts.execute(utterance, ident, listen)
-        except Exception:
-            LOG.exception("TTS execution failed.")
+        except Exception as e:
+            mimic_fallback_tts(utterance, ident, listen)
+            LOG.error(e)
+            # LOG.exception("TTS execution failed.")
 
 
-# TODO: check mimic3 is the fallback and if it works
 def _get_mimic_fallback():
     """Lazily initializes the fallback TTS if needed."""
     global mimic_fallback_obj
@@ -157,7 +129,7 @@ def mimic_fallback_tts(utterance, ident, listen):
     Args:
         utterance (str): sentence to speak
         ident (str): interaction id for metrics
-        listen (bool): True if interaction should end with mycroft listening
+        listen (bool): True if interaction should end with system listening
     """
     LOG.debug("Defaulting to Mimic3 as fallback for speech")
     tts = _get_mimic_fallback()
@@ -172,18 +144,20 @@ def handle_stop(event):
     global _last_stop_signal
 
     if check_for_signal("isSpeaking", -1):
-        tts.playback.set_interrupted_utterance(interrupted_utterance)
-        tts.playback.clear()  # Clear here to get instant stop
+        # while system_is_speaking():
+        LOG.info("system still speaking, handling stop")
         # sent to llm to handle interruption by ending llm streaming thread
-        bus.emit(
-            Message("llm.speech.interruption", {"utterance": interrupted_utterance})
-        )
-        # bus.emit(Message("core.mic.stop_listen", {}))
+        # bus.emit(Message("llm.speech.interruption"))
+        # tts.playback.set_interrupted_utterance(interrupted_utterance)
+        tts.playback.clear()  # Clear here to get instant stop
+        # time.sleep(1)
+
         _last_stop_signal = time.time()
-        bus.emit(
-            Message("core.interrupted_utterance", {"utterance": interrupted_utterance})
-        )
-        LOG.info("Utterance interrupted")
+        # bus.emit(Message("core.mic.stop_listen", {}))
+        # bus.emit(
+        #     Message("core.interrupted_utterance", {"utterance": interrupted_utterance})
+        # )
+        # LOG.info("Utterance interrupted")
         bus.emit(Message("core.stop.handled", {"by": "TTS"}))
 
 
