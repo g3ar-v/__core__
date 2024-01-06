@@ -16,12 +16,14 @@
   import { page } from "$app/stores";
 
   const socket = new WebSocket("ws://localhost:8080/ws");
+
   let stopResponseFlag = false;
   let autoScroll = true;
   let isMuted: boolean = false;
 
   let title = "";
   let prompt = "";
+  let speechRecognitionListening = false;
 
   let messages = [];
   let history = {
@@ -46,7 +48,6 @@
   }
 
   onMount(async () => {
-    await chatId.set(uuidv4());
     socket.onopen = (event) => {
       console.log("WebSocket is open now.");
     };
@@ -56,45 +57,13 @@
     socket.onmessage = (event) => {
       // console.log("Received data from server:", event.data);
       let response = JSON.parse(event.data);
-      if (response.type === "user") {
-        console.log(`user message: ${response.prompt}`);
-        let userMessageId = uuidv4();
-        let userMessage = {
-          id: userMessageId,
-          parentId: messages.length !== 0 ? messages.at(-1).id : null,
-          childrenIds: [],
-          role: "user",
-          content: response.prompt,
-        };
-        if (messages.length !== 0) {
-          history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
-        }
-
-        history.messages[userMessageId] = userMessage;
-        history.currentId = userMessageId;
-      } else if (response.type === "system") {
-        console.log(`system message: ${response.prompt}`);
-        let responseMessageId = uuidv4();
-        let parentId = messages.at(-1).id;
-
-        let responseMessage = {
-          parentId: parentId,
-          role: "assistant",
-          id: responseMessageId,
-          childrenIds: [],
-          content: response.prompt,
-        };
-        history.messages[responseMessageId] = responseMessage;
-        history.currentId = responseMessageId;
-        if (parentId !== null) {
-          history.messages[parentId].childrenIds = [
-            ...history.messages[parentId].childrenIds,
-            responseMessageId,
-          ];
-        }
-        responseMessage.done = true;
-      }
+      handleMessage(response);
     };
+    window.addEventListener("beforeunload", function () {
+      socket.close();
+    });
+
+    await chatId.set(uuidv4());
 
     isMuted = await getMicrophoneStatus();
     console.log(`microphone mute status: ${isMuted}`);
@@ -123,6 +92,52 @@
     // 	: $settings.models ?? [''];
   };
 
+  function handleMessage(response) {
+    if (response.type === "user") {
+      console.log(`user message: ${response.prompt}`);
+      let userMessageId = uuidv4();
+      let userMessage = {
+        id: userMessageId,
+        parentId: messages.length !== 0 ? messages.at(-1).id : null,
+        childrenIds: [],
+        role: "user",
+        content: response.prompt,
+      };
+      if (messages.length !== 0) {
+        history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
+      }
+
+      history.messages[userMessageId] = userMessage;
+      history.currentId = userMessageId;
+    } else if (response.type === "system") {
+      console.log(`system message: ${response.prompt}`);
+      let responseMessageId = uuidv4();
+      let parentId = messages.at(-1).id;
+
+      let responseMessage = {
+        parentId: parentId,
+        role: "assistant",
+        id: responseMessageId,
+        childrenIds: [],
+        content: response.prompt,
+      };
+      history.messages[responseMessageId] = responseMessage;
+      history.currentId = responseMessageId;
+      if (parentId !== null) {
+        history.messages[parentId].childrenIds = [
+          ...history.messages[parentId].childrenIds,
+          responseMessageId,
+        ];
+      }
+      responseMessage.done = true;
+    } else if (response.type === "status") {
+      if (response.data === "recognizer_loop:record_begin") {
+        speechRecognitionListening = true;
+      } else if (response.data === "recognizer_loop:record_end") {
+        speechRecognitionListening = false;
+      }
+    }
+  }
   //////////////////////////
   // Ollama functions
   //////////////////////////
@@ -342,6 +357,7 @@
     bind:prompt
     bind:autoScroll
     bind:isMuted
+    bind:speechRecognitionListening
     suggestionPrompts={[
       {
         title: ["Help me study", "vocabulary for a college entrance exam"],

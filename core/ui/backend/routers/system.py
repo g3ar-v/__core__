@@ -1,14 +1,11 @@
-from typing import List
+from typing import Dict
 
 from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
-from starlette.websockets import WebSocket
 
 from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.common.utils import (
     websocket_manager,
-    get_active_connections,
-    send_message_to_clients,
 )
 from core.ui.backend.models.voice import Message
 from core.util.log import LOG
@@ -65,4 +62,46 @@ async def send_system_utterance(
     """
     LOG.info("Sending message to UI: %s", message.json())
     await websocket_manager.send_data(message.__dict__)
+    return JSONResponse(content={})
+
+
+@router.put(
+    "/listening/begin",
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    summary="send system listening start status to UI",
+    description="Send system listening start status to UI",
+    response_description="system listening start sent",
+    dependencies=[Depends(JWTBearer())],
+)
+async def send_system_listening_start() -> JSONResponse:
+    """Request to send status of the system listening
+
+    :return: HTTP status code
+    :rtype: int
+    """
+    # message = Message(type="status", prompt="Listening started")
+    # LOG.info("Sending message to UI: %s", message)
+    payload: Dict = {"type": "status", "data": "recognizer_loop:record_begin"}
+    await websocket_manager.send_data(payload)
+    return JSONResponse(content={})
+
+
+@router.put(
+    "/listening/end",
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    summary="send system listening stop status to UI",
+    description="Send system listening stop status to UI",
+    response_description="system listening stop sent",
+    dependencies=[Depends(JWTBearer())],
+)
+async def send_system_listening_stop() -> JSONResponse:
+    """Request to send status of the system no longer listening
+
+    :return: HTTP status code
+    :rtype: int
+    """
+    payload: Dict = {"type": "status", "data": "recognizer_loop:record_end"}
+    await websocket_manager.send_data(payload)
     return JSONResponse(content={})

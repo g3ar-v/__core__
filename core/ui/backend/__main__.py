@@ -1,22 +1,22 @@
 """Application entrypoint
 """
+from typing import Dict
+
 from fastapi import (
     FastAPI,
-    status,
+    HTTPException,
     WebSocket,
     WebSocketDisconnect,
-    Depends,
-    HTTPException,
+    status,
 )
-from typing import List, Dict
 
 # from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
-from .config import get_settings
-from .routers import voice, system
 from .common.utils import websocket_manager, ws_send
+from .config import get_settings
+from .routers import system, voice
 
 settings = get_settings()
 
@@ -85,9 +85,12 @@ async def websocket_endpoint(
     await websocket_manager.connect(websocket)
 
     try:
-        data = await websocket.receive_text()
-        # Do something with data
+        while True:
+            data = await websocket.receive_json()
+            print(data)
+            # Do something with data
     except WebSocketDisconnect:
+        print(f"disconnecting websocket: {websocket}")
         await websocket_manager.disconnect(websocket)
 
 

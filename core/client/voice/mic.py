@@ -9,6 +9,7 @@ import pyaudio
 import speech_recognition
 from speech_recognition import AudioData, AudioSource, Microphone
 
+from core.api import SystemApi
 from core.audio import wait_while_speaking
 from core.configuration import Configuration
 from core.util import (
@@ -353,6 +354,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             wake_word_recognizer: The wake word recognizer instance.
             watchdog: A function to be called periodically during long operations.
         """
+        self.api = SystemApi()
         self._watchdog = watchdog or (lambda: None)  # Default to dummy func
         self.config = Configuration.get()
         listener_config = self.config.get("listener")
@@ -803,10 +805,12 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # Notify system of recording start
         emitter.emit("recognizer_loop:record_begin")
+        self.api.send_system_listening_begin()
 
         frame_data = self._record_phrase(source, sec_per_buffer, stream, ww_frames)
         audio_data = self._create_audio_data(frame_data, source)
         emitter.emit("recognizer_loop:record_end")
+        self.api.send_system_listening_end()
 
         # Play a wav file to indicate audio recording has ended
         self.play_end_listening_sound(source)

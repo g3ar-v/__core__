@@ -82,6 +82,10 @@ def main(
         on_stopping=stopping_hook,
     )
     status = ProcessStatus("skills", bus, callback_map=callbacks)
+
+    # add event logs to cli
+    bus.emit(Message("core.debug.log", data={"bus": True}))
+
     SkillApi.connect_bus(bus)
     skill_manager = _initialize_skill_manager(bus, watchdog)
 

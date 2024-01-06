@@ -146,6 +146,7 @@ class SystemApi(Api):
         super(SystemApi, self).__init__("system")
 
     def send_user_utterance(self, data):
+        LOG.info("sending user message to UI backend")
         return self.request(
             {
                 "method": "POST",
@@ -154,7 +155,8 @@ class SystemApi(Api):
             }
         )
 
-    def send_system_utterance(self, data):
+    def send_ai_utterance(self, data):
+        LOG.info("sending ai message to UI backend")
         return self.request(
             {
                 "method": "POST",
@@ -162,3 +164,9 @@ class SystemApi(Api):
                 "json": {"type": "system", "prompt": data},
             }
         )
+
+    def send_system_listening_begin(self):
+        return self.request({"method": "PUT", "path": "/listening/begin"})
+
+    def send_system_listening_end(self):
+        return self.request({"method": "PUT", "path": "/listening/end"})

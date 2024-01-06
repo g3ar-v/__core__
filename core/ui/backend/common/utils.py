@@ -1,7 +1,7 @@
 """Functions use multiple times in different places across the application
 """
-import json
 import asyncio
+import json
 from time import time
 from typing import Dict, List, Optional
 
@@ -107,26 +107,32 @@ async def send_message_to_clients(message: str, active_connections):
 
 class WebSocketManager:
     def __init__(self):
-        self.active_websockets: Dict[str, WebSocket] = {}
+        self.active_websockets: List[WebSocket] = []
         self.queue: asyncio.Queue = asyncio.Queue()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_websockets[websocket] = websocket
+        self.active_websockets.append(websocket)
         asyncio.create_task(self.sender(websocket))
 
     async def disconnect(self, websocket: WebSocket):
-        self.active_websockets.pop(websocket)
+        self.active_websockets.remove(websocket)
 
     async def send_data(self, data: str):
         await self.queue.put(data)
 
     async def sender(self, websocket: WebSocket):
         while True:
-            data = await self.queue.get()
-            print(f"websocket state {websocket.client_state}")
+            try:
+                data = await self.queue.get()
+                print(f"websocket state {websocket.client_state}")
 
-            await websocket.send_json(data)
+                await websocket.send_json(data)
+            except Exception as e:
+                print(f"Error in sender: {e}")
+                print(f"disconnecting websocket: {websocket}")
+                await self.disconnect(websocket)
+                break
 
 
 websocket_manager = WebSocketManager()
