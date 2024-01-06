@@ -16,11 +16,8 @@
   // export let regenerateResponse: Function;
 
   export let autoScroll;
-  // export let selectedModels;
   export let history = {};
   export let messages = [];
-
-  // export let selectedModelfile = null;
 
   $: if (messages && messages.length > 0 && (messages.at(-1).done ?? false)) {
     (async () => {
@@ -410,13 +407,11 @@
                 Victor
               {:else}
                 Vasco
-                <!-- Vasco <span class=" text-gray-500 text-sm font-medium" -->
-                <!-- 	>{message.model ? ` ${message.model}` : ''}</span -->
-                <!-- > -->
               {/if}
             </div>
 
             {#if message.role !== "user" && message.content === ""}
+              <!-- pulse animated grid -->
               <div class="w-full mt-3">
                 <div class="animate-pulse flex w-full">
                   <div class="space-y-2 w-full">
@@ -613,6 +608,7 @@
                           </div>
                         {/if}
 
+                        <!-- edit message button -->
                         <button
                           class="invisible group-hover:visible p-1 rounded dark:hover:bg-gray-800 transition"
                           on:click={() => {
@@ -635,6 +631,7 @@
                           </svg>
                         </button>
 
+                        <!-- copy button -->
                         <button
                           class="invisible group-hover:visible p-1 rounded dark:hover:bg-gray-800 transition"
                           on:click={() => {

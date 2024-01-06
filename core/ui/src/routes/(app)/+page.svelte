@@ -48,6 +48,8 @@
   }
 
   onMount(async () => {
+    await chatId.set(uuidv4());
+
     socket.onopen = (event) => {
       console.log("WebSocket is open now.");
     };
@@ -62,8 +64,6 @@
     window.addEventListener("beforeunload", function () {
       socket.close();
     });
-
-    await chatId.set(uuidv4());
 
     isMuted = await getMicrophoneStatus();
     console.log(`microphone mute status: ${isMuted}`);
@@ -87,9 +87,6 @@
       messages: {},
       currentId: null,
     };
-    // selectedModels = $page.url.searchParams.get('models')
-    // 	? $page.url.searchParams.get('models')?.split(',')
-    // 	: $settings.models ?? [''];
   };
 
   function handleMessage(response) {
@@ -109,27 +106,31 @@
 
       history.messages[userMessageId] = userMessage;
       history.currentId = userMessageId;
-    } else if (response.type === "system") {
-      console.log(`system message: ${response.prompt}`);
-      let responseMessageId = uuidv4();
-      let parentId = messages.at(-1).id;
 
+      let responseMessageId = uuidv4();
       let responseMessage = {
-        parentId: parentId,
+        parentId: userMessageId,
         role: "assistant",
         id: responseMessageId,
         childrenIds: [],
-        content: response.prompt,
+        content: "",
       };
+
       history.messages[responseMessageId] = responseMessage;
       history.currentId = responseMessageId;
-      if (parentId !== null) {
+
+      if (userMessage.parentId !== null) {
         history.messages[parentId].childrenIds = [
           ...history.messages[parentId].childrenIds,
           responseMessageId,
         ];
       }
-      responseMessage.done = true;
+    } else if (response.type === "system") {
+      console.log(`system message: ${response.prompt}`);
+      if (messages.length !== 0) {
+        history.messages[history.currentId].content = response.prompt;
+        history.messages[history.currentId].done = true;
+      }
     } else if (response.type === "status") {
       if (response.data === "recognizer_loop:record_begin") {
         speechRecognitionListening = true;
@@ -145,11 +146,11 @@
   const sendPrompt = async (userPrompt, parentId) => {
     await sendPromptCore(userPrompt, parentId);
 
-    // await chats.set(await $db.getChats());
+    await chats.set(await $db.getChats());
   };
 
   const sendPromptCore = async (userPrompt, parentId) => {
-    console.log(`send to Core: ${userPrompt}`);
+    console.log(`send to core_backend: ${userPrompt}`);
     let responseMessageId = uuidv4();
 
     let responseMessage = {
