@@ -379,7 +379,7 @@
         </div>
       </div>
     </div>
-    <div class=" mt-10 text-2xl text-gray-800 dark:text-red-500 font-semibold">
+    <div class=" mt-10 text-2xl text-gray-800 dark:text-red-800 font-semibold">
       How can I help you today, Sir?
     </div>
   </div>

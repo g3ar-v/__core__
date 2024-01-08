@@ -337,6 +337,13 @@
     }
     return isMuted;
   };
+
+  //TODO: implement a handler to prevent button spams
+  const listenHandler = async () => {
+    await fetch(`${OLLAMA_API_BASE_URL}v1/voice/listen`, {
+      method: "PUT",
+    });
+  };
 </script>
 
 <svelte:window
@@ -378,6 +385,7 @@
       },
     ]}
     {messages}
+    {listenHandler}
     {submitPrompt}
     {microphoneHandler}
   />

@@ -6,6 +6,7 @@
   export let submitPrompt: Function;
   // export let stopResponse: Function;
   export let microphoneHandler: Function;
+  export let listenHandler: Function;
 
   export let suggestionPrompts = [];
   export let autoScroll = true;
@@ -66,8 +67,7 @@
           {#if speechRecognitionListening == true}
             <div class="flex ml-5 align-items content-center;">
               <svg
-                class=" w-10 h-10 translate-y-[0.5px]"
-                fill="currentColor"
+                class=" w-10 h-10 translate-y-[0.5px] fill-yellow-950"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
                 ><style>
@@ -149,15 +149,16 @@
                 {#if messages.length == 0 || messages.at(-1).done == true}
                   <!-- listen button -->
                   <button
-                    class="transition dark:from-red-500 rounded-lg p-1.1 mr-0.5 self-center"
+                    class="rounded-lg p-1.1 mr-0.5 self-center"
                     type="button"
+                    on:click={listenHandler()}
                     ><svg
                       height="16px"
                       width="16px"
                       xmlns="http://www.w3.org/2000/svg"
+                      class="hover:fill-red-300 fill-red-950 transition"
                       ><path
                         d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
-                        fill="currentColor"
                       /></svg
                     >
                   </button>
@@ -176,8 +177,7 @@
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
-                        fill="red"
-                        class="w-5 h-5 translate-y-[0.5px]"
+                        class="fill-red-950 w-5 h-5 translate-y-[0.5px]"
                       >
                         <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
                         <path
@@ -189,8 +189,7 @@
                           y1="4"
                           x2="16"
                           y2="16"
-                          stroke="red"
-                          stroke-width="1.5"
+                          class="stroke-red-950 stroke-2"
                         />
                       </svg>
                     {:else}
@@ -211,7 +210,7 @@
                   <!-- submit button -->
                   <button
                     class="{prompt !== ''
-                      ? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
+                      ? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-green-200 '
                       : 'text-white bg-gray-100 dark:text-gray-800 dark:bg-gray-600 disabled'} transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
                     type="submit"
                     disabled={prompt === ""}
