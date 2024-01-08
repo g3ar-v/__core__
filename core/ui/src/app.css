@@ -1,62 +1,123 @@
 @font-face {
-	font-family: 'Arimo';
-	src: url('/assets/fonts/Arimo-Variable.ttf');
-	font-display: swap;
+  font-family: "Arimo";
+  src: url("/assets/fonts/Arimo-Variable.ttf");
+  font-display: swap;
 }
 
 @font-face {
-	font-family: 'Gruppe A';
-	src: url('/assets/fonts/Gruppe-A.ttf.woff'
-	);
-	font-display: swap;
+  font-family: "Gruppe A";
+  src: url("/assets/fonts/Gruppe-A.ttf.woff");
+  font-display: swap;
 }
 
 @font-face {
-	font-family: 'Mona Sans';
-	src: url('/assets/fonts/Mona-Sans.woff2');
-	font-display: swap;
+  font-family: "Mona Sans";
+  src: url("/assets/fonts/Mona-Sans.woff2");
+  font-display: swap;
 }
 
 html {
-	word-break: break-word;
+  word-break: break-word;
 }
 
 math {
-	margin-top: 1rem;
+  margin-top: 1rem;
 }
 
 .hljs {
-	@apply rounded-lg;
+  @apply rounded-lg;
 }
 
 ::-webkit-scrollbar-thumb {
-	--tw-border-opacity: 1;
-	background-color: rgba(217, 217, 227, 0.8);
-	border-color: rgba(255, 255, 255, var(--tw-border-opacity));
-	border-radius: 9999px;
-	border-width: 1px;
+  --tw-border-opacity: 1;
+  background-color: rgba(217, 217, 227, 0.8);
+  border-color: rgba(255, 255, 255, var(--tw-border-opacity));
+  border-radius: 9999px;
+  border-width: 1px;
 }
 
 ::-webkit-scrollbar {
-	height: 1rem;
-	width: 0.5rem;
+  height: 1rem;
+  width: 0.5rem;
 }
 
 ::-webkit-scrollbar-track {
-	background-color: transparent;
-	border-radius: 9999px;
+  background-color: transparent;
+  border-radius: 9999px;
 }
 
 select {
-	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
-	background-position: right 0.5rem center;
-	background-repeat: no-repeat;
-	background-size: 1.5em 1.5em;
-	padding-right: 2.5rem;
-	-webkit-print-color-adjust: exact;
-	print-color-adjust: exact;
-	/* for Firefox */
-	-moz-appearance: none;
-	/* for Chrome */
-	-webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  /* for Firefox */
+  -moz-appearance: none;
+  /* for Chrome */
+  -webkit-appearance: none;
+}
+
+.hero-logo {
+  background-image: url("/assets/images/noun-neural-network-3339038.svg"),
+    url("/assets/images/index-portal-sides.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  flex: 0 0 500px;
+  height: 366px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hero-logo-circles {
+  height: 366px;
+  margin: auto;
+  position: relative;
+  width: 366px;
+}
+
+.hero-logo-circle {
+  animation: hero-logo-circle 1s linear infinite;
+  left: 0;
+  position: absolute;
+  top: 0;
+  will-change: transform;
+}
+.hero-logo-circle:nth-child(1) {
+  animation-duration: 30s;
+}
+.hero-logo-circle:nth-child(2) {
+  animation-duration: 40s;
+}
+.hero-logo-circle:nth-child(3) {
+  animation-duration: 50s;
+}
+.hero-logo-circle:nth-child(4) {
+  animation-duration: 60s;
+}
+.hero-logo-circle:nth-child(5) {
+  animation-duration: 70s;
+}
+.hero-logo-circle:nth-child(6) {
+  animation-duration: 80s;
+}
+.hero-logo-circle:nth-child(7) {
+  animation-duration: 90s;
+}
+.hero-logo-circle:nth-child(8) {
+  animation-duration: 100s;
+}
+.hero-logo-circle:nth-child(9) {
+  animation-duration: 110s;
+}
+.hero-logo-circle:nth-child(10) {
+  animation-duration: 120s;
+}
+
+@keyframes hero-logo-circle {
+  100% {
+    transform: rotate(1turn);
+  }
 }

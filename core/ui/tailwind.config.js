@@ -18,6 +18,9 @@ export default {
           900: "#141414",
           950: "#0a0a0a",
         },
+        red: {
+          500: "#b1492d",
+        },
       },
       typography: {
         DEFAULT: {

@@ -147,7 +147,20 @@
 
               <div class="self-end mb-2 flex space-x-0.5 mr-2">
                 {#if messages.length == 0 || messages.at(-1).done == true}
-                  <!-- NOTE: mute/unmute button -->
+                  <!-- listen button -->
+                  <button
+                    class="transition dark:from-red-500 rounded-lg p-1.1 mr-0.5 self-center"
+                    type="button"
+                    ><svg
+                      height="16px"
+                      width="16px"
+                      xmlns="http://www.w3.org/2000/svg"
+                      ><path
+                        d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
+                        fill="currentColor"
+                      /></svg
+                    >
+                  </button>
                   <button
                     class=" text-gray-600 dark:text-gray-300 transition rounded-lg p-1.5 mr-0.5 self-center"
                     type="button"
@@ -158,6 +171,7 @@
                       });
                     }}
                   >
+                    <!-- mute/unmute button -->
                     {#if isMuted}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -194,7 +208,7 @@
                     {/if}
                   </button>
 
-                  <!-- NOTE: submit button -->
+                  <!-- submit button -->
                   <button
                     class="{prompt !== ''
                       ? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
@@ -216,6 +230,7 @@
                     </svg>
                   </button>
                 {:else}
+                  <!-- stop generation button -->
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1.5"
                   >
