@@ -159,6 +159,7 @@ class LLM(metaclass=Singleton):
         system_name = config["system_name"]
         if self.message_history:
             self.chat_history = ConversationBufferWindowMemory(
+                # for controlling the conversation length used for RAG
                 memory_key="chat_history",
                 chat_memory=self.message_history,
                 human_prefix=user_name,
@@ -255,6 +256,9 @@ class LLM(metaclass=Singleton):
                 rel_mem=relevant_memory,
                 date_str=date_now,
             )
+            if self.message_history:
+                self.message_history.add_ai_message(response)
+
             self.api.send_ai_utterance(response)
             return response
 
