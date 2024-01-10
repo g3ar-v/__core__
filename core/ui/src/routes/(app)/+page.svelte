@@ -71,6 +71,7 @@
     chatId.subscribe(async () => {
       await initNewChat();
     });
+    checkWsConnection(socket);
   });
   //////////////////////////
   // Web functions
@@ -88,6 +89,17 @@
       currentId: null,
     };
   };
+
+  function checkWsConnection(ws) {
+    const timer = setInterval(() => {
+      if (ws.readyState !== 1) {
+        clearInterval(timer);
+        console.log("Couldn't connect to websocket. Reloading webpage.");
+
+        location.reload();
+      }
+    }, 30000);
+  }
 
   function handleMessage(response) {
     if (response.type === "user") {
