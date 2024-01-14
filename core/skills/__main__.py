@@ -34,24 +34,24 @@ bus = None
 
 
 def on_started():
-    LOG.info("Skills Manager is starting up.")
+    LOG.info("SKILLS SERVICE IS STARTING UP.")
 
 
 def on_alive():
-    LOG.info("Skills Manager is alive.")
+    LOG.info("SKILLS SERVICE IS ALIVE.")
 
 
 def on_ready():
-    LOG.info("Skills Manager is ready.")
+    LOG.info("SKILLS SERVICE IS READY.")
     _speak_dialog(dialog_id="finished.booting")
 
 
 def on_error(e="Unknown"):
-    LOG.info(f"Skills Manager failed to launch ({e})")
+    LOG.info(f"SKILLS SERVICE FAILED TO LAUNCH ({E})")
 
 
 def on_stopping():
-    LOG.info("Skills Manager is shutting down...")
+    LOG.info("SKILLS SERVICE IS SHUTTING DOWN...")
 
 
 def main(

@@ -34,7 +34,7 @@ async def send_user_utterance(
     :return: HTTP status code
     :rtype: int
     """
-    LOG.info("Sending message to UI: %s", message.json())
+    LOG.info("SENDING MESSAGE TO UI: %s", message.__dict__)
     await websocket_manager.send_data(message.__dict__)
     return JSONResponse(content={})
 
@@ -60,7 +60,7 @@ async def send_system_utterance(
     :return: HTTP status code
     :rtype: int
     """
-    LOG.info("Sending message to UI: %s", message.json())
+    LOG.info("SENDING MESSAGE TO UI: %s", message.__dict__)
     await websocket_manager.send_data(message.__dict__)
     return JSONResponse(content={})
 

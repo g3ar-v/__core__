@@ -1,5 +1,6 @@
 import requests
 from requests import HTTPError
+
 from core.configuration import Configuration
 from core.util.log import LOG
 
@@ -146,7 +147,7 @@ class SystemApi(Api):
         super(SystemApi, self).__init__("system")
 
     def send_user_utterance(self, data):
-        LOG.info("sending user message to UI backend")
+        LOG.info("SENDING USER MESSAGE TO UI BACKEND")
         return self.request(
             {
                 "method": "POST",
@@ -156,7 +157,7 @@ class SystemApi(Api):
         )
 
     def send_ai_utterance(self, data):
-        LOG.info("sending ai message to UI backend")
+        LOG.info("SENDING AI MESSAGE TO UI BACKEND")
         return self.request(
             {
                 "method": "POST",

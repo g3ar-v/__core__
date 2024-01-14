@@ -6,41 +6,38 @@ systems to integrate with the Mycroft system.
 """
 import sys
 
-from tornado import autoreload, web, ioloop
+from tornado import autoreload, ioloop, web
 
 from core.lock import Lock  # creates/supports PID locking file
 from core.messagebus.load_config import load_message_bus_config
 from core.messagebus.service.event_handler import MessageBusEventHandler
-from core.util import (
-    reset_sigint_handler,
-    create_daemon,
-    wait_for_exit_signal
-)
+from core.util import create_daemon, reset_sigint_handler, wait_for_exit_signal
 from core.util.log import LOG
 
 
 def on_ready():
-    LOG.info('Message bus service started!')
+    LOG.info("MESSAGE BUS SERVICE STARTED!")
 
 
-def on_error(e='Unknown'):
-    LOG.info('Message bus failed to start ({})'.format(repr(e)))
+def on_error(e="Unknown"):
+    LOG.info("MESSAGE BUS FAILED TO START ({})".format(repr(e)))
 
 
 def on_stopping():
-    LOG.info('Message bus is shutting down...')
+    LOG.info("MESSAGE BUS IS SHUTTING DOWN...")
 
 
 def main(ready_hook=on_ready, error_hook=on_error, stopping_hook=on_stopping):
     import tornado.options
-    LOG.info('Starting message bus service...')
+
+    LOG.info("STARTING MESSAGE BUS SERVICE...")
     reset_sigint_handler()
     lock = Lock("service")
     # Disable all tornado logging so mycroft loglevel isn't overridden
-    tornado.options.parse_command_line(sys.argv + ['--logging=None'])
+    tornado.options.parse_command_line(sys.argv + ["--logging=None"])
 
     def reload_hook():
-        """ Hook to release lock when auto reload is triggered. """
+        """Hook to release lock when auto reload is triggered."""
         lock.delete()
 
     autoreload.add_reload_hook(reload_hook)

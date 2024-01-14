@@ -26,39 +26,39 @@ config = None
 
 def handle_record_begin():
     """Forward internal bus message to external bus."""
-    LOG.info("Begin Recording...")
+    LOG.info("BEGIN RECORDING...")
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("recognizer_loop:record_begin", context=context))
 
 
 def handle_record_end():
     """Forward internal bus message to external bus."""
-    LOG.info("End Recording...")
+    LOG.info("END RECORDING...")
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("recognizer_loop:record_end", context=context))
 
 
 def handle_no_internet():
-    LOG.debug("Notifying enclosure of no internet connection")
+    LOG.debug("NOTIFYING ENCLOSURE OF NO INTERNET CONNECTION")
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("enclosure.notify.no_internet", context=context))
 
 
 def handle_awoken():
     """Forward core.awoken to the messagebus."""
-    LOG.info("Listener is now Awake: ")
+    LOG.info("LISTENER IS NOW AWAKE: ")
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("core.awoken", context=context))
 
 
 def handle_wakeword():
-    LOG.info("Wakeword Detected")
+    LOG.info("WAKEWORD DETECTED")
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("core.wakeword", context=context))
 
 
 def handle_utterance(event):
-    LOG.info("Utterance: " + str(event["utterances"]))
+    LOG.info("UTTERANCE: " + str(event["utterances"]))
     context = {
         "client_name": "core_listener",
         "source": "audio",
@@ -85,7 +85,7 @@ def handle_speak(event):
 
 def handle_complete_intent_failure(event):
     """Extreme backup for answering completely unhandled intent requests."""
-    LOG.info("Failed to find intent.")
+    LOG.info("FAILED TO FIND INTENT.")
     data = {"utterance": dialog.get("cant.intent")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
@@ -119,7 +119,7 @@ def handle_mic_unmute(event):
 
 def handle_info_taking_too_long(event):
     """Core is taking too long to process information"""
-    LOG.info("Info taking too long")
+    LOG.info("INFO TAKING TOO LONG")
     data = {"utterance": dialog.get("taking_too_long")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
@@ -176,28 +176,28 @@ def on_ready():
     data = {"utterance": dialog.get("voice.available")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.info("Voice client is ready.")
+    LOG.info("VOICE CLIENT IS READY.")
 
 
 def on_stopping():
     data = {"utterance": dialog.get("voice.shutting")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.info("Voice service is shutting down...")
+    LOG.info("VOICE SERVICE IS SHUTTING DOWN...")
 
 
 def on_error(e="Unknown"):
     data = {"utterance": dialog.get("voice.launch_failure")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.error("Voice service failed to launch ({}).".format(repr(e)))
+    LOG.error("VOICE SERVICE FAILED TO LAUNCH ({}).".format(repr(e)))
 
 
 def on_change(path: str):
     data = {"utterance": dialog.get("voice_file.changed")}
     context = {"client_name": "core_listener", "source": "audio"}
     bus.emit(Message("speak", data, context))
-    LOG.info("Voice client code has changed")
+    LOG.info("VOICE CLIENT CODE HAS CHANGED")
 
 
 def connect_loop_events(loop):
@@ -231,7 +231,7 @@ def connect_bus_events(bus):
 
 def _init_filewatcher():
     # monitor voice module files for changes
-    LOG.info("Initiating watchdog for voice component")
+    LOG.info("INITIATING WATCHDOG FOR VOICE COMPONENT")
     sspath = f"{CORE_ROOT_PATH}/core/client/voice/"
     os.makedirs(sspath, exist_ok=True)
     return FileWatcher(

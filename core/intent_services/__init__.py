@@ -173,7 +173,7 @@ class IntentService:
 
     def handle_response_latency(self, event):
         """Core is taking too long to process information"""
-        LOG.info("Info taking too long")
+        LOG.info("INFO TAKING TOO LONG")
         data = {"utterance": dialog.get("taking_too_long")}
         context = {"client_name": "intent_service", "source": "audio"}
         # HACK:: the llm_response seems to be a different thread
