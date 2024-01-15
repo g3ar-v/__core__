@@ -25,6 +25,7 @@ class SilenceResultType(str, Enum):
 class SilenceResult:
     type: SilenceResultType
     energy: float
+    phrase_chunk: bytes
 
 
 class SilenceDetector:
@@ -74,7 +75,7 @@ class SilenceDetector:
         min_seconds: float = 1,
         max_seconds: typing.Optional[float] = 30,
         speech_seconds: float = 0.3,
-        silence_seconds: float = 0.5,
+        silence_seconds: float = 1.0,
         before_seconds: float = 0.5,
         max_energy: typing.Optional[float] = None,
         max_current_ratio_threshold: typing.Optional[float] = None,
@@ -189,7 +190,7 @@ class SilenceDetector:
         while len(self.current_chunk) > self.chunk_size:
             # Extract chunk
             chunk = self.current_chunk[: self.chunk_size]
-            self.current_chunk = self.current_chunk[self.chunk_size:]
+            self.current_chunk = self.current_chunk[self.chunk_size :]
             if self.skip_buffers_left > 0:
                 # Skip audio at beginning
                 self.skip_buffers_left -= 1
@@ -218,7 +219,9 @@ class SilenceDetector:
             elif is_speech and not self.in_phrase:
                 # Start of phrase
                 result = SilenceResult(
-                    type=SilenceResultType.PHRASE_START, energy=energy
+                    type=SilenceResultType.PHRASE_START,
+                    energy=energy,
+                    phrase_chunk=None,
                 )
 
                 self.in_phrase = True
@@ -244,12 +247,20 @@ class SilenceDetector:
                     for before_chunk in self.before_phrase_chunks:
                         before_buffer += before_chunk
 
-                    return SilenceResult(
-                        type=SilenceResultType.PHRASE_END, energy=energy
+                    result = SilenceResult(
+                        type=SilenceResultType.PHRASE_END,
+                        energy=energy,
+                        phrase_chunk=(before_buffer + self.phrase_buffer),
                     )
+                    # self.phrase_buffer = bytes()
+
                 elif self.in_phrase and (self.min_phrase_buffers <= 0):
                     # Transition to after phrase
                     self.after_phrase = True
+                    # NOTE: On the assumption that this clears phrase buffer after every
+                    # phrase
+                    # self.phrase_buffer = bytes()
+
                     self.silence_buffers = int(
                         math.ceil(self.silence_seconds / self.seconds_per_buffer)
                     )
@@ -261,6 +272,7 @@ class SilenceDetector:
                 if is_speech
                 else SilenceResultType.SILENCE,
                 energy=energy,
+                phrase_chunk=None,
             )
 
         return result

@@ -74,20 +74,6 @@ class MutableStream:
             self.muted = False
             self.wrapped_stream.start_stream()
 
-    def iter_chunks(self):
-        """Yield chunks of audio data from the deque."""
-        # If muted during read return empty buffer. This ensures no
-        # reads occur while the stream is stopped
-        with self.read_lock:
-            while True:
-                if self.muted:
-                    return self.muted_buffer
-                while self.chunk_deque:
-                    yield self.chunk_deque.popleft()
-
-                self.chunk_ready.clear()
-                self.chunk_ready.wait()
-
     def read(self, size, of_exc=False):
         """
         Read data from the stream.
@@ -332,18 +318,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         silence_detector: The silence detector instance.
     """
 
-    # Padding of silence when feeding to pocketsphinx
     SILENCE_SEC = 0.01
 
-    # The minimum seconds of noise before a
-    # phrase can be considered complete
-    MIN_LOUD_SEC_PER_PHRASE = 0.5
-
-    # The minimum seconds of silence required at the end
-    # before a phrase will be considered complete
-    MIN_SILENCE_AT_END = 0.25
-
-    # Time between pocketsphinx checks for the wake word
     SEC_BETWEEN_WW_CHECKS = 0.2
 
     def __init__(self, wake_word_recognizer, watchdog=None):
@@ -381,6 +357,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # provided there is noise the entire time
         # Get recording timeout value
         self.recording_timeout = listener_config.get("recording_timeout", 10.0)
+        # LOG.info(f"recording timeout {self.recording_timeout}")
         vad_config = listener_config.get("VAD", {})
         LOG.debug(
             "the set silence duration: " + repr(vad_config.get("silence_seconds"))
@@ -388,11 +365,11 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         self.silence_detector = SilenceDetector(
             speech_seconds=vad_config.get("speech_seconds", 0.1),
-            silence_seconds=vad_config.get("silence_seconds", 0.5),
+            silence_seconds=vad_config.get("silence_seconds", 1.0),
             min_seconds=vad_config.get("min_seconds", 1),
             # NOTE: set to none for infinite reccording if speech continues
             max_seconds=None,
-            before_seconds=vad_config.get("before_seconds", 0.5),
+            before_seconds=vad_config.get("before_seconds", 2.5),
             current_energy_threshold=vad_config.get("initial_energy_threshold", 1000.0),
             max_current_ratio_threshold=vad_config.get(
                 "max_current_ratio_threshold", 2
@@ -460,11 +437,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # bytearray to store audio in, initialized with a single sample of
         # silence.
-        # byte_data = get_silence(source.SAMPLE_WIDTH)
+        byte_data = get_silence(source.SAMPLE_WIDTH)
 
         self.silence_detector.start()
         if stream:
             stream.stream_start()
+
+        last_phrase_end_chunk = None
+        chunk_sent = False
 
         stopwatch = Stopwatch()
         with stopwatch:
@@ -477,24 +457,44 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     chunk = ww_frames.popleft()
                 else:
                     chunk = self.record_sound_chunk(source)
+                byte_data += chunk
 
                 result = self.silence_detector.process(chunk)
-                num_chunks += 1
 
-                if result.type in {
-                    SilenceResultType.SPEECH,
-                    SilenceResultType.PHRASE_START,
-                }:
-                    # LOG.debug("voice recognition state: " + repr(result.type))
-                    # NOTE: ensures streamed chunk only gets audiodata with speech for
-                    # transcription
+                # LOG.info("VOICE RECOGNITION STATE: " + repr(result.type))
+                if result.type == SilenceResultType.SPEECH:
                     stopwatch.lap()
-                    if stream:
-                        stream.stream_chunk(chunk)
 
+                if (
+                    result.type == SilenceResultType.SPEECH
+                    and last_phrase_end_chunk is not None
+                    and not chunk_sent
+                ):
+                    # LOG.info(
+                    #     "VOICE RECOGNITION STATE: " + repr(SilenceResultType.PHRASE_END)
+                    # )
+                    #  NOTE: on an assumption that result.phrase_chunk returns chunk
+                    # from phrase start to end
+                    if stream:
+                        LOG.info("streaming data")
+                        stream.stream_chunk(last_phrase_end_chunk)
+                        last_phrase_end_chunk = None
+                        chunk_sent = True
+
+                # NOTE: this needs to be changed to the number of silence/ 2 for when
+                # the last_phrase should be stored and sent
                 if result.type in {
                     SilenceResultType.PHRASE_END,
+                }:
+                    # LOG.info("VOICE RECOGNITION STATE: " + repr(result.type))
+                    last_phrase_end_chunk = result.phrase_chunk
+                    chunk_sent = False
+
+                    # NOTE: the chunk gotten here might not be the complete phrase,
+                    # how can I get that?
+                if result.type in {
                     SilenceResultType.TIMEOUT,
+                    SilenceResultType.PHRASE_END,
                 }:
                     LOG.debug("voice recognition state: " + repr(result.type))
                     break
@@ -504,9 +504,10 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     self.write_mic_level(result.energy, source)
                 num_chunks += 1
 
-        LOG.debug("The recorded silence duration is: " + str(stopwatch))
-        # return audio_data
-        return self.silence_detector.stop()
+        LOG.info("The recorded silence duration is: " + str(stopwatch))
+
+        self.silence_detector.stop()
+        return byte_data
 
     def write_mic_level(self, energy, source):
         """
@@ -632,6 +633,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # avoid too much resources used for real-time speech detection
         # self.silence_detector.start()
         # counter = 0
+        LOG.info("WAITING FOR WAKEWORD")
         while (
             not said_wake_word
             and not self._stop_signaled
@@ -640,26 +642,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             chunk = self.record_sound_chunk(source)
             audio_buffer.append(chunk)
             ww_frames.append(chunk)
-            # HACK: for detecting silence
-            # result = self.silence_detector.process(chunk)
-            #
-            # if result.type == SilenceResultType.SPEECH:
-            #     # Continue processing chunks while speech is detected
-            #     # NOTE: assuming a count is in deci seconds,
-            #
-            #     counter += 1
-            #     # LOG.debug(
-            #     #     "result of speech when waiting for wakeword"
-            #     #     + repr(result)
-            #     #     + "and counter value: "
-            #     #     + repr(counter)
-            #     # )
-            #     if counter == 40:
-            #         LOG.info("Speech detected")
-            #         counter = 0
-            # elif result.type == SilenceResultType.PHRASE_END:
-            #     counter = 0
-
             energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
             audio_mean.append_sample(energy)
 
@@ -780,7 +762,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         self._stop_recording = False
 
-        LOG.debug("Waiting for wake word...")
+        LOG.debug("WAITING FOR WAKE WORD...")
         ww_data = self._wait_until_wake_word(source, sec_per_buffer)
 
         ww_frames = None
@@ -805,12 +787,15 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # Notify system of recording start
         emitter.emit("recognizer_loop:record_begin")
-        self.api.send_system_listening_begin()
+        # TODO: create fallback if request fails
+        # self.api.send_system_listening_begin()
 
         frame_data = self._record_phrase(source, sec_per_buffer, stream, ww_frames)
         audio_data = self._create_audio_data(frame_data, source)
+
         emitter.emit("recognizer_loop:record_end")
-        self.api.send_system_listening_end()
+        # TODO: create fallback if request fails
+        # self.api.send_system_listening_end()
 
         # Play a wav file to indicate audio recording has ended
         self.play_end_listening_sound(source)

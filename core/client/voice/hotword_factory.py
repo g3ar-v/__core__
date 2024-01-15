@@ -1,22 +1,11 @@
 """Factory functions for loading hotword engines - both internal and plugins.
 """
-from contextlib import suppress
-from glob import glob
-import os
-from os.path import dirname, exists, join, abspath, expanduser, isfile, isdir
-import platform
-import posixpath
-from shutil import rmtree
 import struct
-from threading import Timer, Thread
+from os.path import abspath, dirname, expanduser, join
+from threading import Thread
 from time import sleep
-from urllib.error import HTTPError
-import xdg.BaseDirectory
 
-from petact import install_package
-import requests
-
-from core.configuration import Configuration, LocalConf
+from core.configuration import Configuration
 
 # from mycroft.configuration.locations import OLD_USER_CONFIG
 from core.util.log import LOG
@@ -138,7 +127,7 @@ class PorcupineHotWord(HotWordEngine):
         self.num_keywords = len(keyword_file_paths)
 
         LOG.info(
-            "Loading Porcupine using library path {} and keyword paths {}".format(
+            "loading porcupine using library path {} and keyword paths {}".format(
                 library_path, keyword_file_paths
             )
         )
@@ -150,7 +139,7 @@ class PorcupineHotWord(HotWordEngine):
             access_key=access_key,
         )
 
-        LOG.info("Loaded Porcupine")
+        LOG.info("LOADED PORCUPINE")
 
     def update(self, chunk):
         """Update detection state from a chunk of audio data.
@@ -225,7 +214,7 @@ class HotWordFactory:
                     clazz = HotWordFactory.CLASSES[module]
                 else:
                     clazz = load_wake_word_plugin(module)
-                    LOG.info("Loaded the Wake Word plugin {}".format(module))
+                    LOG.info("LOADED THE WAKE WORD PLUGIN {}".format(module))
 
                 instance = clazz(hotword, config, lang=lang)
             except TriggerReload:

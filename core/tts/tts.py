@@ -612,7 +612,7 @@ class TTSFactory:
                 clazz = TTSFactory.CLASSES[tts_module]
             else:
                 clazz = load_tts_plugin(tts_module)
-                LOG.info("Loaded plugin {}".format(tts_module))
+                LOG.info("LOADED PLUGIN {}".format(tts_module))
             if clazz is None:
                 raise ValueError("TTS module not found")
 

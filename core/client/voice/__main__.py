@@ -231,7 +231,7 @@ def connect_bus_events(bus):
 
 def _init_filewatcher():
     # monitor voice module files for changes
-    LOG.info("INITIATING WATCHDOG FOR VOICE COMPONENT")
+    LOG.info("initiating watchdog for voice component")
     sspath = f"{CORE_ROOT_PATH}/core/client/voice/"
     os.makedirs(sspath, exist_ok=True)
     return FileWatcher(

@@ -10,7 +10,6 @@ from pyee import EventEmitter
 from requests import RequestException
 from requests.exceptions import ConnectionError
 
-from core import dialog
 from core.client.voice.hotword_factory import HotWordFactory
 from core.client.voice.mic import MutableMicrophone, ResponsiveRecognizer
 from core.configuration import Configuration
@@ -45,6 +44,7 @@ class AudioStreamHandler(object):
         """
         Puts the STREAM_START signal into the queue.
         """
+        LOG.debug("SENDING STREAM_START signal")
         self.queue.put((STREAM_START, None))
 
     def stream_chunk(self, chunk):
@@ -58,6 +58,7 @@ class AudioStreamHandler(object):
         """
         Puts the STREAM_STOP signal into the queue.
         """
+        LOG.debug("SENDING STREAM_STOP signal")
         self.queue.put((STREAM_STOP, None))
 
 
@@ -90,10 +91,14 @@ class AudioProducer(Thread):
             self.loop.responsive_recognizer.adjust_for_ambient_noise(source)
             while self.loop.state.running:
                 try:
-                    LOG.debug("Running listening loop")
+                    LOG.info("RUNNING LISTENER LOOP")
+
+                    # NOTE: why return full audio when we can return while speech is
+                    # made?
                     audio = self.loop.responsive_recognizer.listen(
                         source, self.loop, self.stream_handler
                     )
+
                     # NOTE: from ignorance I'd say this is a fallback if streaming
                     # doesn't work
                     if audio is not None:
@@ -123,6 +128,7 @@ class AudioProducer(Thread):
                 else:
                     # Reset restart attempt counter on sucessful audio read
                     restart_attempts = 0
+                # NOTE: should stream be stopped here
                 finally:
                     if self.stream_handler is not None:
                         self.stream_handler.stream_stop()
@@ -152,6 +158,7 @@ class AudioConsumer(Thread):
         super(AudioConsumer, self).__init__()
         self.daemon = True
         self.loop = loop
+        self.transcription = None
 
     def run(self):
         while self.loop.state.running:
@@ -160,6 +167,7 @@ class AudioConsumer(Thread):
     def read(self):
         try:
             message = self.loop.queue.get(timeout=0.5)
+
         except Empty:
             return
 
@@ -167,10 +175,10 @@ class AudioConsumer(Thread):
             return
 
         tag, data = message
-        # LOG.debug("audio consumer read data: " + repr(tag))
 
         if tag == AUDIO_DATA:
             if data is not None:
+                # self.loop.stt.execute(data)
                 if self.loop.state.sleeping:
                     self.wake_up(data)
                 else:
@@ -179,10 +187,18 @@ class AudioConsumer(Thread):
             self.loop.stt.stream_start()
         elif tag == STREAM_DATA:
             self.loop.stt.stream_data(data)
+
         elif tag == STREAM_STOP:
-            self.loop.stt.stream_stop()
+            self.transcription = self.loop.stt.stream_stop()
+            payload = {
+                "utterances": [self.transcription],
+                "lang": self.loop.stt.lang,
+            }
+            self.loop.emit("recognizer_loop:utterance", payload)
+
         else:
-            LOG.error("Unknown audio queue type %r" % message)
+            # LOG.error("Unknown audio queue type %r" % message)
+            LOG.error("Unknown audio queue type {}".format(tag))
 
     def wake_up(self, audio):
         if self.loop.wakeup_recognizer.found_wake_word(audio.frame_data):
@@ -222,8 +238,11 @@ class AudioConsumer(Thread):
             with self.loop.lock:
                 with stopwatch:
                     text = self.loop.stt.execute(audio)
+                    # for t in text:
+                    #     LOG.info("text: %s", t)
                 LOG.info("time to process speech: " + str(stopwatch))
                 if text is not None:
+                    text = text[-1]
                     text = text.lower().strip()
                     LOG.debug("STT: " + text)
                 else:
