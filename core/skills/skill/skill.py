@@ -18,6 +18,7 @@ from core.audio import wait_while_speaking
 
 # from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI
+from core.api import SystemApi
 from core.configuration import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
@@ -113,6 +114,7 @@ class Skill:
         self._bus = None
         # self._enclosure = None
         self.bind(bus)
+        self.api = SystemApi()
         self.llm = LLM(bus)
         # global configuration. (dict)
         self.config_core = Configuration.get()
@@ -415,6 +417,7 @@ class Skill:
         self.converse = default_converse
         return converse.response
 
+    # FIXME:
     def get_response(
         self, dialog="", data=None, validator=None, on_fail=None, num_retries=-1
     ):
@@ -1133,7 +1136,9 @@ class Skill:
         with self.intent_service_lock:
             self.intent_service.register_adapt_regex(regex)
 
-    def speak(self, utterance, expect_response=False, wait=False, meta=None):
+    def speak(
+        self, utterance, expect_response=False, wait=False, meta=None, send_to_ui=False
+    ):
         """Speak a sentence.
 
         Args:
@@ -1144,6 +1149,7 @@ class Skill:
             wait (bool):            set to True to block while the text
                                     is being spoken.
             meta:                   Information of what built the sentence.
+            send_to_ui:             Determines if speech should be sent to UI
         """
         # registers the skill as being active
         meta = meta or {}
@@ -1157,12 +1163,14 @@ class Skill:
         message = dig_for_message()
         m = message.forward("speak", data) if message else Message("speak", data)
         self.bus.emit(m)
+        if send_to_ui:
+            self.api.send_ai_utterance(utterance)
 
         if wait:
             wait_while_speaking()
 
     def speak_dialog(
-        self, key, data=None, expect_response=False, wait=False, add_msg=False
+        self, key, data=None, expect_response=False, wait=False, send_to_ui=False
     ):
         """Speak a random sentence from a dialog file.
 
@@ -1182,13 +1190,14 @@ class Skill:
                 self.dialog_renderer.render(key, data),
                 expect_response,
                 wait,
-                meta={"dialog": key, "data": data},
+                {"dialog": key, "data": data},
+                send_to_ui,
             )
         else:
             self.log.warning(
                 "dialog_render is None, does the locale/dialog folder exist?"
             )
-            self.speak(key, expect_response, wait, {})
+            self.speak(key, expect_response, wait, {}, send_to_ui)
 
     def acknowledge(self):
         """Acknowledge a successful request.
@@ -1320,9 +1329,8 @@ class Skill:
             self.shutdown()
         except Exception as e:
             LOG.error(
-                "Skill specific shutdown function encountered " "an error: {}".format(
-                    repr(e)
-                )
+                "Skill specific shutdown function encountered "
+                "an error: {}".format(repr(e))
             )
 
         self.settings_change_callback = None

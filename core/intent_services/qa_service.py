@@ -114,11 +114,11 @@ class QAService:
         try:
             # TODO: implement a better way to listen for user utterance that is much
             response = self.llm.llm_response(query=message, prompt=main_persona_prompt)
+            self.speak(response, True)
             # self.llm.message_history.add_ai_message(response)
-            # self.api.send_system_utterance(response)
 
-            if "?" in response:
-                self.bus.emit(Message("core.mic.listen"))
+            # if "?" in response:
+            #     self.bus.emit(Message("core.mic.listen"))
 
             self.answered = True
             return self.answered
