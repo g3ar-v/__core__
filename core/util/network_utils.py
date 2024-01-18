@@ -20,7 +20,7 @@ def _get_network_tests_config():
     return config.get("network_tests", {})
 
 
-def is_connected():
+def connected_to_the_internet():
     """Check connection by connecting to 8.8.8.8 and if google.com is
     reachable if this fails, Check Microsoft NCSI is used as a backup.
 

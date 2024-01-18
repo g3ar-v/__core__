@@ -14,7 +14,7 @@ from core.client.voice.hotword_factory import HotWordFactory
 from core.client.voice.mic import MutableMicrophone, ResponsiveRecognizer
 from core.configuration import Configuration
 from core.stt import STTFactory
-from core.util import find_input_device, is_connected
+from core.util import find_input_device, connected_to_the_internet
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
 
@@ -263,8 +263,8 @@ class AudioConsumer(Thread):
             LOG.error("Speech Recognition could not understand audio")
             return None
 
-        if not is_connected():
-            dialog_name = "not connected to the internet"
+        if not connected_to_the_internet():
+            dialog_name = "not_connected_to_the_internet"
             self.__speak(dialog_name)
 
     def __speak(self, utterance):

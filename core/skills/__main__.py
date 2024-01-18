@@ -22,7 +22,7 @@ from core.skills.skill_manager import (
     SkillManager,
 )
 from core.util import (
-    is_connected,
+    connected_to_the_internet,
     reset_sigint_handler,
     start_message_bus_client,
     wait_for_exit_signal,
@@ -47,7 +47,7 @@ def on_ready():
 
 
 def on_error(e="Unknown"):
-    LOG.info(f"SKILLS SERVICE FAILED TO LAUNCH ({E})")
+    LOG.info(f"SKILLS SERVICE FAILED TO LAUNCH ({e})")
 
 
 def on_stopping():
@@ -92,7 +92,8 @@ def main(
     # This helps ensure that the events is logged specifically for the skill manager
 
     status.set_started()
-    _check_for_internet_connection(timeout=15)
+    if _check_for_internet_connection(timeout=15) is False:
+        _speak_dialog("not_connected_to_the_internet")
 
     if skill_manager is None:
         skill_manager = _initialize_skill_manager(bus, watchdog)
@@ -147,13 +148,15 @@ def _initialize_skill_manager(bus, watchdog):
 
 def _check_for_internet_connection(timeout):
     counter = 0
-    while not is_connected() and counter < timeout:
+    while not connected_to_the_internet() and counter < timeout:
         time.sleep(1)
         counter += 1
-    if not is_connected():
-        LOG.debug("Offline mode")
+    if not connected_to_the_internet():
+        LOG.info("Offline mode")
+        return False
     else:
-        LOG.debug("System is online")
+        LOG.info("System is online")
+        return True
 
 
 def _speak(dialog, wait=False):
