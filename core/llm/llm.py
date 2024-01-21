@@ -1,5 +1,6 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
+import json
 import os
 import re
 from typing import Any
@@ -9,20 +10,20 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
-
-# from langchain_community.llms import LlamaCpp
-from langchain_community.llms import Ollama
-
 from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
 from langchain.schema.output import LLMResult
 from langchain.vectorstores import MongoDBAtlasVectorSearch
+
+# from langchain_community.llms import LlamaCpp
+from langchain_community.llms import Ollama
 from pymongo import MongoClient
+
 from core.api import SystemApi
 from core.configuration import Configuration
 from core.messagebus.message import Message, dig_for_message
 from core.util.log import LOG
+from core.util.network_utils import connected_to_the_internet
 from core.util.time import now_local
-from core.util.network_utils import is_connected
 
 config = Configuration.get()
 
@@ -107,12 +108,15 @@ class LLM(metaclass=Singleton):
                 k=3,  # if this is a lot then context window is exceeded
             )
 
-    def set_model(self):
-        if config.get("llm", {}).get("model_type", {}) == "online" and is_connected():
+    def load_model(self):
+        if (
+            config.get("llm", {}).get("model_type", {}) == "online"
+            and connected_to_the_internet()
+        ):
             self.model = ChatOpenAI(
                 temperature=1,
                 max_tokens=256,
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo-1106",
                 streaming=False,
             )
         else:
@@ -134,15 +138,13 @@ class LLM(metaclass=Singleton):
             query (str): The question for llm to generate response
             curr_conv (str): chat history
             date_str (str): the time of getting the response
-
-
-        Returns:
-            str: The generated response from the language model.
-            stream: returns tokens
         """
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
+        send_to_ui = kwargs.get("send_to_ui")
+        if send_to_ui is None:
+            send_to_ui = True
 
         relevant_memory = None
         current_conversation = self.chat_history.load_memory_variables({})[
@@ -162,7 +164,7 @@ class LLM(metaclass=Singleton):
             today = now_local()
             date_now = today.strftime("%Y-%m-%d %H:%M %p")
 
-            self.set_model()
+            self.load_model()
             gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
 
             response = gptchain.predict(
@@ -172,7 +174,14 @@ class LLM(metaclass=Singleton):
                 rel_mem=relevant_memory,
                 date_str=date_now,
             )
+
             # monkey patch llm response
+            response_object: dict = json.loads(response)
+            stt_response = response_object.get(
+                "speech", "Apologies, I can't respond to that"
+            )
+            chat_response = response_object.get("chat", stt_response)
+            action_response = response_object.get("action", "")
             response = re.sub(
                 r"(Vasco:|vasco:)",
                 "",
@@ -180,13 +189,35 @@ class LLM(metaclass=Singleton):
             )
 
             if self.message_history:
-                self.message_history.add_ai_message(response)
+                self.message_history.add_ai_message(chat_response)
 
-            self.api.send_ai_utterance(response)
-            return response
+            if send_to_ui:
+                self.api.send_ai_utterance(chat_response)
+
+            self.speak(
+                stt_response,
+                True if action_response and "listen" in action_response else False,
+            )
+            return chat_response
 
         except Exception as e:
             LOG.error("error in llm response: {}".format(e))
+
+    def speak(self, utterance, expect_response=False, message=None):
+        """Speak a sentence.
+
+        Args:
+            utterance (str): sentence system should speak
+        """
+
+        message = message or dig_for_message()
+        data = {
+            "utterance": utterance,
+            "expect_response": expect_response,
+        }
+
+        m = Message("speak", data)
+        self.bus.emit(m)
 
 
 # TODO: handle listen if response has a question
@@ -263,5 +294,3 @@ class CustomCallback(BaseCallbackHandler):
 
         m = Message("speak", data)
         self.bus.emit(m)
-
-    # TODO: handle interruption while language model is streaming

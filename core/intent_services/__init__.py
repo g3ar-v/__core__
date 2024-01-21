@@ -297,7 +297,9 @@ class IntentService:
 
             utterances = message.data.get("utterances", [])
             combined = _normalize_all_utterances(utterances)
-            self.api.send_user_utterance(flatten_list(combined)[0])
+
+            if message.data.get("context", {}).get("source", {}) != "ui_backend":
+                self.api.send_user_utterance(flatten_list(combined)[0])
 
             stopwatch = Stopwatch()
 
@@ -334,17 +336,12 @@ class IntentService:
                 # Launch skill if not handled by the match function
                 if match.intent_type:
                     reply = message.reply(match.intent_type, match.intent_data)
-                    # Add back original list of utterances for intent handlers
-                    # match.intent_data only includes the utterance with the
-                    # highest confidence.
-                    #
-                    # LOG.info(f"response data: {reply.data}")
                     reply.data["utterances"] = utterances
                     self.bus.emit(reply)
+
                 # NOTE: should prevent user utterance from already being in chat_history
                 if self.llm.message_history:
                     self.llm.message_history.add_user_message(flatten_list(combined)[0])
-                # TODO: send to UI only if message is not sent from UI
 
             else:
                 # Nothing was able to handle the intent

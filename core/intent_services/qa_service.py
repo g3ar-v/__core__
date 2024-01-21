@@ -4,9 +4,9 @@ from threading import Lock
 
 import core.intent_services
 from core.api import SystemApi
-from core.messagebus.message import Message, dig_for_message
 from core.configuration import Configuration
 from core.llm import LLM, main_persona_prompt
+from core.messagebus.message import Message
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
 
@@ -94,11 +94,12 @@ class QAService:
             if self.is_question_like(utterance, lang):
                 message.data["lang"] = lang  # only used for speak
                 message.data["utterance"] = utterance
-                answered = self.handle_query_response(utterance)
+                # LOG.info(f"message passed to the persona's matching func: {message}")
+                answered = self.handle_query_response(utterance, message)
                 if answered:
                     # NOTE: imported in format to prevent circular import error
                     match = core.intent_services.IntentMatch(
-                        "persona", "persona", None, None
+                        "persona", None, None, None
                     )
                 break
 
@@ -110,34 +111,30 @@ class QAService:
             return False
         return True
 
-    def handle_query_response(self, message) -> bool:
+    def handle_query_response(self, utterance: str, message: dict) -> bool:
         try:
-            # TODO: implement a better way to listen for user utterance that is much
-            response = self.llm.llm_response(query=message, prompt=main_persona_prompt)
-            self.speak(response, True)
-            # self.llm.message_history.add_ai_message(response)
+            LOG.info(
+                f"intent message context:\
+                {message.data.get('context', {}).get('source', {})}"
+            )
+            if message.data.get("context", {}).get("source", {}) == "ui_backend":
+                response = self.llm.llm_response(
+                    query=utterance, prompt=main_persona_prompt, send_to_ui=False
+                )
+                self.bus.emit(
+                    Message(
+                        "core.utterance.response",
+                        {"done": True, "message": {"content": response}},
+                    )
+                )
 
-            # if "?" in response:
-            #     self.bus.emit(Message("core.mic.listen"))
+            else:
+                response = self.llm.llm_response(
+                    query=utterance, prompt=main_persona_prompt
+                )
 
             self.answered = True
             return self.answered
         except Exception as e:
             LOG.error("error in QA response: {}".format(e))
             return False
-
-    def speak(self, utterance, expect_response=False, message=None):
-        """Speak a sentence.
-
-        Args:
-            utterance (str): sentence system should speak
-        """
-
-        message = message or dig_for_message()
-        data = {
-            "utterance": utterance,
-            "expect_response": expect_response,
-        }
-
-        m = Message("speak", data)
-        self.bus.emit(m)

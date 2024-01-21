@@ -83,9 +83,6 @@ def main(
     )
     status = ProcessStatus("skills", bus, callback_map=callbacks)
 
-    # add event logs to cli
-    bus.emit(Message("core.debug.log", data={"bus": True}))
-
     SkillApi.connect_bus(bus)
     skill_manager = _initialize_skill_manager(bus, watchdog)
 
@@ -107,6 +104,10 @@ def main(
     while not skill_manager.is_all_loaded():
         time.sleep(0.1)
     status.set_ready()
+
+    # add event logs to cli
+    bus.emit(Message("core.debug.log", data={"bus": True}))
+
     wait_for_exit_signal()
     status.set_stopping()
     shutdown(skill_manager, event_scheduler)
