@@ -126,7 +126,7 @@
             <div class=" flex">
               <textarea
                 id="chat-textarea"
-                class=" dark:bg-gray-800 dark:text-gray-100 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
+                class="font-sans dark:bg-gray-800 dark:text-gray-300 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
                 placeholder="Send a message"
                 bind:value={prompt}
                 on:keypress={(e) => {
@@ -145,25 +145,25 @@
                 }}
               />
 
-              <div class="self-end mb-2 flex space-x-0.5 mr-2">
+              <div class="self-end mb-2 flex space-x-1.5 mr-2">
                 {#if messages.length == 0 || messages.at(-1).done == true}
                   <!-- listen button -->
                   <button
-                    class="rounded-lg p-1.1 mr-0.5 self-center"
+                    class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
                     on:click={listenHandler()}
                     ><svg
                       height="16px"
                       width="16px"
                       xmlns="http://www.w3.org/2000/svg"
-                      class="hover:fill-red-300 fill-red-950 transition"
+                      class="fill-red-950"
                       ><path
                         d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
                       /></svg
                     >
                   </button>
                   <button
-                    class=" text-gray-600 dark:text-gray-300 transition rounded-lg p-1.5 mr-0.5 self-center"
+                    class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
                     on:click={() => {
                       const mutedFlag = microphoneHandler();
@@ -196,8 +196,7 @@
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
-                        fill="currentColor"
-                        class="w-5 h-5 translate-y-[0.5px]"
+                        class="fill-gray-400 w-5 h-5 translate-y-[0.5px]"
                       >
                         <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
                         <path
@@ -210,7 +209,7 @@
                   <!-- submit button -->
                   <button
                     class="{prompt !== ''
-                      ? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-green-200 '
+                      ? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-200 '
                       : 'text-white bg-gray-100 dark:text-gray-800 dark:bg-gray-600 disabled'} transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
                     type="submit"
                     disabled={prompt === ""}

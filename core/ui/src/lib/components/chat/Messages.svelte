@@ -417,13 +417,15 @@
           </div>
 
           <div class="w-full">
-            <div class=" self-center font-bold mb-0.5">
-              {#if message.role === "user"}
+            {#if message.role === "user"}
+              <div class="dark:text-gray-100 self-center font-bold mb-0.5">
                 Victor
-              {:else}
+              </div>
+            {:else}
+              <div class="dark:text-gray-100 self-center font-bold mb-0.5">
                 Vasco
-              {/if}
-            </div>
+              </div>
+            {/if}
 
             {#if message.role !== "user" && message.content === ""}
               <!-- pulse animated grid -->
@@ -460,7 +462,10 @@
               </div>
             {:else}
               <div
-                class="prose chat-{message.role} w-full max-w-full dark:prose-invert prose-headings:my-0 prose-p:my-0 prose-p:-mb-4 prose-pre:my-0 prose-table:my-0 prose-blockquote:my-0 prose-img:my-0 prose-ul:-my-4 prose-ol:-my-4 prose-li:-my-3 prose-ul:-mb-6 prose-ol:-mb-6 prose-li:-mb-4 whitespace-pre-line"
+                class="font-sans prose chat-{message.role} {message.role ===
+                'user'
+                  ? 'text-gray-400'
+                  : 'text-white-950'}  w-full max-w-full dark:prose-invert prose-headings:my-0 prose-p:my-0 prose-p:-mb-4 prose-pre:my-0 prose-table:my-0 prose-blockquote:my-0 prose-img:my-0 prose-ul:-my-4 prose-ol:-my-4 prose-li:-my-3 prose-ul:-mb-6 prose-ol:-mb-6 prose-li:-mb-4 whitespace-pre-line"
               >
                 {#if message.role == "user"}
                   {#if message?.edit === true}
@@ -502,21 +507,6 @@
                     </div>
                   {:else}
                     <div class="w-full">
-                      {#if message.files}
-                        <div class="my-3">
-                          {#each message.files as file}
-                            <div>
-                              {#if file.type === "image"}
-                                <img
-                                  src={file.url}
-                                  alt="input"
-                                  class=" max-h-96"
-                                />
-                              {/if}
-                            </div>
-                          {/each}
-                        </div>
-                      {/if}
                       <pre id="user-message">{message.content}</pre>
 
                       <div class=" flex justify-start space-x-1">
