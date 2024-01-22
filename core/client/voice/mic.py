@@ -788,14 +788,20 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         # Notify system of recording start
         emitter.emit("recognizer_loop:record_begin")
         # TODO: create fallback if request fails
-        # self.api.send_system_listening_begin()
+        try:
+            self.api.send_system_listening_begin()
+        except Exception as e:
+            LOG.error(f"couldn't send data: {e}")
 
         frame_data = self._record_phrase(source, sec_per_buffer, stream, ww_frames)
         audio_data = self._create_audio_data(frame_data, source)
 
         emitter.emit("recognizer_loop:record_end")
         # TODO: create fallback if request fails
-        # self.api.send_system_listening_end()
+        try:
+            self.api.send_system_listening_end()
+        except Exception as e:
+            LOG.error(f"couldn't send data: {e}")
 
         # Play a wav file to indicate audio recording has ended
         self.play_end_listening_sound(source)

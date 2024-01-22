@@ -51,7 +51,7 @@ nonsensical statement.
 Your response should be in JSON format structured as follows: {{"speech": "represents
 what Vasco verbally communicates to the user.", "chat": "denotes what is displayed on
 the chat interface.", "action": " If Vasco wants a response  from the user (mostly if a
-question is asked?), action would be listen else None"}}
+question is asked?), action would be "listen" else "None". "}}
 This is the current conversation you are having with victor:
 
 {curr_conv}

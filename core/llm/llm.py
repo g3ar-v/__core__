@@ -192,7 +192,10 @@ class LLM(metaclass=Singleton):
                 self.message_history.add_ai_message(chat_response)
 
             if send_to_ui:
-                self.api.send_ai_utterance(chat_response)
+                try:
+                    self.api.send_ai_utterance(chat_response)
+                except Exception as e:
+                    LOG.error(f"couldn't send data: {e}")
 
             self.speak(
                 stt_response,

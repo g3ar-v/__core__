@@ -299,7 +299,10 @@ class IntentService:
             combined = _normalize_all_utterances(utterances)
 
             if message.data.get("context", {}).get("source", {}) != "ui_backend":
-                self.api.send_user_utterance(flatten_list(combined)[0])
+                try:
+                    self.api.send_user_utterance(flatten_list(combined)[0])
+                except Exception as e:
+                    LOG.error(f"couldn't send data: {e}")
 
             stopwatch = Stopwatch()
 
