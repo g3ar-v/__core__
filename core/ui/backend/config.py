@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     prefix_version: str = "/v1"
     ws_uri: str = f'ws://{config("WS_HOST")}:{config("WS_PORT")}/core'
     ws_conn_timeout: int = 10
-    ws_recv_timeout: int = 5
+    ws_recv_timeout: int = 7
     jwt_algorithm: str = "HS256"
     jwt_secret: str = config("SECRET")
     jwt_access_expiration: int = 1800

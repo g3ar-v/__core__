@@ -8,6 +8,7 @@ from core.ui.backend.common.typing import JSONStructure
 from core.ui.backend.common.utils import ws_send
 from core.ui.backend.config import get_settings
 from core.ui.backend.models.voice import Speak
+from core.util import LOG
 
 settings = get_settings()
 
@@ -154,8 +155,8 @@ def handle_utterance(message) -> JSONStructure:
             "data": {
                 "utterances": [message.prompt],
                 "context": {
-                    "client_name": "core_cli",
-                    "source": "debug_cli",
+                    "client_name": "core_ui",
+                    "source": "ui_backend",
                     "destination": ["skills"],
                 },
             },
@@ -163,8 +164,9 @@ def handle_utterance(message) -> JSONStructure:
         # TODO: get response from intent_service
         response = ws_send(payload, wait_for_message="core.utterance.response")
         # print(f"response: {response.get('data', {}).get('response', {})}")
-        content = response.get("data", {}).get("response", {})
-        return {"done": True, "message": {"content": content}}
+        LOG.info(f"core utterance response: {response}")
+        content = response.get("data", {})
+        return content
     except Exception as err:
         print(err)
         raise HTTPException(
