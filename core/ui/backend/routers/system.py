@@ -36,6 +36,10 @@ async def send_user_utterance(
     """
     LOG.info("SENDING MESSAGE TO UI: %s", message.__dict__)
     await websocket_manager.send_data(message.__dict__)
+    LOG.info(
+        f"list of active_websockets when sending user utterance:\
+        {websocket_manager.active_websockets}"
+    )
     return JSONResponse(content={})
 
 

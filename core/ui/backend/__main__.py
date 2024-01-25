@@ -14,6 +14,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
+from core.util.log import LOG
+
 from .common.utils import websocket_manager, ws_send
 from .config import get_settings
 from .routers import system, voice
@@ -82,15 +84,16 @@ async def get_status():
 async def websocket_endpoint(
     websocket: WebSocket,
 ):
+    LOG.debug(f"CONNECTING WITH NEW WEBSOCKET: {websocket}")
     await websocket_manager.connect(websocket)
 
     try:
         while True:
             data = await websocket.receive_json()
-            print(data)
+            LOG.info(data)
             # Do something with data
     except WebSocketDisconnect:
-        print(f"disconnecting websocket: {websocket}")
+        LOG.info(f"DISCONNECTING WEBSOCKET: {websocket}")
         await websocket_manager.disconnect(websocket)
 
 

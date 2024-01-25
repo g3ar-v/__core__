@@ -11,6 +11,7 @@ from websocket import WebSocketException, WebSocketTimeoutException, create_conn
 from core.ui.backend.common import constants
 from core.ui.backend.common.typing import JSONStructure
 from core.ui.backend.config import get_settings
+from core.util.log import LOG
 
 settings = get_settings()
 
@@ -88,51 +89,47 @@ def sanitize(data: JSONStructure) -> JSONStructure:
     return data
 
 
-active_connections: List[WebSocket] = []
-
-
-def get_active_connections():
-    return active_connections
-
-
-async def send_message_to_clients(message: str, active_connections):
-    try:
-        for conn in active_connections:
-            print(message.__dict__)
-            await conn.send_json(message.__dict__)
-        return {}
-    except Exception as e:
-        raise e
-
-
 class WebSocketManager:
     def __init__(self):
         self.active_websockets: List[WebSocket] = []
         self.queue: asyncio.Queue = asyncio.Queue()
+        self.task = None
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_websockets.append(websocket)
-        asyncio.create_task(self.sender(websocket))
+
+        # NOTE: kills previous async sender
+        if self.task:
+            self.task.cancel()
+
+        self.task = asyncio.create_task(self.sender(websocket))
 
     async def disconnect(self, websocket: WebSocket):
-        self.active_websockets.remove(websocket)
+        # to prevent disconnecting an already remove websocket
+        if websocket in self.active_websockets:
+            self.active_websockets.remove(websocket)
 
     async def send_data(self, data: str):
         await self.queue.put(data)
 
+    # TODO: if disconnect has been called the while loop in this function needs to
+    # be exited
     async def sender(self, websocket: WebSocket):
         while True:
             try:
+                LOG.debug(
+                    f"websocket: {websocket} - websocket state:{websocket.client_state}"
+                )
                 data = await self.queue.get()
-                print(f"websocket state {websocket.client_state}")
-
                 await websocket.send_json(data)
-            except Exception as e:
-                print(f"Error in sender: {e}")
-                print(f"disconnecting websocket: {websocket}")
-                await self.disconnect(websocket)
-                break
+            except asyncio.CancelledError:
+                # LOG.error(f"Error in sender: {e}")
+                LOG.info(f"CANCELLING sender function with {websocket}")
+                raise
+                # LOG.error(f"disconnecting websocket: {websocket}")
+                # await self.disconnect(websocket)
+                # break
 
 
 websocket_manager = WebSocketManager()
