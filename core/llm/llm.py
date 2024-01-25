@@ -115,7 +115,7 @@ class LLM(metaclass=Singleton):
         ):
             self.model = ChatOpenAI(
                 temperature=1,
-                max_tokens=256,
+                max_tokens=1256,
                 model="gpt-3.5-turbo-1106",
                 streaming=False,
             )
@@ -176,7 +176,12 @@ class LLM(metaclass=Singleton):
             )
 
             # monkey patch llm response
-            response_object: dict = json.loads(response)
+            # TODO: create fallback when JSON loads fails
+            try:
+                response_object: dict = json.loads(response)
+            except json.JSONDecodeError as e:
+                LOG.error(f"Error decoding JSON: {e}")
+
             stt_response = response_object.get(
                 "speech", "Apologies, I can't respond to that"
             )
