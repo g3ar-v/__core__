@@ -152,15 +152,32 @@
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
                     on:click={listenHandler()}
-                    ><svg
-                      height="16px"
-                      width="16px"
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="fill-red-950"
-                      ><path
-                        d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
-                      /></svg
+                  >
+                    <span
+                      class="before:content-[attr(data-tip)]
+                          before:absolute
+                          before:px-3 before:py-2
+                          before:right-16 before:bottom-16
+                          before:w-max before:max-w-xs
+                          before:translate-x-2.5 before:translate-y-2.5
+                          before:bg-gray-900 before:text-white
+                          before:rounded-md before:opacity-0
+                          before:transition-all
+
+                          hover:before:opacity-100
+                    "
+                      data-tip="activate listen"
                     >
+                      <svg
+                        height="16px"
+                        width="16px"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-red-950"
+                        ><path
+                          d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
+                        /></svg
+                      >
+                    </span>
                   </button>
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
@@ -174,35 +191,67 @@
                   >
                     <!-- mute/unmute button -->
                     {#if isMuted}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        class="fill-red-950 w-5 h-5 translate-y-[0.5px]"
+                      <span
+                        class="before:content-[attr(data-tip)]
+                          before:absolute
+                          before:px-3 before:py-2
+                          before:right-16 before:bottom-16
+                          before:w-max before:max-w-xs
+                          before:translate-x-2.5 before:translate-y-2.5
+                          before:bg-gray-900 before:text-white
+                          before:rounded-md before:opacity-0
+                          before:transition-all
+
+                          hover:before:opacity-100
+                    "
+                        data-tip="unmute mic"
                       >
-                        <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
-                        <path
-                          d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z"
-                        />
-                        <!-- Diagonal line to indicate the microphone is muted -->
-                        <line
-                          x1="4"
-                          y1="4"
-                          x2="16"
-                          y2="16"
-                          class="stroke-red-950 stroke-2"
-                        />
-                      </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          class="fill-red-950 w-5 h-5 translate-y-[0.5px]"
+                        >
+                          <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                          <path
+                            d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z"
+                          />
+                          <!-- Diagonal line to indicate the microphone is muted -->
+                          <line
+                            x1="4"
+                            y1="4"
+                            x2="16"
+                            y2="16"
+                            class="stroke-red-950 stroke-2"
+                          />
+                        </svg>
+                      </span>
                     {:else}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        class="fill-gray-400 w-5 h-5 translate-y-[0.5px]"
+                      <span
+                        class="before:content-[attr(data-tip)]
+                          before:absolute
+                          before:px-3 before:py-2
+                          before:right-16 before:bottom-16
+                          before:w-max before:max-w-xs
+                          before:translate-x-2.5 before:translate-y-2.5
+                          before:bg-gray-900 before:text-white
+                          before:rounded-md before:opacity-0
+                          before:transition-all
+
+                          hover:before:opacity-100
+                    "
+                        data-tip="mute mic"
                       >
-                        <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
-                        <path
-                          d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z"
-                        />
-                      </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          class="fill-gray-400 w-5 h-5 translate-y-[0.5px]"
+                        >
+                          <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                          <path
+                            d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z"
+                          />
+                        </svg>
+                      </span>
                     {/if}
                   </button>
 

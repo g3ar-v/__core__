@@ -1,4 +1,4 @@
-"""Mycroft util library.
+"""Core util library.
 
 A collections of utils and tools for making skill development easier.
 """

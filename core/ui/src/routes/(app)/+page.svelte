@@ -90,7 +90,7 @@
     };
   };
 
-  function checkWsConnection(ws) {
+  function checkWsConnection(ws: Websocket) {
     const timer = setInterval(() => {
       if (ws.readyState !== 1) {
         clearInterval(timer);
@@ -98,6 +98,7 @@
 
         location.reload();
       }
+      // console.log("connected to websocket");
     }, 30000);
   }
 
@@ -132,8 +133,8 @@
       history.currentId = responseMessageId;
 
       if (userMessage.parentId !== null) {
-        history.messages[parentId].childrenIds = [
-          ...history.messages[parentId].childrenIds,
+        history.messages[userMessage.parentId].childrenIds = [
+          ...history.messages[userMessage.parentId].childrenIds,
           responseMessageId,
         ];
       }
@@ -156,12 +157,8 @@
   //////////////////////////
 
   const sendPrompt = async (userPrompt, parentId) => {
-    await sendPromptCore(userPrompt, parentId);
+    // await sendPromptCore(userPrompt, parentId);
 
-    await chats.set(await $db.getChats());
-  };
-
-  const sendPromptCore = async (userPrompt, parentId) => {
     console.log(`send to core_backend: ${userPrompt}`);
     let responseMessageId = uuidv4();
 
@@ -229,7 +226,79 @@
       messages: messages,
       history: history,
     });
+
+    await chats.set(await $db.getChats());
   };
+
+  // const sendPromptCore = async (userPrompt, parentId) => {
+  //   console.log(`send to core_backend: ${userPrompt}`);
+  //   let responseMessageId = uuidv4();
+  //
+  //   let responseMessage = {
+  //     parentId: parentId,
+  //     role: "assistant",
+  //     id: responseMessageId,
+  //     childrenIds: [],
+  //     content: "",
+  //   };
+  //   //
+  //   history.messages[responseMessageId] = responseMessage;
+  //   history.currentId = responseMessageId;
+  //   if (parentId !== null) {
+  //     history.messages[parentId].childrenIds = [
+  //       ...history.messages[parentId].childrenIds,
+  //       responseMessageId,
+  //     ];
+  //   }
+  //
+  //   await tick();
+  //
+  //   window.scrollTo({ top: document.body.scrollHeight });
+  //
+  //   const res = await fetch(
+  //     `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/utterance`,
+  //     {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         // ...($settings.authHeader && { Authorization: $settings.authHeader }),
+  //         // ...($user && { Authorization: `Bearer ${localStorage.token}` })
+  //       },
+  //       body: JSON.stringify({
+  //         prompt: userPrompt,
+  //       }),
+  //     }
+  //   );
+  //   try {
+  //     const responseJson = await res.json();
+  //     if ("detail" in responseJson) {
+  //       throw responseJson;
+  //     }
+  //     console.log(`response: ${responseJson}`);
+  //     responseMessage.content = responseJson.message.content;
+  //     messages = messages;
+  //     responseMessage.done = true;
+  //     // console.log(``)
+  //
+  //     stopResponseFlag = false;
+  //   } catch (error) {
+  //     console.log(error);
+  //     if ("detail" in error) {
+  //       toast.error(error.detail);
+  //     }
+  //   }
+  //
+  //   await tick();
+  //   if (autoScroll) {
+  //     window.scrollTo({ top: document.body.scrollHeight });
+  //   }
+  //
+  //   await $db.updateChatById($chatId, {
+  //     title: title === "" ? "New Chat" : title,
+  //     messages: messages,
+  //     history: history,
+  //   });
+  // };
 
   const submitPrompt = async (userPrompt) => {
     console.log("submitPrompt");
@@ -254,6 +323,9 @@
 
       history.messages[userMessageId] = userMessage;
       history.currentId = userMessageId;
+
+      //Wait until history/message have been updated
+      await tick();
 
       prompt = "";
 
