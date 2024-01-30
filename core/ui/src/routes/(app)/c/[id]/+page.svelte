@@ -4,7 +4,7 @@
 
   import { OLLAMA_API_BASE_URL } from "$lib/constants";
   import { onMount, tick } from "svelte";
-  import { splitStream } from "$lib/utils";
+  import { convertMessagesToHistory } from "$lib/utils";
   import { goto } from "$app/navigation";
 
   import { config, user, settings, db, chats, chatId } from "$lib/stores";
@@ -15,8 +15,9 @@
   import Navbar from "$lib/components/layout/Navbar.svelte";
   import { page } from "$app/stores";
 
-  const socket = new WebSocket("ws://localhost:8080/ws");
+  // const socket = new WebSocket("ws://localhost:8080/ws");
 
+  let loaded = false;
   let stopResponseFlag = false;
   let autoScroll = true;
   let isMuted: boolean = false;
@@ -43,53 +44,56 @@
           : null;
     }
     messages = _messages;
-  } else {
-    messages = [];
   }
 
-  onMount(async () => {
-    await chatId.set(uuidv4());
-    // await history.loadChats();
+  $: if ($page.params.id) {
+    (async () => {
+      let chat = await loadChat();
 
-    socket.onopen = (event) => {
-      console.log("WebSocket is open now.");
-    };
-    socket.onerror = (event) => {
-      console.error("WebSocket error observed:", event);
-    };
-    socket.onmessage = (event) => {
-      // console.log("Received data from server:", event.data);
-      let response = JSON.parse(event.data);
-      handleMessage(response);
-    };
-    window.addEventListener("beforeunload", function () {
-      socket.close();
-    });
+      await tick();
+      if (chat) {
+        loaded = true;
+      } else {
+        await goto("/");
+      }
+    })();
+  }
 
-    isMuted = await getMicrophoneStatus();
-    console.log(`microphone mute status: ${isMuted}`);
-
-    chatId.subscribe(async () => {
-      await initNewChat();
-    });
-
-    checkWsConnection(socket);
-  });
   //////////////////////////
   // Web functions
   //////////////////////////
 
-  const initNewChat = async () => {
-    console.log(`chatId: ${$chatId}`);
+  const loadChat = async () => {
+    await chatId.set($page.params.id);
+    const chat = await $db.getChatById($chatId);
 
-    autoScroll = true;
+    if (chat) {
+      console.log($chatId + ": chat exists");
 
-    title = "";
-    messages = [];
-    history = {
-      messages: {},
-      currentId: null,
-    };
+      history =
+        (chat?.history ?? undefined) !== undefined
+          ? chat.history
+          : convertMessagesToHistory(chat.messages);
+      console.log("history: " + history);
+      title = chat.title;
+
+      await settings.set({
+        ...$settings,
+        system: chat.system ?? $settings.system,
+        options: chat.options ?? $settings.options,
+      });
+      autoScroll = true;
+
+      await tick();
+      if (messages.length > 0) {
+        history.messages[messages.at(-1).id].done = true;
+      }
+      await tick();
+
+      return chat;
+    } else {
+      return null;
+    }
   };
 
   function checkWsConnection(ws: WebSocket) {
@@ -104,7 +108,7 @@
     }, 30000);
   }
 
-  async function handleMessage(response) {
+  function handleMessage(response: Object) {
     if (response.type === "user") {
       console.log(`user message: ${response.prompt}`);
       let userMessageId = uuidv4();
@@ -117,15 +121,6 @@
       };
       if (messages.length !== 0) {
         history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
-      }
-
-      if (messages.length == 0) {
-        await $db.createNewChat({
-          id: $chatId,
-          title: "New Chat",
-          messages: messages,
-          history: history,
-        });
       }
 
       history.messages[userMessageId] = userMessage;
@@ -144,8 +139,8 @@
       history.currentId = responseMessageId;
 
       if (userMessage.parentId !== null) {
-        history.messages[userMessage.parentId].childrenIds = [
-          ...history.messages[userMessage.parentId].childrenIds,
+        history.messages[parentId].childrenIds = [
+          ...history.messages[parentId].childrenIds,
           responseMessageId,
         ];
       }
@@ -155,15 +150,6 @@
         history.messages[history.currentId].content = response.prompt;
         history.messages[history.currentId].done = true;
       }
-      await tick();
-
-      await $db.updateChatById($chatId, {
-        title: title === "" ? "New Chat" : title,
-        messages: messages,
-        history: history,
-      });
-
-      await chats.set(await $db.getChats());
     } else if (response.type === "status") {
       if (response.data === "recognizer_loop:record_begin") {
         speechRecognitionListening = true;
@@ -227,8 +213,6 @@
       messages = messages;
       responseMessage.done = true;
       // console.log(``)
-
-      stopResponseFlag = false;
     } catch (error) {
       console.log(error);
       if ("detail" in error) {
@@ -247,8 +231,89 @@
       history: history,
     });
 
+    stopResponseFlag = false;
+
+    await tick();
+    if (autoScroll) {
+      window.scrollTo({ top: document.body.scrollHeight });
+    }
+
+    if (messages.length == 2) {
+      window.history.replaceState(history.state, "", `/c/${$chatId}`);
+      await setChatTitle($chatId, userPrompt);
+    }
     await chats.set(await $db.getChats());
   };
+
+  // const sendPromptCore = async (userPrompt, parentId) => {
+  //   console.log(`send to core_backend: ${userPrompt}`);
+  //   let responseMessageId = uuidv4();
+  //
+  //   let responseMessage = {
+  //     parentId: parentId,
+  //     role: "assistant",
+  //     id: responseMessageId,
+  //     childrenIds: [],
+  //     content: "",
+  //   };
+  //   //
+  //   history.messages[responseMessageId] = responseMessage;
+  //   history.currentId = responseMessageId;
+  //   if (parentId !== null) {
+  //     history.messages[parentId].childrenIds = [
+  //       ...history.messages[parentId].childrenIds,
+  //       responseMessageId,
+  //     ];
+  //   }
+  //
+  //   await tick();
+  //
+  //   window.scrollTo({ top: document.body.scrollHeight });
+  //
+  //   const res = await fetch(
+  //     `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/utterance`,
+  //     {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         // ...($settings.authHeader && { Authorization: $settings.authHeader }),
+  //         // ...($user && { Authorization: `Bearer ${localStorage.token}` })
+  //       },
+  //       body: JSON.stringify({
+  //         prompt: userPrompt,
+  //       }),
+  //     }
+  //   );
+  //   try {
+  //     const responseJson = await res.json();
+  //     if ("detail" in responseJson) {
+  //       throw responseJson;
+  //     }
+  //     console.log(`response: ${responseJson}`);
+  //     responseMessage.content = responseJson.message.content;
+  //     messages = messages;
+  //     responseMessage.done = true;
+  //     // console.log(``)
+  //
+  //     stopResponseFlag = false;
+  //   } catch (error) {
+  //     console.log(error);
+  //     if ("detail" in error) {
+  //       toast.error(error.detail);
+  //     }
+  //   }
+  //
+  //   await tick();
+  //   if (autoScroll) {
+  //     window.scrollTo({ top: document.body.scrollHeight });
+  //   }
+  //
+  //   await $db.updateChatById($chatId, {
+  //     title: title === "" ? "New Chat" : title,
+  //     messages: messages,
+  //     history: history,
+  //   });
+  // };
 
   const submitPrompt = async (userPrompt) => {
     console.log("submitPrompt");
@@ -378,6 +443,13 @@
       method: "PUT",
     });
   };
+
+  const setChatTitle = async (_chatId, _title) => {
+    await $db.updateChatById(_chatId, { title: _title });
+    if (_chatId === $chatId) {
+      title = _title;
+    }
+  };
 </script>
 
 <svelte:window
@@ -387,40 +459,42 @@
   }}
 />
 
-<Navbar {title} />
-<div class="min-h-screen w-full flex justify-center">
-  <div class=" py-2.5 flex flex-col justify-between w-full">
-    <div class=" h-full mt-10 mb-32 w-full flex flex-col">
-      <Messages bind:history bind:messages bind:autoScroll {sendPrompt} />
+{#if loaded}
+  <Navbar {title} />
+  <div class="min-h-screen w-full flex justify-center">
+    <div class=" py-2.5 flex flex-col justify-between w-full">
+      <div class=" h-full mt-10 mb-32 w-full flex flex-col">
+        <Messages bind:history bind:messages bind:autoScroll {sendPrompt} />
+      </div>
     </div>
-  </div>
 
-  <MessageInput
-    bind:prompt
-    bind:autoScroll
-    bind:isMuted
-    bind:speechRecognitionListening
-    suggestionPrompts={[
-      {
-        title: ["Help me study", "vocabulary for a college entrance exam"],
-        content: `Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.`,
-      },
-      {
-        title: ["Give me ideas", `for what to do with my kids' art`],
-        content: `What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.`,
-      },
-      {
-        title: ["Tell me a fun fact", "about the Roman Empire"],
-        content: "Tell me a random fun fact about the Roman Empire",
-      },
-      {
-        title: ["Show me a code snippet", `of a website's sticky header`],
-        content: `Show me a code snippet of a website's sticky header in CSS and JavaScript.`,
-      },
-    ]}
-    {messages}
-    {listenHandler}
-    {submitPrompt}
-    {microphoneHandler}
-  />
-</div>
+    <MessageInput
+      bind:prompt
+      bind:autoScroll
+      bind:isMuted
+      bind:speechRecognitionListening
+      suggestionPrompts={[
+        {
+          title: ["Help me study", "vocabulary for a college entrance exam"],
+          content: `Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.`,
+        },
+        {
+          title: ["Give me ideas", `for what to do with my kids' art`],
+          content: `What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.`,
+        },
+        {
+          title: ["Tell me a fun fact", "about the Roman Empire"],
+          content: "Tell me a random fun fact about the Roman Empire",
+        },
+        {
+          title: ["Show me a code snippet", `of a website's sticky header`],
+          content: `Show me a code snippet of a website's sticky header in CSS and JavaScript.`,
+        },
+      ]}
+      {messages}
+      {listenHandler}
+      {submitPrompt}
+      {microphoneHandler}
+    />
+  </div>
+{/if}
