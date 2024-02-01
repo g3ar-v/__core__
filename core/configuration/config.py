@@ -1,6 +1,6 @@
 import json
 import os
-from os.path import exists, isfile, join, dirname
+from os.path import dirname, exists, isfile, join
 
 import xdg.BaseDirectory
 
@@ -9,7 +9,7 @@ from core.util.file_utils import get_temp_path
 from core.util.json_helper import load_commented_json, merge_dict
 from core.util.log import LOG
 
-from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG, USER_CONFIG
+from .locations import DEFAULT_CONFIG, SYSTEM_CONFIG
 
 
 class LocalConf(dict):
@@ -163,7 +163,7 @@ class Configuration:
 
             # Then use XDG config
             # This includes both the user config and
-            # /etc/xdg/mycroft/mycroft.conf
+            # /etc/xdg/core/core.conf
             for conf_dir in xdg.BaseDirectory.load_config_paths("core"):
                 configs.append(LocalConf(join(conf_dir, "core.conf")))
 

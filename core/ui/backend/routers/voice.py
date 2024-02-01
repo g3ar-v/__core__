@@ -64,7 +64,7 @@ async def stop() -> JSONResponse:
     response_description="Microphone muted",
     dependencies=[Depends(JWTBearer())],
 )
-async def mute() -> JSONResponse:
+async def mute() -> Response:
     """Request to mute the microphone
 
     :return: HTTP status code

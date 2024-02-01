@@ -1,16 +1,64 @@
-from typing import Dict
+from typing import Dict, Optional
 
-from fastapi import APIRouter, Body, Depends, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi.responses import JSONResponse, Response
 
 from core.ui.backend.auth.bearer import JWTBearer
-from core.ui.backend.common.utils import (
-    websocket_manager,
-)
+from core.ui.backend.common.utils import websocket_manager
+from core.ui.backend.handlers import system
+from core.ui.backend.models.system import ConfigResults
 from core.ui.backend.models.voice import Message
 from core.util.log import LOG
 
 router = APIRouter(prefix="/system", tags=["system"])
+
+
+@router.get(
+    "/config",
+    response_model=ConfigResults,
+    summary="Collect local or core configuration",
+    description="Send `core.api.config` message to the bus and wait \
+        for `core.api.config.answer` response. This route leverage the \
+        `core-api` skill.",
+    response_description="Retrieved configuration",
+    dependencies=[Depends(JWTBearer())],
+)
+async def config(
+    sort: Optional[bool] = Query(
+        default=False, description="Sort alphabetically the settings"
+    ),
+    core: Optional[bool] = Query(
+        default=False, description="Display the core configuration"
+    ),
+) -> JSONResponse:
+    """Collect local or core configuration
+
+    :param sort: Sort alphabetically the configuration
+    :type sort: bool, optional
+    :param core: Retrieve merged configuration
+    :type core: bool, optional
+    :return: Return the configuration
+    :rtype: JSONResponse
+    """
+    return JSONResponse(content=system.get_config(sort, core))
+
+
+@router.put(
+    "/config",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Notify services about configuration change",
+    description="Send `configuration.updated` message to the bus, services \
+        will reload the configuration file.",
+    response_description="Configuration has been reloaded",
+    dependencies=[Depends(JWTBearer())],
+)
+async def reload_config() -> Response:
+    """Reload configuration
+
+    :return: Return status code
+    :rtype: int
+    """
+    return Response(status_code=system.reload_config())
 
 
 @router.post(
@@ -109,3 +157,28 @@ async def send_system_listening_stop() -> JSONResponse:
     payload: Dict = {"type": "status", "data": "recognizer_loop:record_end"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
+
+
+@router.post(
+    "/config/set",
+    response_model=Message,
+    status_code=status.HTTP_201_CREATED,
+    summary="set configuration",
+    description="Set configuration",
+    response_description="configuration set",
+    dependencies=[Depends(JWTBearer())],
+)
+async def set_configuration(
+    config: Dict = Body(
+        default=None,
+        description="Configuration to set",
+        example='{"confirm_listening": false }',
+    ),
+) -> JSONResponse:
+    """Request to set the configuration
+
+    :return: HTTP status code
+    :rtype: int
+    """
+    LOG.info("SETTING CONFIGURATION: %s", config)
+    return JSONResponse(content=system.set_config(config))
