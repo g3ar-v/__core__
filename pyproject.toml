@@ -56,7 +56,7 @@ langchain = "0.0.334"
 pymongo = "4.5.0"
 onnxruntime = "1.15.1"
 pvporcupine = "3.0.0"
-ovos-stt-plugin-fasterwhisper = "^0.0.0"
+openai-whisper = {git = "https://github.com/openai/whisper.git"}
 
 [tool.poetry.scripts]
 core-voice-client="core.client.voice.__main__:main"

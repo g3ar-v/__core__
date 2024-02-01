@@ -2,7 +2,7 @@ import time
 from threading import Event
 from typing import List
 
-from .whisper import FasterWhisperSTT
+from .whisper import WhisperSTT
 from .base import STT
 
 from core.util.log import LOG
@@ -23,7 +23,7 @@ def load_stt_plugin(module_name):
 
 class STTFactory:
     CLASSES = {
-        "whisper": FasterWhisperSTT,
+        "whisper": WhisperSTT,
     }
 
     @staticmethod
