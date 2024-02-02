@@ -14,6 +14,8 @@ else
 fi
 
 DIR="$(pwd)"
+UI_DIR="$(pwd)/core/ui"
+echo "ui directory $UI_DIR"
 export CONDA_ENV_NAME="core"
 VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
@@ -43,6 +45,7 @@ help() {
 	echo "  bus                      the messagebus service"
 	echo "  skills                   the skill service"
 	echo "  voice                    voice capture service"
+	# echo " ui_backend                the backend for GUI"
 	# echo "  enclosure                enclosure service"
 	echo
 	echo "Tool COMMANDs:"
@@ -85,6 +88,7 @@ name_to_script_path() {
 		exit 1
 		;;
 	esac
+
 }
 
 source_venv() {
@@ -93,9 +97,13 @@ source_venv() {
 	if [ ! -f "/.dockerenv" ]; then
 		# . "${VIRTUALENV_ROOT}/bin/activate"
 		# TODO: dynmaically get miniconda path
-		source "/home/parallels/miniconda3/bin/activate" $CONDA_ENV_NAME
-		# source conda active $CONDA_ENV_NAME
-		echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
+		# source "/home/parallels/miniconda3/bin/activate" $CONDA_ENV_NAME
+		source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
+		if [[ $? -ne "0" ]]; then
+			echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
+		else
+			echo $RED "Could not enter virtual environment"
+		fi
 	fi
 }
 
@@ -167,6 +175,12 @@ launch_all() {
 	launch_background voice
 	launch_background skills
 	# launch_background enclosure
+	# cd "${UI_DIR}" || exit
+	# nohup npm run dev &
+	# cd ..
+
+	nohup uvicorn core.ui.backend.__main__:app &
+
 }
 
 check_dependencies() {

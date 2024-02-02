@@ -32,7 +32,9 @@ help() {
 	echo "  audio     stop the audio playback service"
 	echo "  skills    stop the skill service"
 	echo "  voice     stop voice capture service"
-	echo "  enclosure stop enclosure (hardware/gui interface) service"
+	# echo "  enclosure stop enclosure (hardware/gui interface) service"
+	echo "  ui        stop ui service"
+	echo "  backend   stop ui backend service"
 	echo
 	echo "Examples:"
 	echo "  ${script}"
@@ -42,7 +44,7 @@ help() {
 }
 
 process_running() {
-	if [ "$(pgrep -f "(python3|python|Python) (.*)-m core.*${1}")" ]; then
+	if [ "$(pgrep -f "${1}")" ]; then
 		return 0
 	else
 		return 1
@@ -52,8 +54,8 @@ process_running() {
 end_process() {
 	if process_running "$1"; then
 		# Find the process by name, only returning the oldest if it has children
-		pid=$(pgrep -o -f "(python3|python|Python) (.*)-m core.*${1}")
-		printf "Stopping %s (%s)..." "$1" "${pid}"
+		pid=$(pgrep -o -f "${1}")
+		printf "Stopping %s (%s)..." "$OPT" "${pid}"
 		kill -s INT "${pid}"
 
 		# Wait up to 5 seconds (50 * 0.1) for process to stop
@@ -69,8 +71,8 @@ end_process() {
 
 		if process_running "$1"; then
 			echo "failed to stop."
-			pid=$(pgrep -o -f "(python3|python|Python) (.*)-m core.*${1}")
-			printf "  Killing %s (%s)...\n" "$1" "${pid}"
+			pid=$(pgrep -o -f "${1}")
+			printf "  Killing %s (%s)...\n" "$OPT" "${pid}"
 			kill -9 "${pid}"
 			echo "killed."
 			result=120
@@ -93,32 +95,39 @@ fi
 case ${OPT} in
 "" | "all")
 	echo "Stopping all core services"
-	end_process skills
-	end_process voice
-	end_process enclosure
-	end_process messagebus.service
-	end_process client
-	end_process audio
+	end_process "(python3|python|Python) (.*)-m core.*skills"
+	end_process "(python3|python|Python) (.*)-m core.*voice"
+	end_process "(python3|python|Python) (.*)-m core.*enclosure"
+	end_process "(python3|python|Python) (.*)-m core.*messagebus.service"
+	end_process "(python3|python|Python) (.*)-m core.*client"
+	end_process "(python3|python|Python) (.*)-m core.*audio"
+	end_process "uvicorn core.ui.backend.__main__:app"
+	end_process "npm run dev"
 	;;
 "bus")
-	end_process messagebus.service
+	end_process "(python3|python|Python) (.*)-m core.*messagebus.service"
 	;;
 "audio")
-	end_process audio
+	end_process "(python3|python|Python) (.*)-m core.*audio"
 	;;
 "skills")
-	end_process skills
+	end_process "(python3|python|Python) (.*)-m core.*skills"
 	;;
 "voice")
-	end_process voice
+	end_process "(python3|python|Python) (.*)-m core.*voice"
 	;;
 "enclosure")
-	end_process enclosure
+	end_process "(python3|python|Python) (.*)-m core.*enclosure"
 	;;
 "client")
-	end_process client
+	end_process "(python3|python|Python) (.*)-m core.*client"
 	;;
-
+"backend")
+	end_process "uvicorn core.ui.backend.__main__:app"
+	;;
+"ui")
+	end_process "npm run dev"
+	;;
 *)
 	help
 	;;
