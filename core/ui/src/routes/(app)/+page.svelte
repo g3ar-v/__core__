@@ -11,7 +11,6 @@
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
-  import ModelSelector from "$lib/components/chat/ModelSelector.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
   import { page } from "$app/stores";
 
@@ -23,6 +22,7 @@
 
   let title = "";
   let prompt = "";
+  let systemSpeaking = false;
   let speechRecognitionListening = false;
 
   let messages = [];
@@ -169,6 +169,10 @@
         speechRecognitionListening = true;
       } else if (response.data === "recognizer_loop:record_end") {
         speechRecognitionListening = false;
+      } else if (response.data === "recognizer_loop:audio_output_start") {
+        systemSpeaking = true;
+      } else if (response.data === "recognizer_loop:audio_output_end") {
+        systemSpeaking = false;
       }
     }
   }
@@ -299,9 +303,22 @@
     }
   };
 
-  const stopResponse = () => {
+  const stopResponse = async () => {
     stopResponseFlag = true;
-    console.log("stopResponse");
+
+    try {
+      // TODO: if response is false system speaking == false
+      await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/speech`,
+        { method: "DELETE" }
+      );
+    } catch (error) {
+      console.log(error);
+      toast.error(error.detail);
+    }
+
+    systemSpeaking = false;
+    // console.log("stopResponse");
   };
 
   const regenerateResponse = async () => {
@@ -319,7 +336,7 @@
 
   // NOTE: what would be the right return type if there's an error in getting the
   // microphone status
-  const getMicrophoneStatus = async (): Promise<boolean> => {
+  const getMicrophoneStatus = async (): Promise<boolean | undefined> => {
     try {
       const response = await fetch(
         `${
@@ -399,6 +416,7 @@
     bind:prompt
     bind:autoScroll
     bind:isMuted
+    bind:systemSpeaking
     bind:speechRecognitionListening
     suggestionPrompts={[
       {
@@ -421,6 +439,7 @@
     {messages}
     {listenHandler}
     {submitPrompt}
+    {stopResponse}
     {microphoneHandler}
   />
 </div>

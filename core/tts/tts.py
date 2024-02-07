@@ -11,6 +11,7 @@ from threading import Thread
 from warnings import warn
 
 # from core.enclosure.api import EnclosureAPI
+from core.api import SystemApi
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util import (
@@ -62,6 +63,7 @@ class PlaybackThread(Thread):
         self.queue = queue
         self.tts = []
         self.bus = None
+        self.api = SystemApi()
 
         self._terminated = False
         self._processing_queue = False
@@ -163,6 +165,11 @@ class PlaybackThread(Thread):
             self.bus.emit(
                 Message("recognizer_loop:audio_output_start", context=context)
             )
+            try:
+                self.api.send_system_audio_start()
+            except Exception as e:
+                LOG.error(f"couldn't send data: {e}")
+
         else:
             LOG.warning("Speech started before bus was attached.")
 
@@ -182,6 +189,11 @@ class PlaybackThread(Thread):
                 "client_name": "core_audio_pbthread",
             }
             self.bus.emit(Message("recognizer_loop:audio_output_end", context=context))
+
+            try:
+                self.api.send_system_audio_end()
+            except Exception as e:
+                LOG.error(f"couldn't send data: {e}")
 
             if listen:
                 self.bus.emit(Message("core.mic.listen", context=context))

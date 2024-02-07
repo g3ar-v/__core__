@@ -4,14 +4,14 @@
   import Suggestions from "./MessageInput/Suggestions.svelte";
 
   export let submitPrompt: Function;
-  // export let stopResponse: Function;
+  export let stopResponse: Function;
   export let microphoneHandler: Function;
   export let listenHandler: Function;
 
   export let suggestionPrompts = [];
   export let autoScroll = true;
 
-  // export let speechRecognitionEnabled = true;
+  export let systemSpeaking = false;
   export let speechRecognitionListening = false;
   export let isMuted = false;
 
@@ -61,7 +61,11 @@
         <form
           class=" flex flex-col relative w-full rounded-xl border dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-100"
           on:submit|preventDefault={() => {
-            submitPrompt(prompt);
+            if (systemSpeaking) {
+              stopResponse();
+            } else {
+              submitPrompt(prompt);
+            }
           }}
         >
           {#if speechRecognitionListening == true}
@@ -146,7 +150,7 @@
               />
 
               <div class="self-end mb-2 flex space-x-1.5 mr-2">
-                {#if messages.length == 0 || messages.at(-1).done == true}
+                {#if systemSpeaking === false}
                   <!-- listen button -->
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
@@ -277,7 +281,7 @@
                     </svg>
                   </button>
                 {:else}
-                  <!-- stop generation button -->
+                  <!-- stop system speech button -->
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1.5"
                   >

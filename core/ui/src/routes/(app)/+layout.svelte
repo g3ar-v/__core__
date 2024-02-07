@@ -9,7 +9,6 @@
     user,
     showSettings,
     settings,
-    models,
     db,
     chats,
     chatId,

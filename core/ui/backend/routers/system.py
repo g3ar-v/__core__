@@ -25,10 +25,10 @@ router = APIRouter(prefix="/system", tags=["system"])
 )
 async def config(
     sort: Optional[bool] = Query(
-        default=False, description="Sort alphabetically the settings"
+        default=True, description="Sort alphabetically the settings"
     ),
     core: Optional[bool] = Query(
-        default=False, description="Display the core configuration"
+        default=True, description="Display the core configuration"
     ),
 ) -> JSONResponse:
     """Collect local or core configuration
@@ -155,6 +155,46 @@ async def send_system_listening_stop() -> JSONResponse:
     :rtype: int
     """
     payload: Dict = {"type": "status", "data": "recognizer_loop:record_end"}
+    await websocket_manager.send_data(payload)
+    return JSONResponse(content={})
+
+
+@router.put(
+    "/audio/start",
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    summary="send audio output start status to UI",
+    description="Send audio output start status to UI",
+    response_description="audio recording start status sent",
+    dependencies=[Depends(JWTBearer())],
+)
+async def send_audio_recording_start() -> JSONResponse:
+    """Request to send status of the audio recording beginning
+
+    :return: HTTP status code
+    :rtype: int
+    """
+    payload: Dict = {"type": "status", "data": "recognizer_loop:audio_output_start"}
+    await websocket_manager.send_data(payload)
+    return JSONResponse(content={})
+
+
+@router.put(
+    "/audio/end",
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    summary="send audio output stop status to UI",
+    description="Send audio output stop status to UI",
+    response_description="audio output stop status sent",
+    dependencies=[Depends(JWTBearer())],
+)
+async def send_audio_recording_stop() -> JSONResponse:
+    """Request to send status of the audio no longer recording
+
+    :return: HTTP status code
+    :rtype: int
+    """
+    payload: Dict = {"type": "status", "data": "recognizer_loop:audio_output_end"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
 

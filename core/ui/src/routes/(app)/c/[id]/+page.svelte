@@ -15,7 +15,7 @@
   import Navbar from "$lib/components/layout/Navbar.svelte";
   import { page } from "$app/stores";
 
-  // const socket = new WebSocket("ws://localhost:8080/ws");
+  const socket = new WebSocket("ws://localhost:8080/ws");
 
   let loaded = false;
   let stopResponseFlag = false;
@@ -24,6 +24,7 @@
 
   let title = "";
   let prompt = "";
+  let systemSpeaking = false;
   let speechRecognitionListening = false;
 
   let messages = [];
@@ -59,6 +60,27 @@
     })();
   }
 
+  onMount(async () => {
+    socket.onopen = (event) => {
+      console.log("WebSocket is open now.");
+    };
+    socket.onerror = (event) => {
+      console.error("WebSocket error observed:", event);
+    };
+    socket.onmessage = (event) => {
+      // console.log("Received data from server:", event.data);
+      let response = JSON.parse(event.data);
+      handleMessage(response);
+    };
+    window.addEventListener("beforeunload", function () {
+      socket.close();
+    });
+
+    isMuted = await getMicrophoneStatus();
+    console.log(`microphone mute status: ${isMuted}`);
+    checkWsConnection(socket);
+  });
+
   //////////////////////////
   // Web functions
   //////////////////////////
@@ -68,7 +90,7 @@
     const chat = await $db.getChatById($chatId);
 
     if (chat) {
-      console.log($chatId + ": chat exists");
+      // console.log($chatId + ": chat exists");
 
       history =
         (chat?.history ?? undefined) !== undefined
@@ -155,6 +177,10 @@
         speechRecognitionListening = true;
       } else if (response.data === "recognizer_loop:record_end") {
         speechRecognitionListening = false;
+      } else if (response.data === "recognizer_loop:audio_output_start") {
+        systemSpeaking = true;
+      } else if (response.data === "recognizer_loop:audio_output_end") {
+        systemSpeaking = false;
       }
     }
   }
@@ -245,76 +271,6 @@
     await chats.set(await $db.getChats());
   };
 
-  // const sendPromptCore = async (userPrompt, parentId) => {
-  //   console.log(`send to core_backend: ${userPrompt}`);
-  //   let responseMessageId = uuidv4();
-  //
-  //   let responseMessage = {
-  //     parentId: parentId,
-  //     role: "assistant",
-  //     id: responseMessageId,
-  //     childrenIds: [],
-  //     content: "",
-  //   };
-  //   //
-  //   history.messages[responseMessageId] = responseMessage;
-  //   history.currentId = responseMessageId;
-  //   if (parentId !== null) {
-  //     history.messages[parentId].childrenIds = [
-  //       ...history.messages[parentId].childrenIds,
-  //       responseMessageId,
-  //     ];
-  //   }
-  //
-  //   await tick();
-  //
-  //   window.scrollTo({ top: document.body.scrollHeight });
-  //
-  //   const res = await fetch(
-  //     `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/utterance`,
-  //     {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         // ...($settings.authHeader && { Authorization: $settings.authHeader }),
-  //         // ...($user && { Authorization: `Bearer ${localStorage.token}` })
-  //       },
-  //       body: JSON.stringify({
-  //         prompt: userPrompt,
-  //       }),
-  //     }
-  //   );
-  //   try {
-  //     const responseJson = await res.json();
-  //     if ("detail" in responseJson) {
-  //       throw responseJson;
-  //     }
-  //     console.log(`response: ${responseJson}`);
-  //     responseMessage.content = responseJson.message.content;
-  //     messages = messages;
-  //     responseMessage.done = true;
-  //     // console.log(``)
-  //
-  //     stopResponseFlag = false;
-  //   } catch (error) {
-  //     console.log(error);
-  //     if ("detail" in error) {
-  //       toast.error(error.detail);
-  //     }
-  //   }
-  //
-  //   await tick();
-  //   if (autoScroll) {
-  //     window.scrollTo({ top: document.body.scrollHeight });
-  //   }
-  //
-  //   await $db.updateChatById($chatId, {
-  //     title: title === "" ? "New Chat" : title,
-  //     messages: messages,
-  //     history: history,
-  //   });
-  // };
-
   const submitPrompt = async (userPrompt) => {
     console.log("submitPrompt");
 
@@ -364,9 +320,22 @@
     }
   };
 
-  const stopResponse = () => {
+  const stopResponse = async () => {
     stopResponseFlag = true;
-    console.log("stopResponse");
+
+    try {
+      // TODO: if response is false system speaking == false
+      await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/speech`,
+        { method: "DELETE" }
+      );
+    } catch (error) {
+      console.log(error);
+      toast.error(error.detail);
+    }
+
+    systemSpeaking = false;
+    // console.log("stopResponse");
   };
 
   const regenerateResponse = async () => {
@@ -384,7 +353,7 @@
 
   // NOTE: what would be the right return type if there's an error in getting the
   // microphone status
-  const getMicrophoneStatus = async (): Promise<boolean> => {
+  const getMicrophoneStatus = async (): Promise<boolean | undefined> => {
     try {
       const response = await fetch(
         `${
@@ -472,6 +441,7 @@
       bind:prompt
       bind:autoScroll
       bind:isMuted
+      bind:systemSpeaking
       bind:speechRecognitionListening
       suggestionPrompts={[
         {
@@ -494,6 +464,7 @@
       {messages}
       {listenHandler}
       {submitPrompt}
+      {stopResponse}
       {microphoneHandler}
     />
   </div>

@@ -18,8 +18,12 @@
       },
     })
       .then(async (res) => {
-        if (!res.ok) throw await res.json();
-        toast.success("connected to backend");
+        console.log(res);
+        if (!res.ok) {
+          throw await res.json();
+        } else {
+          toast.success("connected to backend");
+        }
         return res.json();
       })
       .catch((error) => {
@@ -31,37 +35,37 @@
     console.log(`backend result: ${resBackend}`);
     await config.set(resBackend);
 
-    if ($config) {
-      if ($config.auth) {
-        if (localStorage.token) {
-          const res = await fetch(`${WEBUI_API_BASE_URL}/auths`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.token}`,
-            },
-          })
-            .then(async (res) => {
-              if (!res.ok) throw await res.json();
-              return res.json();
-            })
-            .catch((error) => {
-              console.log(error);
-              toast.error(error.detail);
-              return null;
-            });
-
-          if (res) {
-            await user.set(res);
-          } else {
-            localStorage.removeItem("token");
-            await goto("/auth");
-          }
-        } else {
-          await goto("/auth");
-        }
-      }
-    }
+    // if ($config) {
+    //   if ($config.auth) {
+    //     if (localStorage.token) {
+    //       const res = await fetch(`${WEBUI_API_BASE_URL}/auths`, {
+    //         method: "GET",
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //           Authorization: `Bearer ${localStorage.token}`,
+    //         },
+    //       })
+    //         .then(async (res) => {
+    //           if (!res.ok) throw await res.json();
+    //           return res.json();
+    //         })
+    //         .catch((error) => {
+    //           console.log(error);
+    //           toast.error(error.detail);
+    //           return null;
+    //         });
+    //
+    //       if (res) {
+    //         await user.set(res);
+    //       } else {
+    //         localStorage.removeItem("token");
+    //         await goto("/auth");
+    //       }
+    //     } else {
+    //       await goto("/auth");
+    //     }
+    //   }
+    // }
 
     await tick();
     loaded = true;

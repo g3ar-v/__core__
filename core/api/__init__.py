@@ -171,3 +171,11 @@ class SystemApi(Api):
 
     def send_system_listening_end(self):
         return self.request({"method": "PUT", "path": "/listening/end"})
+
+    def send_system_audio_start(self):
+        LOG.info("SENDING AUDIO STATUS `START` MESSAGE TO UI BACKEND")
+        return self.request({"method": "PUT", "path": "/audio/start"})
+
+    def send_system_audio_end(self):
+        LOG.info("SENDING AUDIO STATUS `STOP`MESSAGE TO UI BACKEND")
+        return self.request({"method": "PUT", "path": "/audio/end"})
