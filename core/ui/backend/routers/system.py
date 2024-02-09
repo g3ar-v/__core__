@@ -6,8 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.common.utils import websocket_manager
 from core.ui.backend.handlers import system
-from core.ui.backend.models.system import ConfigResults
-from core.ui.backend.models.voice import Message
+from core.ui.backend.models.system import ConfigResults, Message
 from core.util.log import LOG
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -74,7 +73,7 @@ async def send_user_utterance(
     message: Message = Body(
         default=None,
         description="Message to send to UI",
-        example='{"type": "user","prompt": "hey there"}',
+        example='{"role": "user","content": "hey there"}',
     ),
 ) -> JSONResponse:
     """Request to start the recording
@@ -104,7 +103,7 @@ async def send_system_utterance(
     message: Message = Body(
         default=None,
         description="Message to send to UI",
-        example='{"type": "system", "prompt": "hey there"}',
+        example='{"role": "system", "content": "hey there"}',
     ),
 ) -> JSONResponse:
     """Request to start the recording
@@ -134,7 +133,7 @@ async def send_system_listening_start() -> JSONResponse:
     """
     # message = Message(type="status", prompt="Listening started")
     # LOG.info("Sending message to UI: %s", message)
-    payload: Dict = {"type": "status", "data": "recognizer_loop:record_begin"}
+    payload: Dict = {"role": "status", "data": "recognizer_loop:record_begin"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
 
@@ -154,7 +153,7 @@ async def send_system_listening_stop() -> JSONResponse:
     :return: HTTP status code
     :rtype: int
     """
-    payload: Dict = {"type": "status", "data": "recognizer_loop:record_end"}
+    payload: Dict = {"role": "status", "data": "recognizer_loop:record_end"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
 
@@ -194,14 +193,14 @@ async def send_audio_recording_stop() -> JSONResponse:
     :return: HTTP status code
     :rtype: int
     """
-    payload: Dict = {"type": "status", "data": "recognizer_loop:audio_output_end"}
+    payload: Dict = {"role": "status", "data": "recognizer_loop:audio_output_end"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
 
 
 @router.post(
     "/config/set",
-    response_model=Message,
+    response_model=ConfigResults,
     status_code=status.HTTP_201_CREATED,
     summary="set configuration",
     description="Set configuration",

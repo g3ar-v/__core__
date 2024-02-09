@@ -105,15 +105,15 @@
   }
 
   async function handleMessage(response) {
-    if (response.type === "user") {
-      console.log(`user message: ${response.prompt}`);
+    if (response.role === "user") {
+      console.log(`user message: ${response.content}`);
       let userMessageId = uuidv4();
       let userMessage = {
         id: userMessageId,
         parentId: messages.length !== 0 ? messages.at(-1).id : null,
         childrenIds: [],
         role: "user",
-        content: response.prompt,
+        content: response.content,
       };
       if (messages.length !== 0) {
         history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
@@ -149,10 +149,10 @@
           responseMessageId,
         ];
       }
-    } else if (response.type === "system") {
+    } else if (response.role === "system") {
       console.log(`system message: ${response.prompt}`);
       if (messages.length !== 0) {
-        history.messages[history.currentId].content = response.prompt;
+        history.messages[history.currentId].content = response.content;
         history.messages[history.currentId].done = true;
       }
       await tick();
@@ -164,7 +164,7 @@
       });
 
       await chats.set(await $db.getChats());
-    } else if (response.type === "status") {
+    } else if (response.role === "status") {
       if (response.data === "recognizer_loop:record_begin") {
         speechRecognitionListening = true;
       } else if (response.data === "recognizer_loop:record_end") {
@@ -217,7 +217,7 @@
           // ...($user && { Authorization: `Bearer ${localStorage.token}` })
         },
         body: JSON.stringify({
-          prompt: userPrompt,
+          content: userPrompt,
         }),
       }
     );

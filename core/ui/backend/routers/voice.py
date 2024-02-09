@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.config import get_settings
 from core.ui.backend.handlers import voice
-from core.ui.backend.models.voice import Message, Speak
+from core.ui.backend.models.voice import ContextData, Message, Speak
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -137,7 +137,7 @@ async def handle_utterance(
     message: Message = Body(
         default=None,
         description="Message request",
-        example='{"type": "user", "prompt": "what is the time?"}',
+        example='{"role": "user", "content": "what is the time?"}',
     ),
 ) -> JSONResponse:
     print(f"message: {message}")

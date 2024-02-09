@@ -154,6 +154,7 @@ def handle_utterance(message) -> JSONStructure:
             "type": "recognizer_loop:utterance",
             "data": {
                 "utterances": [message.prompt],
+                "utterances": [message.content],
                 "context": {
                     "client_name": "core_ui",
                     "source": "ui_backend",

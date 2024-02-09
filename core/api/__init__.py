@@ -152,7 +152,7 @@ class SystemApi(Api):
             {
                 "method": "POST",
                 "path": "/user/utterance",
-                "json": {"type": "user", "prompt": data},
+                "json": {"role": "user", "content": data},
             }
         )
 
@@ -162,7 +162,7 @@ class SystemApi(Api):
             {
                 "method": "POST",
                 "path": "/ai/utterance",
-                "json": {"type": "system", "prompt": data},
+                "json": {"role": "system", "content": data},
             }
         )
 

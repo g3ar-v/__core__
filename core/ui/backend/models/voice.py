@@ -1,6 +1,6 @@
 """Models related to voice
 """
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -15,5 +15,5 @@ class Speak(BaseModel):
 class Message(BaseModel):
     """Model for sending message via POST action"""
 
-    prompt: Optional[str] = None
-    type: str = None
+    content: Optional[str]
+    role: str
