@@ -1,9 +1,7 @@
-import re
 import time
 from threading import Lock
 
 from core.configuration import Configuration
-from core.llm import LLM
 from core.messagebus.message import Message
 from core.tts import TTSFactory
 
@@ -12,13 +10,11 @@ from core.tts.mimic3_tts import Mimic3
 from core.util import check_for_signal, create_signal
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
-from core.util.network_utils import InternetDown
 
 bus = None  # messagebus connection
 config = None
 tts = None
 tts_hash = None
-llm = LLM(bus)
 lock = Lock()
 mimic_fallback_obj = None
 
@@ -31,7 +27,7 @@ def handle_speak(event):
 
     Parse sentences and invoke text to speech service.
     """
-    config = Configuration.get()
+    # config = Configuration.get()
     Configuration.set_config_update_handlers(bus)
     global _last_stop_signal
     # if the message is targeted and audio is not the target don't

@@ -14,13 +14,12 @@ from core.audio import wait_while_speaking
 from core.configuration import Configuration
 from core.dialog import dialog
 from core.intent_services import IntentService
+from core.llm import LLM
 from core.messagebus.message import Message
 from core.skills.api import SkillApi
 from core.skills.event_scheduler import EventScheduler
 from core.skills.fallback_skill import FallbackSkill
-from core.skills.skill_manager import (
-    SkillManager,
-)
+from core.skills.skill_manager import SkillManager
 from core.util import (
     connected_to_the_internet,
     reset_sigint_handler,
@@ -82,6 +81,7 @@ def main(
         on_stopping=stopping_hook,
     )
     status = ProcessStatus("skills", bus, callback_map=callbacks)
+    LLM.initialize(bus)
 
     SkillApi.connect_bus(bus)
     skill_manager = _initialize_skill_manager(bus, watchdog)

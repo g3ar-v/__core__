@@ -5,7 +5,7 @@ from threading import Lock
 import core.intent_services
 from core.api import SystemApi
 from core.configuration import Configuration
-from core.llm import LLM, main_persona_prompt
+from core.llm import LLM, main_persona_prompt, parser
 from core.messagebus.message import Message
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
@@ -28,7 +28,6 @@ class QAService:
         self.answered = False
         self.interrupted = False
         self._vocabs = {}
-        self.llm = LLM(bus)
         self.api = SystemApi()
 
     def voc_match(self, utterance, voc_filename, lang, exact=False):
@@ -39,7 +38,7 @@ class QAService:
         match against "Yes.voc" containing only "yes". An exact match can be
         requested.
 
-        The method checks the "res/text/{lang}" folder of mycroft-core.
+        The method checks the "res/text/{lang}" folder of CORE.
         The result is cached to avoid hitting the disk each time the method is called.
 
         Args:
@@ -113,13 +112,12 @@ class QAService:
 
     def handle_query_response(self, utterance: str, message: dict) -> bool:
         try:
-            LOG.info(
-                f"intent message context:\
-                {message.data.get('context', {}).get('source', {})}"
-            )
             if message.data.get("context", {}).get("source", {}) == "ui_backend":
-                response = self.llm.llm_response(
-                    query=utterance, prompt=main_persona_prompt, send_to_ui=False
+                response = LLM.llm_response(
+                    query=utterance,
+                    prompt=main_persona_prompt,
+                    send_to_ui=False,
+                    parser=parser,
                 )
                 self.bus.emit(
                     Message(
@@ -129,12 +127,11 @@ class QAService:
                 )
 
             else:
-                response = self.llm.llm_response(
-                    query=utterance, prompt=main_persona_prompt
+                response = LLM.llm_response(
+                    query=utterance, prompt=main_persona_prompt, parser=parser
                 )
 
-            self.answered = True
-            return self.answered
+            return True
         except Exception as e:
             LOG.error("error in QA response: {}".format(e))
             return False

@@ -3,8 +3,8 @@ import time
 from collections import namedtuple
 from copy import copy
 
-from core.audio import wait_while_speaking
 from core.api import SystemApi
+from core.audio import wait_while_speaking
 from core.configuration import Configuration, set_default_lf_lang
 from core.dialog import dialog
 from core.llm import LLM
@@ -93,12 +93,11 @@ class IntentService:
 
     def __init__(self, bus):
         # Dictionary for translating a skill id to a name
+        config = Configuration.get()
         self.bus = bus
-        self.llm = LLM(bus)
 
         self.intent_api = IntentQueryApi()
         self.skill_names = {}
-        config = Configuration.get()
         self.adapt_service = AdaptService(config.get("context", {}))
         try:
             self.padatious_service = PadatiousService(bus, config["padatious"])
@@ -343,8 +342,8 @@ class IntentService:
                     self.bus.emit(reply)
 
                 # NOTE: should prevent user utterance from already being in chat_history
-                if self.llm.message_history:
-                    self.llm.message_history.add_user_message(flatten_list(combined)[0])
+                if LLM.chat_memory:
+                    LLM.chat_memory.add_user_message(flatten_list(combined)[0])
 
             else:
                 # Nothing was able to handle the intent
@@ -397,13 +396,6 @@ class IntentService:
         Args:
             message (Message): message containing vocab info
         """
-        # TODO: 22.02 Remove backwards compatibility
-        if _is_old_style_keyword_message(message):
-            LOG.warning(
-                "Deprecated: Registering keywords with old message. "
-                "This will be removed in v22.02."
-            )
-            _update_keyword_message(message)
 
         entity_value = message.data.get("entity_value")
         entity_type = message.data.get("entity_type")
@@ -625,28 +617,3 @@ class IntentService:
                 {"entities": self.padatious_service.registered_entities},
             )
         )
-
-
-def _is_old_style_keyword_message(message):
-    """Simple check that the message is not using the updated format.
-
-    TODO: Remove in v22.02
-
-    Args:
-        message (Message): Message object to check
-
-    Returns:
-        (bool) True if this is an old messagem, else False"""
-    return "entity_value" not in message.data and "start" in message.data
-
-
-def _update_keyword_message(message):
-    """Make old style keyword registration message compatible.
-
-    Copies old keys in message data to new names.
-
-    Args:
-        message (Message): Message to update
-    """
-    message.data["entity_value"] = message.data["start"]
-    message.data["entity_type"] = message.data["end"]

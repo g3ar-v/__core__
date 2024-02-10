@@ -1,22 +1,12 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
-import json
 import os
-import re
 from typing import Any
-from uuid import UUID
 
-from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.memory import ConversationBufferWindowMemory, MongoDBChatMessageHistory
-from langchain.schema.output import LLMResult
-from langchain.vectorstores import MongoDBAtlasVectorSearch
-
-# from langchain_community.llms import LlamaCpp
+from langchain.memory import ChatMessageHistory, ConversationBufferWindowMemory
 from langchain_community.llms import Ollama
-from pymongo import MongoClient
+from langchain_openai import ChatOpenAI
 
 from core.api import SystemApi
 from core.configuration import Configuration
@@ -25,7 +15,7 @@ from core.util.log import LOG
 from core.util.network_utils import connected_to_the_internet
 from core.util.time import now_local
 
-config = Configuration.get()
+# from langchain.embeddings import OpenAIEmbeddings
 
 
 class Singleton(type):
@@ -37,9 +27,9 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class LLM(metaclass=Singleton):
+class LLM:
     """
-    The LLM class is a singleton that manages the language model for the system.
+    The LLM class is a static class that manages the language model for the system.
     It sets up the necessary environment variables, connects to the MongoDB database,
     and initializes the chat history and vector search (relevant memory).
 
@@ -53,119 +43,82 @@ class LLM(metaclass=Singleton):
         searches.
     """
 
-    def __init__(self, bus):
-        self.bus = bus
-        self.api = SystemApi()
-        self.connection_string = config["microservices"].get("mongo_conn_string")
-        os.environ["OPENAI_API_KEY"] = config.get("microservices").get("openai_key")
+    config = Configuration.get()
+    bus = None
+    api = SystemApi()
+    connection_string = config["microservices"].get("mongo_conn_string")
+    chat_memory = ChatMessageHistory()
+    together_api_key = config.get("microservices").get("together_api_key")
+    user_name = config["user_preference"].get("user_name")
+    system_name = config["system_name"]
+
+    @staticmethod
+    def initialize(bus):
+        LLM.bus = bus
+        os.environ["OPENAI_API_KEY"] = LLM.config.get("microservices").get("openai_key")
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-        os.environ["LANGCHAIN_API_KEY"] = config.get("microservices").get(
+        os.environ["LANGCHAIN_API_KEY"] = LLM.config.get("microservices").get(
             "langsmith_key"
         )
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
 
-        try:
-            # TODO: backup when online mongodb fails
-            MongoClient(self.connection_string)
-
-            self.message_history = MongoDBChatMessageHistory(
-                connection_string=self.connection_string,
-                database_name="jarvis",
-                session_id="main",
-                collection_name="chat_history",
-            )
-        except Exception as e:
-            LOG.error(f"Error connecting to MongoDB: {e}")
-            self.message_history = None
-
-        user_name = config["user_preference"].get("user_name")
-        system_name = config["system_name"]
-        if self.message_history:
-            self.chat_history = ConversationBufferWindowMemory(
-                # for controlling the conversation length used for RAG
-                memory_key="chat_history",
-                chat_memory=self.message_history,
-                human_prefix=user_name,
-                ai_prefix=system_name,
-                k=3,  # if this is a lot then context window is exceeded
-            )
-            # self.message_history.clear()
-            # self.chat_history.clear()
-
-            # create vectorstore access
-            self.vector_search = MongoDBAtlasVectorSearch.from_connection_string(
-                self.connection_string,
-                "jarvis.chat_history",
-                OpenAIEmbeddings(disallowed_special=()),
-                index_name="default",
-            )
-        else:
-            self.chat_history = ConversationBufferWindowMemory(
-                memory_key="chat_history",
-                human_prefix=user_name,
-                ai_prefix=system_name,
-                k=3,  # if this is a lot then context window is exceeded
-            )
-
-    def load_model(self):
+    @staticmethod
+    def _load_model():  # -> ChatOpenAI | Any:
         if (
-            config.get("llm", {}).get("model_type", {}) == "online"
+            LLM.config.get("llm", {}).get("model_type", {}) == "online"
             and connected_to_the_internet()
         ):
-            self.model = ChatOpenAI(
-                temperature=1,
+            return ChatOpenAI(
+                temperature=1.5,
                 max_tokens=1256,
-                model="gpt-3.5-turbo-1106",
+                model="gpt-3.5-turbo-0125",
                 streaming=False,
             )
         else:
-            # model_name = config.get("llm", {}).get("model_type", {})
-            self.model = Ollama(model="mistral:7b-instruct")
+            return Ollama(model="mistral:7b-instruct")
 
-    def llm_response(self, **kwargs):
+    @staticmethod
+    def clear_chat_history():
+        LLM.chat_history.clear()
+
+    @staticmethod
+    def set_chat_memory(chat_memory):
+        LLM.chat_memory = chat_memory
+
+    @staticmethod
+    def llm_response(**kwargs):
         """
         Use a Language Model to generate and speak a response based
         on the given prompt and input.
 
         Args:
             **kwargs: Keyword arguments for prompt, context, and query.
-            NOTE: the prompt template used in the function call
-            determines what goes in the predict function
-            prompt (PromptTemplate): The prompt template to use
-            for generating the response.
-            context (str): The context data to use for the language model.
-            query (str): The question for llm to generate response
-            curr_conv (str): chat history
-            date_str (str): the time of getting the response
         """
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
-        send_to_ui = kwargs.get("send_to_ui")
-        if send_to_ui is None:
-            send_to_ui = True
+        send_to_ui = kwargs.get("send_to_ui", True)
+        parser = kwargs.get("parser")
 
         relevant_memory = None
-        current_conversation = self.chat_history.load_memory_variables({})[
-            "chat_history"
-        ]
-        # NOTE: a use case for using the function without a query
-
-        # try:
-        #     if query:
-        #         documents = self.vector_search.similarity_search(query, k=2)
-        #         relevant_memory = documents[0].page_content
-        # except Exception as e:
-        #     LOG.info("relvant memory error: {}".format(e))
-        #     relevant_memory = None
+        chat_history = ConversationBufferWindowMemory(
+            chat_memory=LLM.chat_memory,
+            human_prefix=LLM.user_name,
+            ai_prefix=LLM.system_name,
+            k=3,  # if this is a lot then context window is exceeded
+        )
+        current_conversation = chat_history.load_memory_variables({})["history"]
 
         try:
             today = now_local()
             date_now = today.strftime("%Y-%m-%d %H:%M %p")
 
-            self.load_model()
-            gptchain = LLMChain(llm=self.model, verbose=True, prompt=prompt)
+            model = LLM._load_model()
+
+            gptchain = LLMChain(
+                llm=model, verbose=False, prompt=prompt, output_parser=parser
+            )
 
             response = gptchain.predict(
                 context=context,
@@ -174,35 +127,22 @@ class LLM(metaclass=Singleton):
                 rel_mem=relevant_memory,
                 date_str=date_now,
             )
+            LOG.info(f"Response from LLM: {response}")
 
-            # monkey patch llm response
-            # TODO: create fallback when JSON loads fails
-            try:
-                response_object: dict = json.loads(response)
-            except json.JSONDecodeError as e:
-                LOG.error(f"Error decoding JSON: {e}")
+            stt_response = response.get("speech", "Apologies, I can't respond to that")
+            chat_response = response.get("chat", stt_response)
+            action_response = response.get("action", "")
 
-            stt_response = response_object.get(
-                "speech", "Apologies, I can't respond to that"
-            )
-            chat_response = response_object.get("chat", stt_response)
-            action_response = response_object.get("action", "")
-            response = re.sub(
-                r"(Vasco:|vasco:)",
-                "",
-                response,
-            )
-
-            if self.message_history:
-                self.message_history.add_ai_message(chat_response)
+            if chat_history:
+                LLM.chat_memory.add_ai_message(chat_response)
 
             if send_to_ui:
                 try:
-                    self.api.send_ai_utterance(chat_response)
+                    LLM.api.send_ai_utterance(chat_response)
                 except Exception as e:
                     LOG.error(f"couldn't send data: {e}")
 
-            self.speak(
+            LLM.speak(
                 stt_response,
                 True if action_response and "listen" in action_response else False,
             )
@@ -211,7 +151,8 @@ class LLM(metaclass=Singleton):
         except Exception as e:
             LOG.error("error in llm response: {}".format(e))
 
-    def speak(self, utterance, expect_response=False, message=None):
+    @staticmethod
+    def speak(utterance, expect_response=False, message=None):
         """Speak a sentence.
 
         Args:
@@ -225,80 +166,4 @@ class LLM(metaclass=Singleton):
         }
 
         m = Message("speak", data)
-        self.bus.emit(m)
-
-
-# TODO: handle listen if response has a question
-# NOTE: how can I handle listen when it is needed?
-class CustomCallback(BaseCallbackHandler):
-    """
-    Custom callback handler for LLM token and response events.
-    """
-
-    def __init__(self, bus) -> None:
-        # self.outputs = outputs
-        self.buffer = ""
-        self.bus = bus
-        self.interrupted = False
-        self.completed = False
-        self.bus.on("llm.speech.interruption", self.handle_interruption)
-
-    def handle_interruption(self, message):
-        self.interrupted = True
-
-    #     self.bus.emit("core.audio.speech.stop")
-
-    async def on_llm_new_token(
-        self,
-        token: str,
-        *,
-        run_id,
-        parent_run_id=None,
-        **kwargs: Any,
-    ) -> None:
-        self.buffer += token
-        # LOG.info(f"tokens: {self.buffer}")
-        if token in ["\n", ".", "?", "!"]:  # if token is a newline or a full-stop
-            # LOG.info(f"returning string: {self.buffer}")
-            if not self.interrupted:
-                # remove llm prefixes from response token
-                # NOTE: affects responses with bullet points
-                if ":" in self.buffer:
-                    LOG.info("removing `:` in llm response")
-                    self.buffer = re.sub(
-                        r"(Vasco|vasco:)",
-                        "",
-                        self.buffer,
-                    )
-                self.speak(self.buffer)
-            else:
-                LOG.info("not speaking because speech has been interrupted")
-            self.buffer = ""  # reset the buffer
-
-    async def on_llm_end(
-        self,
-        response: LLMResult,
-        *,
-        run_id: UUID,
-        parent_run_id: UUID | None = None,
-        **kwargs: Any,
-    ) -> Any:
-        # wait_while_speaking()
-        # self.bus.emit(Message("core.mic.listen"))
-        self.interrupted = False
-
-    def speak(self, utterance, expect_response=False, message=None):
-        """Speak a sentence.
-
-        Args:
-            utterance (str): sentence system should speak
-        """
-
-        message = message or dig_for_message()
-        data = {
-            "utterance": utterance,
-            "expect_response": expect_response,
-        }
-
-        m = Message("speak", data)
-        self.bus.emit(m)
+        LLM.bus.emit(m)

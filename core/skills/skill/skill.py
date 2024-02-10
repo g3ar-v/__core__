@@ -22,7 +22,6 @@ from core.api import SystemApi
 from core.configuration import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
-from core.llm import LLM
 from core.messagebus.message import Message, dig_for_message
 
 # from core.metrics import report_metric
@@ -115,7 +114,6 @@ class Skill:
         # self._enclosure = None
         self.bind(bus)
         self.api = SystemApi()
-        self.llm = LLM(bus)
         # global configuration. (dict)
         self.config_core = Configuration.get()
 
@@ -418,6 +416,8 @@ class Skill:
         return converse.response
 
     # FIXME:
+    # TODO: add send prompt to UI impelementation
+
     def get_response(
         self, dialog="", data=None, validator=None, on_fail=None, num_retries=-1
     ):
@@ -1329,8 +1329,9 @@ class Skill:
             self.shutdown()
         except Exception as e:
             LOG.error(
-                "Skill specific shutdown function encountered "
-                "an error: {}".format(repr(e))
+                "Skill specific shutdown function encountered " "an error: {}".format(
+                    repr(e)
+                )
             )
 
         self.settings_change_callback = None
