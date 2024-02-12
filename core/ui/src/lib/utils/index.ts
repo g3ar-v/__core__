@@ -53,6 +53,14 @@ export const convertMessagesToHistory = (messages) => {
 	return history;
 };
 
+
+export const formatContextForBackend = (history) => {
+ return Object.keys(history.messages).map(key => ({
+  role: history.messages[key].role,
+  content: history.messages[key].content
+ })) 
+}
+
 export const getGravatarURL = (email) => {
 	// Trim leading and trailing whitespace from
 	// an email address and force all characters

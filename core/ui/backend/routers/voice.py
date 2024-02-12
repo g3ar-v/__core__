@@ -7,6 +7,7 @@ from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.config import get_settings
 from core.ui.backend.handlers import voice
 from core.ui.backend.models.voice import ContextData, Message, Speak
+from core.util.log import LOG
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -142,3 +143,26 @@ async def handle_utterance(
 ) -> JSONResponse:
     print(f"message: {message}")
     return JSONResponse(content=voice.handle_utterance(message))
+
+
+@router.post(
+    "/context",
+    status_code=status.HTTP_200_OK,
+    summary="Send context to backend",
+    description="Send context data to the backend for processing",
+    response_description="Response to the context data request",
+    dependencies=[Depends(JWTBearer())],
+)
+async def send_context(
+    context_data: ContextData = Body(
+        default=None,
+        description="Context data to be sent for processing",
+        example={
+            "context": [
+                {"role": "user", "content": "nevermind"},
+                {"role": "assistant", "content": "alright, sir"},
+            ],
+        },
+    ),
+) -> JSONResponse:
+    return JSONResponse(content=voice.send_context(context_data))

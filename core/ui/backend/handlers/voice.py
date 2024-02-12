@@ -2,7 +2,7 @@
 """
 from typing import Dict
 
-from fastapi import WebSocket, HTTPException, status
+from fastapi import HTTPException, status
 
 from core.ui.backend.common.typing import JSONStructure
 from core.ui.backend.common.utils import ws_send
@@ -153,7 +153,6 @@ def handle_utterance(message) -> JSONStructure:
         payload: Dict = {
             "type": "recognizer_loop:utterance",
             "data": {
-                "utterances": [message.prompt],
                 "utterances": [message.content],
                 "context": {
                     "client_name": "core_ui",
@@ -168,6 +167,34 @@ def handle_utterance(message) -> JSONStructure:
         LOG.info(f"core utterance response: {response}")
         content = response.get("data", {})
         return content
+    except Exception as err:
+        print(err)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="unable to send message to bus",
+        ) from err
+
+
+def send_context(context_data):
+    try:
+        # LOG.info(f"sending context: {context_data}")
+        payload: Dict = {
+            "type": "recognizer_loop:context",
+            "data": {
+                "utterance_context": [
+                    {"role": data.role, "content": data.content}
+                    for data in context_data.context
+                ],
+                "context": {
+                    "client_name": "core_ui",
+                    "source": "ui_backend",
+                    "destination": ["skills"],
+                },
+            },
+        }
+        response = ws_send(payload)
+        return response
+
     except Exception as err:
         print(err)
         raise HTTPException(

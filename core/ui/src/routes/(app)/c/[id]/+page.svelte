@@ -4,14 +4,16 @@
 
   import { OLLAMA_API_BASE_URL } from "$lib/constants";
   import { onMount, tick } from "svelte";
-  import { convertMessagesToHistory } from "$lib/utils";
+  import {
+    convertMessagesToHistory,
+    formatContextForBackend,
+  } from "$lib/utils";
   import { goto } from "$app/navigation";
 
   import { config, user, settings, db, chats, chatId } from "$lib/stores";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
-  import ModelSelector from "$lib/components/chat/ModelSelector.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
   import { page } from "$app/stores";
 
@@ -96,13 +98,21 @@
         (chat?.history ?? undefined) !== undefined
           ? chat.history
           : convertMessagesToHistory(chat.messages);
-      console.log("history: " + history);
       title = chat.title;
 
+      const formattedHistory = formatContextForBackend(history);
+      await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/context`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ context: formattedHistory }),
+        }
+      );
       await settings.set({
         ...$settings,
-        system: chat.system ?? $settings.system,
-        options: chat.options ?? $settings.options,
       });
       autoScroll = true;
 
@@ -161,8 +171,8 @@
       history.currentId = responseMessageId;
 
       if (userMessage.parentId !== null) {
-        history.messages[parentId].childrenIds = [
-          ...history.messages[parentId].childrenIds,
+        history.messages[userMessage.parentId].childrenIds = [
+          ...history.messages[userMessage.parentId].childrenIds,
           responseMessageId,
         ];
       }

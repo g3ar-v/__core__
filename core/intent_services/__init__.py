@@ -3,6 +3,8 @@ import time
 from collections import namedtuple
 from copy import copy
 
+from langchain.memory import ChatMessageHistory
+
 from core.api import SystemApi
 from core.audio import wait_while_speaking
 from core.configuration import Configuration, set_default_lf_lang
@@ -112,6 +114,7 @@ class IntentService:
         self.bus.on("register_vocab", self.handle_register_vocab)
         self.bus.on("register_intent", self.handle_register_intent)
         self.bus.on("recognizer_loop:utterance", self.handle_utterance)
+        self.bus.on("recognizer_loop:context", self.handle_context)
         self.bus.on("detach_intent", self.handle_detach_intent)
         self.bus.on("detach_skill", self.handle_detach_skill)
         # Context related handlers
@@ -174,8 +177,7 @@ class IntentService:
         """Core is taking too long to process information"""
         LOG.info("INFO TAKING TOO LONG")
         data = {"utterance": dialog.get("taking_too_long")}
-        context = {"client_name": "intent_service", "source": "audio"}
-        # HACK:: the llm_response seems to be a different thread
+        context: dict[str, str] = {"client_name": "intent_service", "source": "audio"}
         wait_while_speaking()
         self.bus.emit(Message("speak", data, context))
         wait_while_speaking()
@@ -265,6 +267,22 @@ class IntentService:
             self.active_skills.insert(0, [skill_id, time.time()])
         else:
             LOG.warning("Skill ID was empty, won't add to list of " "active skills.")
+
+    def handle_context(self, message):
+        """Handle context from UI. For every switch to a new chat, the context
+        changes. And used for the next llm response
+        """
+        chat_memory = ChatMessageHistory()
+
+        context_data = message.data.get("utterance_context", {})
+
+        for data in context_data:
+            if data["role"] == "user":
+                chat_memory.add_user_message(message=data["content"])
+            else:
+                chat_memory.add_ai_message(message=data["content"])
+
+        LLM.set_chat_memory(chat_memory=chat_memory)
 
     def handle_utterance(self, message):
         """Main entrypoint for handling user utterances
