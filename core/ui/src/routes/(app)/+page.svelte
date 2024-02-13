@@ -181,8 +181,6 @@
   //////////////////////////
 
   const sendPrompt = async (userPrompt, parentId) => {
-    // await sendPromptCore(userPrompt, parentId);
-
     console.log(`send to core_backend: ${userPrompt}`);
     let responseMessageId = uuidv4();
 
@@ -217,6 +215,7 @@
           // ...($user && { Authorization: `Bearer ${localStorage.token}` })
         },
         body: JSON.stringify({
+          role: "user",
           content: userPrompt,
         }),
       }
