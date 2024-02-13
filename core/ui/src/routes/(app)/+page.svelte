@@ -18,7 +18,7 @@
 
   let stopResponseFlag = false;
   let autoScroll = true;
-  let isMuted: boolean = false;
+  let isMicrophoneMuted: boolean = false;
 
   let title = "";
   let prompt = "";
@@ -66,8 +66,8 @@
       socket.close();
     });
 
-    isMuted = await getMicrophoneStatus();
-    console.log(`microphone mute status: ${isMuted}`);
+    isMicrophoneMuted = await getMicrophoneStatus();
+    console.log(`microphone mute status: ${isMicrophoneMuted}`);
 
     chatId.subscribe(async () => {
       await initNewChat();
@@ -338,9 +338,7 @@
   const getMicrophoneStatus = async (): Promise<boolean | undefined> => {
     try {
       const response = await fetch(
-        `${
-          $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
-        }v1/voice/microphone/status`,
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
         {
           method: "GET",
           headers: {
@@ -356,36 +354,34 @@
     }
   };
 
-  // TODO: should the fetch method have throws and catch blocks
   const microphoneHandler = async () => {
-    if (isMuted == true) {
-      console.log("unmuting microphone");
-      await fetch(
-        `${
-          $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
-        }v1/voice/microphone/unmute`,
+    const toggleMicrophoneState = async (state) => {
+      const response = await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({ state }),
         }
       );
-      isMuted = false;
+
+      if (state === "unmute") {
+        console.log("unmuting microphone");
+        isMicrophoneMuted = false;
+      } else {
+        console.log("muting microphone");
+        isMicrophoneMuted = true;
+      }
+    };
+
+    if (isMicrophoneMuted == true) {
+      await toggleMicrophoneState("unmute");
     } else {
-      await fetch(
-        `${
-          $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
-        }v1/voice/microphone/mute`,
-        {
-          method: "PUT",
-        }
-      );
-      console.log("muting microphone");
-      isMuted = true;
-      // console.log('response: ' + res.body);
+      await toggleMicrophoneState("mute");
     }
-    return isMuted;
+    return isMicrophoneMuted;
   };
 
   //TODO: implement a handler to prevent button spams
@@ -414,7 +410,7 @@
   <MessageInput
     bind:prompt
     bind:autoScroll
-    bind:isMuted
+    bind:isMuted={isMicrophoneMuted}
     bind:systemSpeaking
     bind:speechRecognitionListening
     suggestionPrompts={[

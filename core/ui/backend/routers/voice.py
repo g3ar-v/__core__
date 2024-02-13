@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse, Response
 from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.config import get_settings
 from core.ui.backend.handlers import voice
-from core.ui.backend.models.voice import ContextData, Message, Speak
-from core.util.log import LOG
+from core.ui.backend.models.voice import ContextData, Message, MicState, Speak
+from core.util.log import LOG  # noqa: F401
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -58,41 +58,33 @@ async def stop() -> JSONResponse:
 
 
 @router.put(
-    "/microphone/mute",
+    "/microphone",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Request to mute the microhpone",
-    description="Send `core.mic.mute` message to the bus to mute" "the microhpone",
-    response_description="Microphone muted",
+    summary="Set the microphone state",
+    description="Send a message to the bus to either mute or unmute the microphone based on the state provided",
+    response_description="Microphone state set",
     dependencies=[Depends(JWTBearer())],
 )
-async def mute() -> Response:
-    """Request to mute the microphone
+async def set_microphone_state(
+    payload: MicState = Body(
+        default=None, description="microphone state", example='{"state": "mute"}'
+    ),
+) -> Response:
+    """Set the state of the microphone
 
+    :param state: Desired state of the microphone
+    :type state: MicState
     :return: HTTP status code
     :rtype: int
     """
-    return Response(status_code=voice.mute())
-
-
-@router.put(
-    "/microphone/unmute",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Request to unmute the microhpone",
-    description="Send `core.mic.unmute` message to the bus to unmute" "the microhpone",
-    response_description="Microphone unmuted",
-    dependencies=[Depends(JWTBearer())],
-)
-async def unmute() -> JSONResponse:
-    """Request to unmute the microphone
-
-    :return: HTTP status code
-    :rtype: int
-    """
-    return Response(status_code=voice.unmute())
+    if payload.state == "mute":
+        return Response(status_code=voice.mute())
+    elif payload.state == "unmute":
+        return Response(status_code=voice.unmute())
 
 
 @router.get(
-    "/microphone/status",
+    "/microphone",
     status_code=status.HTTP_200_OK,
     summary="Request for microphone status",
     description="Send a request to get the status of the microphone",

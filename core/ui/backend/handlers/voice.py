@@ -61,7 +61,7 @@ def stop() -> JSONStructure:
 
 
 def mute() -> JSONStructure:
-    """Send a microphone mute request to Core
+    """Send a microphone mute request to CORE
 
     Send `core.mic.mute` message to the bus to mute the microphone.
 
@@ -80,7 +80,7 @@ def mute() -> JSONStructure:
 
 
 def unmute() -> JSONStructure:
-    """Send a microphone unmute request to Core
+    """Send a microphone unmute request to CORE
 
     Send `core.mic.unmute` message to the bus to unmute the microphone.
 

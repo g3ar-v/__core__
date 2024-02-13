@@ -19,11 +19,13 @@ class Message(BaseModel):
     role: str
 
 
-# class Context(BaseModel):
-#     messages: Dict[str, Message] = Field(default_factory=dict)
-
-
 class ContextData(BaseModel):
     """Model for context data"""
 
     context: List[Message]
+
+
+class MicState(BaseModel):
+    """Model for mic state"""
+
+    state: str
