@@ -4,19 +4,42 @@
   import { WEB_UI_VERSION, OLLAMA_API_BASE_URL } from "$lib/constants";
   import toast from "svelte-french-toast";
   import { onMount } from "svelte";
-  import { config, models, settings, user } from "$lib/stores";
-  import { splitStream, getGravatarURL } from "$lib/utils";
+  import { config, voices, settings, user } from "$lib/stores";
+  import { splitStream, extractObjectsbyName } from "$lib/utils";
   import Advanced from "./Settings/Advanced.svelte";
 
   export let show = false;
 
-  const saveSettings = async (updated) => {
-    console.log(updated);
-    await settings.set({ ...$settings, ...updated });
-    await models.set(await getModels());
+  const saveSettings = async (
+    updated: Object,
+    sendToBackend: Boolean = false
+  ) => {
+    settings.set({ ...$settings, ...updated });
     localStorage.setItem("settings", JSON.stringify($settings));
+    // TODO: code that sets config in the backend
+    if (sendToBackend === true) {
+      setBackendSettings(updated);
+    }
   };
 
+  const setBackendSettings = async (updated: Object) => {
+    try {
+      await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/system/config/set`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updated),
+        }
+      );
+    } catch (error) {
+      // Handle error
+      // toast.error("Error fetching core settings:" + error);
+      return null; // or throw error
+    }
+  };
   let selectedTab = "general";
 
   // General
@@ -42,13 +65,16 @@
     num_ctx: "",
   };
 
-  // Models
-  let modelTag = "";
-  let deleteModelTag = "";
-  let digest = "";
-  let pullProgress = null;
+  // Output Audio
+  let tts = "";
+  let _voices = [];
+  let confirmListening = false;
+  let confirmListeningEnd = false;
 
-  // Addons
+  // Voice
+  let stt = "";
+  let sttModelType = "";
+  let sttModelTypeOptions = "";
   let titleAutoGenerate = true;
   let speechAutoSend = false;
   let gravatarEmail = "";
@@ -112,199 +138,57 @@
     saveSettings({ titleAutoGenerate: titleAutoGenerate });
   };
 
+  const toggleListeningSound = async () => {
+    confirmListening = !confirmListening;
+  };
+  const toggleListeningEndSound = async () => {
+    confirmListeningEnd = !confirmListeningEnd;
+  };
   const toggleAuthHeader = async () => {
     authEnabled = !authEnabled;
   };
 
-  const pullModelHandler = async () => {
-    const res = await fetch(`${API_BASE_URL}/pull`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/event-stream",
-        ...($settings.authHeader && { Authorization: $settings.authHeader }),
-        ...($user && { Authorization: `Bearer ${localStorage.token}` }),
-      },
-      body: JSON.stringify({
-        name: modelTag,
-      }),
-    });
-
-    const reader = res.body
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(splitStream("\n"))
-      .getReader();
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      try {
-        let lines = value.split("\n");
-
-        for (const line of lines) {
-          if (line !== "") {
-            console.log(line);
-            let data = JSON.parse(line);
-            console.log(data);
-
-            if (data.error) {
-              throw data.error;
-            }
-
-            if (data.detail) {
-              throw data.detail;
-            }
-            if (data.status) {
-              if (!data.digest) {
-                toast.success(data.status);
-              } else {
-                digest = data.digest;
-                if (data.completed) {
-                  pullProgress =
-                    Math.round((data.completed / data.total) * 1000) / 10;
-                } else {
-                  pullProgress = 100;
-                }
-              }
-            }
-          }
+  const getCoreSettings = async () => {
+    try {
+      const res = await fetch(
+        `${
+          $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
+        }v1/system/config?sort=true&core=true`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
-      } catch (error) {
-        console.log(error);
-        toast.error(error);
-      }
-    }
-
-    modelTag = "";
-    models.set(await getModels());
-  };
-
-  const deleteModelHandler = async () => {
-    const res = await fetch(`${API_BASE_URL}/delete`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "text/event-stream",
-        ...($settings.authHeader && { Authorization: $settings.authHeader }),
-        ...($user && { Authorization: `Bearer ${localStorage.token}` }),
-      },
-      body: JSON.stringify({
-        name: deleteModelTag,
-      }),
-    });
-
-    const reader = res.body
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(splitStream("\n"))
-      .getReader();
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      try {
-        let lines = value.split("\n");
-
-        for (const line of lines) {
-          if (line !== "" && line !== "null") {
-            console.log(line);
-            let data = JSON.parse(line);
-            console.log(data);
-
-            if (data.error) {
-              throw data.error;
-            }
-            if (data.detail) {
-              throw data.detail;
-            }
-
-            if (data.status) {
-            }
-          } else {
-            toast.success(`Deleted ${deleteModelTag}`);
-          }
-        }
-      } catch (error) {
-        console.log(error);
-        toast.error(error);
-      }
-    }
-
-    deleteModelTag = "";
-    models.set(await getModels());
-  };
-
-  const getModels = async (url = "", type = "all") => {
-    let models = [];
-    const res = await fetch(
-      `${url ? url : $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}/tags`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          ...($settings.authHeader && { Authorization: $settings.authHeader }),
-          ...($user && { Authorization: `Bearer ${localStorage.token}` }),
-        },
-      }
-    )
-      .then(async (res) => {
-        if (!res.ok) throw await res.json();
-        return res.json();
-      })
-      .catch((error) => {
-        console.log(error);
-        if ("detail" in error) {
-          toast.error(error.detail);
-        } else {
-          toast.error("Server connection failed");
-        }
-        return null;
-      });
-    console.log(res);
-    models.push(...(res?.models ?? []));
-
-    // If OpenAI API Key exists
-    if (type === "all" && $settings.OPENAI_API_KEY) {
-      // Validate OPENAI_API_KEY
-      const openaiModelRes = await fetch(`https://api.openai.com/v1/models`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${$settings.OPENAI_API_KEY}`,
-        },
-      })
-        .then(async (res) => {
-          if (!res.ok) throw await res.json();
-          return res.json();
-        })
-        .catch((error) => {
-          console.log(error);
-          toast.error(`OpenAI: ${error?.error?.message ?? "Network Problem"}`);
-          return null;
-        });
-
-      const openAIModels = openaiModelRes?.data ?? null;
-
-      models.push(
-        ...(openAIModels
-          ? [
-              { name: "hr" },
-              ...openAIModels
-                .map((model) => ({ name: model.id, label: "OpenAI" }))
-                .filter((model) => model.name.includes("gpt")),
-            ]
-          : [])
       );
+      const config = await res.json();
+      return config;
+    } catch (error) {
+      // Handle error
+      // toast.error("Error fetching core settings:" + error);
+      return null; // or throw error
     }
-
-    return models;
   };
 
   onMount(() => {
     let settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-    console.log(settings);
+    getCoreSettings().then((backend_settings) => {
+      saveSettings(backend_settings);
+    });
+    // console.log("settings conf: " + JSON.stringify(backend_settings, null, 4));
 
     theme = localStorage.theme ?? "dark";
+    tts = settings.tts.module ?? "";
+    _voices =
+      extractObjectsbyName(settings.tts, settings.tts.module_options) ?? {};
+
+    confirmListening = settings.confirm_listening ?? false;
+    confirmListeningEnd = settings.confirm_listening_end ?? false;
+
+    stt = settings.stt.module ?? "";
+    sttModelType = settings.stt[stt]?.model ?? "";
+    sttModelTypeOptions = settings.stt.model_type ?? [];
+    console.log(sttModelTypeOptions);
     API_BASE_URL = settings.API_BASE_URL ?? OLLAMA_API_BASE_URL;
     system = settings.system ?? "";
 
@@ -411,11 +295,11 @@
 
         <button
           class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-          'models'
+          'output'
             ? 'bg-gray-200 dark:bg-gray-700'
             : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
           on:click={() => {
-            selectedTab = "models";
+            selectedTab = "output_audio";
           }}
         >
           <div class=" self-center mr-2">
@@ -432,7 +316,7 @@
               />
             </svg>
           </div>
-          <div class=" self-center">Models</div>
+          <div class=" self-center">Output Audio</div>
         </button>
 
         <button
@@ -441,7 +325,7 @@
             ? 'bg-gray-200 dark:bg-gray-700'
             : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
           on:click={() => {
-            selectedTab = "addons";
+            selectedTab = "voice";
           }}
         >
           <div class=" self-center mr-2">
@@ -456,7 +340,7 @@
               />
             </svg>
           </div>
-          <div class=" self-center">Add-ons</div>
+          <div class=" self-center">Voice</div>
         </button>
 
         {#if !$config || ($config && !$config.auth)}
@@ -714,11 +598,74 @@
               </button>
             </div>
           </div>
-        {:else if selectedTab === "models"}
-          <div class="flex flex-col space-y-3 text-sm mb-10">
-            <div>
-              <div class=" mb-2.5 text-sm font-medium">Pull a model</div>
-              <div class="flex w-full">
+        {:else if selectedTab === "output_audio"}
+          <form
+            class="flex flex-col h-full justify-between space-y-3 text-sm"
+            on:submit|preventDefault={() => {
+              saveSettings(
+                {
+                  confirm_listening: confirmListening,
+                  confirm_listening_end: confirmListeningEnd,
+                  tts: { module: tts },
+                  sounds: {
+                    start_listening:
+                      tts === "elevenlabs"
+                        ? "elevenlabs_takt"
+                        : "openai"
+                        ? "openai_echo"
+                        : "mimic3"
+                        ? "mimic3_apl"
+                        : undefined,
+                  },
+                },
+                true
+              );
+              show = false;
+            }}
+          >
+            <div class="flex flex-col space-y-3 text-sm mb-10">
+              <div>
+                <div>
+                  <div class=" py-1 flex w-full justify-between">
+                    <div class=" self-center text-sm font-medium">
+                      Start Listening Sound
+                    </div>
+
+                    <button
+                      class="p-1 px-3 text-xs flex rounded transition"
+                      on:click={() => {
+                        toggleListeningSound();
+                      }}
+                      type="button"
+                    >
+                      {#if confirmListening === true}
+                        <span class="ml-2 self-center">On</span>
+                      {:else}
+                        <span class="ml-2 self-center">Off</span>
+                      {/if}
+                    </button>
+                  </div>
+                  <div class=" py-1 flex w-full justify-between">
+                    <div class=" self-center text-sm font-medium">
+                      End Listening Sound
+                    </div>
+
+                    <button
+                      class="p-1 px-3 text-xs flex rounded transition"
+                      on:click={() => {
+                        toggleListeningEndSound();
+                      }}
+                      type="button"
+                    >
+                      {#if confirmListeningEnd === true}
+                        <span class="ml-2 self-center">On</span>
+                      {:else}
+                        <span class="ml-2 self-center">Off</span>
+                      {/if}
+                    </button>
+                  </div>
+                </div>
+                <!-- <div class="flex w-full"> -->
                 <!--   <div class="flex-1 mr-2"> -->
                 <!--     <input -->
                 <!--       class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
@@ -746,181 +693,193 @@
                 <!--       /> -->
                 <!--     </svg> -->
                 <!--   </button> -->
+                <!-- </div> -->
+
+                <!-- <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
+                <!--   To access the available model names for downloading, <a -->
+                <!--     class=" text-gray-500 dark:text-gray-300 font-medium" -->
+                <!--     href="https://ollama.ai/library" -->
+                <!--     target="_blank">click here.</a -->
+                <!--   > -->
+                <!-- </div> -->
+
+                <!-- {#if pullProgress !== null} -->
+                <!--   <div class="mt-2"> -->
+                <!--     <div class=" mb-2 text-xs">Pull Progress</div> -->
+                <!--     <div class="w-full rounded-full dark:bg-gray-800"> -->
+                <!--       <div -->
+                <!--         class="dark:bg-gray-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" -->
+                <!--         style="width: {Math.max(15, pullProgress ?? 0)}%" -->
+                <!--       > -->
+                <!--         {pullProgress ?? 0}% -->
+                <!--       </div> -->
+                <!--     </div> -->
+                <!--     <div -->
+                <!--       class="mt-1 text-xs dark:text-gray-500" -->
+                <!--       style="font-size: 0.5rem;" -->
+                <!--     > -->
+                <!--       {digest} -->
+                <!--     </div> -->
+                <!--   </div> -->
+                <!-- {/if} -->
               </div>
+              <hr class=" dark:border-gray-700" />
 
-              <!-- <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
-              <!--   To access the available model names for downloading, <a -->
-              <!--     class=" text-gray-500 dark:text-gray-300 font-medium" -->
-              <!--     href="https://ollama.ai/library" -->
-              <!--     target="_blank">click here.</a -->
-              <!--   > -->
-              <!-- </div> -->
-
-              {#if pullProgress !== null}
-                <div class="mt-2">
-                  <div class=" mb-2 text-xs">Pull Progress</div>
-                  <div class="w-full rounded-full dark:bg-gray-800">
-                    <div
-                      class="dark:bg-gray-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full"
-                      style="width: {Math.max(15, pullProgress ?? 0)}%"
-                    >
-                      {pullProgress ?? 0}%
+              <div>
+                <div class=" mb-2.5 text-sm font-medium">Set Voice module</div>
+                <div class="flex w-full">
+                  <div class="flex-1 mr-2">
+                    <div>
+                      <div class="flex w-full">
+                        <div class="flex-1">
+                          <select
+                            class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
+                            bind:value={tts}
+                            placeholder="Select tts module"
+                          >
+                            <option value="" selected>Default</option>
+                            {#each Object.keys(_voices) as voice}
+                              <option
+                                value={voice}
+                                class="bg-gray-100 dark:bg-gray-700"
+                                >{voice}</option
+                              >
+                            {/each}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    class="mt-1 text-xs dark:text-gray-500"
-                    style="font-size: 0.5rem;"
-                  >
-                    {digest}
-                  </div>
-                </div>
-              {/if}
-            </div>
-            <hr class=" dark:border-gray-700" />
+                    <!-- <input -->
 
-            <div>
-              <div class=" mb-2.5 text-sm font-medium">Delete a model</div>
-              <div class="flex w-full">
-                <div class="flex-1 mr-2">
-                  <input
-                    class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                    placeholder="Enter model tag (e.g. mistral:7b)"
-                    bind:value={deleteModelTag}
-                  />
+                    <!--   class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
+                    <!--   placeholder="Enter module (e.g. openai, mimic) " -->
+                    <!--   bind:value={tts} -->
+                    <!-- /> -->
+                  </div>
                 </div>
-                <button
-                  class="px-3 bg-red-700 hover:bg-red-800 text-gray-100 rounded transition"
-                  on:click={() => {
-                    deleteModelHandler();
-                  }}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    class="w-4 h-4"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </button>
               </div>
+
+              <hr class=" dark:border-gray-700" />
             </div>
-          </div>
-        {:else if selectedTab === "addons"}
+
+            <div class="flex justify-end pt-3 text-sm font-medium">
+              <button
+                class=" px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-100 transition rounded"
+                type="submit"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        {:else if selectedTab === "voice"}
           <form
             class="flex flex-col h-full justify-between space-y-3 text-sm"
             on:submit|preventDefault={() => {
-              saveSettings({
-                gravatarEmail: gravatarEmail !== "" ? gravatarEmail : undefined,
-                gravatarUrl:
-                  gravatarEmail !== ""
-                    ? getGravatarURL(gravatarEmail)
-                    : undefined,
-                OPENAI_API_KEY:
-                  OPENAI_API_KEY !== "" ? OPENAI_API_KEY : undefined,
-              });
+              saveSettings(
+                {
+                  stt: {
+                    module: stt !== "" ? stt : undefined,
+                    whisper: { model: sttModelType },
+                  },
+                },
+                true
+              );
               show = false;
             }}
           >
-            <div class=" space-y-3">
-              <div>
-                <div class=" py-1 flex w-full justify-between">
-                  <div class=" self-center text-sm font-medium">
-                    Title Auto Generation
-                  </div>
+            <div class="flex flex-col space-y-3 text-sm mb-10">
+              <!--   <div> -->
+              <!--     <div class=" py-1 flex w-full justify-between"> -->
+              <!--       <div class=" self-center text-sm font-medium"> -->
+              <!--         Title Auto Generation -->
+              <!--       </div> -->
+              <!---->
+              <!--       <button -->
+              <!--         class="p-1 px-3 text-xs flex rounded transition" -->
+              <!--         on:click={() => { -->
+              <!--           toggleTitleAutoGenerate(); -->
+              <!--         }} -->
+              <!--         type="button" -->
+              <!--       > -->
+              <!--         {#if titleAutoGenerate === true} -->
+              <!--           <span class="ml-2 self-center">On</span> -->
+              <!--         {:else} -->
+              <!--           <span class="ml-2 self-center">Off</span> -->
+              <!--         {/if} -->
+              <!--       </button> -->
+              <!--     </div> -->
+              <!--   </div> -->
+              <!---->
+              <!--   <hr class=" dark:border-gray-700" /> -->
+              <!---->
+              <!--   <div> -->
+              <!--     <div class=" py-1 flex w-full justify-between"> -->
+              <!--       <div class=" self-center text-sm font-medium"> -->
+              <!--         Voice Input Auto-Send -->
+              <!--       </div> -->
+              <!---->
+              <!--       <button -->
+              <!--         class="p-1 px-3 text-xs flex rounded transition" -->
+              <!--         on:click={() => { -->
+              <!--           toggleSpeechAutoSend(); -->
+              <!--         }} -->
+              <!--         type="button" -->
+              <!--       > -->
+              <!--         {#if speechAutoSend === true} -->
+              <!--           <span class="ml-2 self-center">On</span> -->
+              <!--         {:else} -->
+              <!--           <span class="ml-2 self-center">Off</span> -->
+              <!--         {/if} -->
+              <!--       </button> -->
+              <!--     </div> -->
+              <!--   </div> -->
 
-                  <button
-                    class="p-1 px-3 text-xs flex rounded transition"
-                    on:click={() => {
-                      toggleTitleAutoGenerate();
-                    }}
-                    type="button"
-                  >
-                    {#if titleAutoGenerate === true}
-                      <span class="ml-2 self-center">On</span>
-                    {:else}
-                      <span class="ml-2 self-center">Off</span>
-                    {/if}
-                  </button>
-                </div>
-              </div>
-
-              <hr class=" dark:border-gray-700" />
-
-              <div>
-                <div class=" py-1 flex w-full justify-between">
-                  <div class=" self-center text-sm font-medium">
-                    Voice Input Auto-Send
-                  </div>
-
-                  <button
-                    class="p-1 px-3 text-xs flex rounded transition"
-                    on:click={() => {
-                      toggleSpeechAutoSend();
-                    }}
-                    type="button"
-                  >
-                    {#if speechAutoSend === true}
-                      <span class="ml-2 self-center">On</span>
-                    {:else}
-                      <span class="ml-2 self-center">Off</span>
-                    {/if}
-                  </button>
-                </div>
-              </div>
-
-              <hr class=" dark:border-gray-700" />
               <div>
                 <div class=" mb-2.5 text-sm font-medium">
-                  Gravatar Email <span class=" text-gray-400 text-sm"
-                    >(optional)</span
-                  >
+                  Speech-to-Text Module
                 </div>
                 <div class="flex w-full">
                   <div class="flex-1">
                     <input
                       class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      placeholder="Enter Your Email"
-                      bind:value={gravatarEmail}
+                      placeholder="enter stt module for spee recognition"
+                      bind:value={stt}
                       autocomplete="off"
-                      type="email"
+                      type="text"
                     />
                   </div>
-                </div>
-                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  Changes user profile image to match your <a
-                    class=" text-gray-500 dark:text-gray-300 font-medium"
-                    href="https://gravatar.com/"
-                    target="_blank">Gravatar.</a
-                  >
                 </div>
               </div>
 
               <hr class=" dark:border-gray-700" />
               <div>
-                <div class=" mb-2.5 text-sm font-medium">
-                  OpenAI API Key <span class=" text-gray-400 text-sm"
-                    >(optional)</span
-                  >
-                </div>
+                <div class=" mb-2.5 text-sm font-medium">Model Type</div>
                 <div class="flex w-full">
                   <div class="flex-1">
-                    <input
+                    <select
                       class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      placeholder="Enter OpenAI API Key"
-                      bind:value={OPENAI_API_KEY}
-                      autocomplete="off"
-                    />
+                      bind:value={sttModelType}
+                      placeholder="Select tts module"
+                    >
+                      <option value="" selected>Default</option>
+                      {#each sttModelTypeOptions as modeloptions}
+                        <option
+                          value={modeloptions}
+                          class="bg-gray-100 dark:bg-gray-700"
+                          >{modeloptions}</option
+                        >
+                      {/each}
+                    </select>
+                    <!-- <input -->
+                    <!--   class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
+                    <!--   placeholder="enter stt model for selected module" -->
+                    <!--   bind:value={sttModelType} -->
+                    <!--   autocomplete="off" -->
+                    <!-- /> -->
                   </div>
                 </div>
-                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  Adds optional support for 'gpt-*' models available.
-                </div>
               </div>
+              <hr class=" dark:border-gray-700" />
             </div>
 
             <div class="flex justify-end pt-3 text-sm font-medium">
@@ -1047,6 +1006,53 @@
                   />
                 </div>
               {/if}
+              <div>
+                <div class=" mb-2.5 text-sm font-medium">
+                  Gravatar Email <span class=" text-gray-400 text-sm"
+                    >(optional)</span
+                  >
+                </div>
+                <div class="flex w-full">
+                  <div class="flex-1">
+                    <input
+                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
+                      placeholder="Enter Your Email"
+                      bind:value={gravatarEmail}
+                      autocomplete="off"
+                      type="email"
+                    />
+                  </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                  Changes user profile image to match your <a
+                    class=" text-gray-500 dark:text-gray-300 font-medium"
+                    href="https://gravatar.com/"
+                    target="_blank">Gravatar.</a
+                  >
+                </div>
+              </div>
+
+              <hr class=" dark:border-gray-700" />
+              <div>
+                <div class=" mb-2.5 text-sm font-medium">
+                  OpenAI API Key <span class=" text-gray-400 text-sm"
+                    >(optional)</span
+                  >
+                </div>
+                <div class="flex w-full">
+                  <div class="flex-1">
+                    <input
+                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
+                      placeholder="Enter OpenAI API Key"
+                      bind:value={OPENAI_API_KEY}
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                  Adds optional support for 'gpt-*' models available.
+                </div>
+              </div>
             </div>
 
             <div class="flex justify-end pt-3 text-sm font-medium">
