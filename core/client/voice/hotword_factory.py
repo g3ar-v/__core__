@@ -104,7 +104,9 @@ class PorcupineHotWord(HotWordEngine):
             for x in self.config.get("keyword_file_path", "hey_mycroft.ppn").split(",")
         ]
         sensitivities = self.config.get("sensitivities", 0.5)
-        access_key = self.config.get("access_key", "")
+        access_key = (
+            Configuration.get().get("microservices", {}).get("porcupine_api_key", "")
+        )
 
         try:
             import pvporcupine
