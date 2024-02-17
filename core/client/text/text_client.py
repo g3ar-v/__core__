@@ -1,27 +1,24 @@
-import sys
+import curses
 import io
-from math import ceil
-import xdg.BaseDirectory
-
-
-from core.tts import TTS
-
+import json
+import locale
 import os
 import os.path
-import time
-import curses
+import sys
 import textwrap
-import json
+import time
+from math import ceil
+from threading import Lock, Thread
+
+import xdg.BaseDirectory
+
 import core.version
-from threading import Thread, Lock
+from core.configuration import Configuration
 from core.messagebus.client import MessageBusClient
 from core.messagebus.message import Message
+from core.tts import TTS
 from core.util.log import LOG
-from core.configuration import Configuration
 
-import locale
-
-# Curses uses LC_ALL to determine how to display chars set it to system
 # default
 locale.setlocale(locale.LC_ALL, "")  # Set LC_ALL to user default
 preferred_encoding = locale.getpreferredencoding()
@@ -184,7 +181,7 @@ def load_settings():
                 config_file = xdg_file
                 break
 
-    # Check /etc/mycroft
+    # Check /etc/core
     if config_file is None:
         config_file = os.path.join("/etc/core", filename)
 
@@ -554,7 +551,7 @@ def init_screen():
         CLR_INPUT = curses.color_pair(7)
         CLR_LOG1 = curses.color_pair(3)
         CLR_LOG2 = curses.color_pair(6)
-        # CLR_LOG3 = curses.color_pair(5)
+        CLR_LOG3 = curses.color_pair(5)
         CLR_LOG_DEBUG = curses.color_pair(4)
         CLR_LOG_ERROR = curses.color_pair(2)
         CLR_LOG_CMDMESSAGE = curses.color_pair(2)
@@ -758,6 +755,8 @@ def do_draw_main(scr):
                 clr = CLR_LOG1
             elif logid == "@":
                 clr = CLR_LOG_CMDMESSAGE
+            elif logid == "2":
+                clr = CLR_LOG3
             else:
                 clr = CLR_LOG2
 
@@ -802,9 +801,13 @@ def do_draw_main(scr):
             os.path.basename(log_files[1]),
             CLR_LOG1,
         )
-    # if len(log_files) > 2:
-    #     scr.addstr(y_log_legend + 4, curses.COLS // 2 + 2,
-    #                os.path.basename(log_files[2]), CLR_LOG3)
+    if len(log_files) > 2:
+        scr.addstr(
+            y_log_legend + 4,
+            curses.COLS // 2 + 2,
+            os.path.basename(log_files[2]),
+            CLR_LOG3,
+        )
 
     # Meter
     y_meter = y_log_legend
