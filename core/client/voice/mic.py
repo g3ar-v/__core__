@@ -334,8 +334,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         self._watchdog = watchdog or (lambda: None)  # Default to dummy func
         self.config = Configuration.get()
         listener_config = self.config.get("listener")
-        self.upload_url = listener_config["wake_word_upload"]["url"]
-        self.upload_disabled = listener_config["wake_word_upload"]["disable"]
         self.wake_word_name = wake_word_recognizer.key_phrase
 
         self.overflow_exc = listener_config.get("overflow_exception", False)
@@ -504,7 +502,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     self.write_mic_level(result.energy, source)
                 num_chunks += 1
 
-        LOG.info("The recorded silence duration is: " + str(stopwatch))
+        LOG.info("THE RECORDED MAX SILENCE TO END PHRASE IS: " + str(stopwatch))
 
         self.silence_detector.stop()
         return byte_data

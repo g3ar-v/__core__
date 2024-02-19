@@ -82,8 +82,8 @@ class AudioProducer(Thread):
         self.daemon = True
         self.loop = loop
         self.stream_handler = None
-        if self.loop.stt.can_stream:
-            self.stream_handler = AudioStreamHandler(self.loop.queue)
+        # if self.loop.stt.can_stream:
+        #     self.stream_handler = AudioStreamHandler(self.loop.queue)
 
     def run(self):
         restart_attempts = 0
@@ -240,7 +240,7 @@ class AudioConsumer(Thread):
                     text = self.loop.stt.execute(audio)
                     # for t in text:
                     #     LOG.info("text: %s", t)
-                LOG.info("time to process speech: " + str(stopwatch))
+                LOG.info("TIME TO PROCESS SPEECH: " + str(stopwatch))
                 if text is not None:
                     text = text[-1]
                     text = text.lower().strip()

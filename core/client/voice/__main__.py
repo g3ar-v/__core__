@@ -139,6 +139,7 @@ def handle_mic_listen(_):
 
 def handle_stop_listen(_):
     loop.reload()
+    bus.emit(Message("recognizer_loop:reload"))
 
 
 def handle_mic_get_status(event):
@@ -164,6 +165,15 @@ def handle_audio_end(event):
 def handle_stop(event):
     """Handler for core.stop, i.e. button press."""
     loop.force_unmute()
+
+
+def handle_configuration_update(event):
+    """Handler for configuration.updated and configuration.patch."""
+    loop.reload()
+    bus.emit(Message("recognizer_loop:reload"))
+    data = {"utterance": dialog.get("voice.reload")}
+    context = {"client_name": "core_listener", "source": "audio"}
+    bus.emit(Message("speak", data, context))
 
 
 # def handle_open():
@@ -222,11 +232,12 @@ def connect_bus_events(bus):
     bus.on("core.mic.unmute", handle_mic_unmute)
     bus.on("core.mic.get_status", handle_mic_get_status)
     bus.on("core.mic.listen", handle_mic_listen)
-    bus.on("core.mic.stop_listen", handle_stop_listen)
+    bus.on("core.mic.stop", handle_stop_listen)
     # bus.on("core.wakeword", handle_wakeword)
     bus.on("recognizer_loop:audio_output_start", handle_audio_start)
     bus.on("recognizer_loop:audio_output_timeout", handle_info_taking_too_long)
     bus.on("recognizer_loop:audio_output_end", handle_audio_end)
+    bus.on("configuration.updated", handle_configuration_update)
 
 
 def _init_filewatcher():
@@ -262,7 +273,7 @@ def main(
         # Register handlers on internal RecognizerLoop bus
         loop = RecognizerLoop(watchdog)
         connect_loop_events(loop)
-        file_watchdog = _init_filewatcher()
+        # file_watchdog = _init_filewatcher()
         create_daemon(loop.run)
         status.set_started()
 
@@ -271,8 +282,8 @@ def main(
     else:
         status.set_ready()
         wait_for_exit_signal()
-        if file_watchdog:
-            file_watchdog.shutdown()
+        # if file_watchdog:
+        #     file_watchdog.shutdown()
         status.set_stopping()
 
 
