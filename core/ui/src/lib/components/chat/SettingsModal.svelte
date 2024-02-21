@@ -7,6 +7,9 @@
   import { config, voices, settings, user } from "$lib/stores";
   import { splitStream, extractObjectsbyName } from "$lib/utils";
   import Advanced from "./Settings/Advanced.svelte";
+  import Voice from "./Settings/Voice.svelte";
+  import Audio from "./Settings/Audio.svelte";
+  import General from "./Settings/General.svelte";
 
   export let show = false;
 
@@ -42,11 +45,6 @@
   };
   let selectedTab = "general";
 
-  // General
-  let API_BASE_URL = OLLAMA_API_BASE_URL;
-  let theme = "dark";
-  let system = "";
-
   // Advanced
   let requestFormat = "";
   let options = {
@@ -66,15 +64,9 @@
   };
 
   // Output Audio
-  let tts = "";
-  let _voices = [];
-  let confirmListening = false;
-  let confirmListeningEnd = false;
 
   // Voice
-  let stt = "";
-  let sttModelType = "";
-  let sttModelTypeOptions = "";
+
   let titleAutoGenerate = true;
   let speechAutoSend = false;
   let gravatarEmail = "";
@@ -84,37 +76,6 @@
   let authEnabled = false;
   let authType = "Basic";
   let authContent = "";
-
-  const checkOllamaConnection = async () => {
-    if (API_BASE_URL === "") {
-      API_BASE_URL = OLLAMA_API_BASE_URL;
-    }
-    const _models = await getModels(API_BASE_URL, "ollama");
-
-    if (_models.length > 0) {
-      toast.success("Server connection verified");
-      await models.set(_models);
-
-      saveSettings({
-        API_BASE_URL: API_BASE_URL,
-      });
-    }
-  };
-
-  const toggleTheme = async () => {
-    if (theme === "dark") {
-      theme = "light";
-    } else {
-      theme = "dark";
-    }
-
-    localStorage.theme = theme;
-
-    document.documentElement.classList.remove(
-      theme === "dark" ? "light" : "dark"
-    );
-    document.documentElement.classList.add(theme);
-  };
 
   const toggleRequestFormat = async () => {
     if (requestFormat === "") {
@@ -138,19 +99,13 @@
     saveSettings({ titleAutoGenerate: titleAutoGenerate });
   };
 
-  const toggleListeningSound = async () => {
-    confirmListening = !confirmListening;
-  };
-  const toggleListeningEndSound = async () => {
-    confirmListeningEnd = !confirmListeningEnd;
-  };
   const toggleAuthHeader = async () => {
     authEnabled = !authEnabled;
   };
 
   const getCoreSettings = async () => {
     try {
-      const res = await fetch(
+      const response = await fetch(
         `${
           $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
         }v1/system/config?sort=true&core=true`,
@@ -161,36 +116,24 @@
           },
         }
       );
-      const config = await res.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const config = await response.json();
       return config;
     } catch (error) {
-      // Handle error
-      // toast.error("Error fetching core settings:" + error);
-      return null; // or throw error
+      console.error("Error fetching core settings:", error);
+      toast.error("Error fetching core settings:", error);
+      return null;
     }
   };
 
   onMount(() => {
     let settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-    getCoreSettings().then((backend_settings) => {
-      saveSettings(backend_settings);
-    });
+    getCoreSettings()
+      .then(saveSettings)
+      .catch((error) => console.error("Failed to save core settings:", error));
     // console.log("settings conf: " + JSON.stringify(backend_settings, null, 4));
-
-    theme = localStorage.theme ?? "dark";
-    tts = settings.tts.module ?? "";
-    _voices =
-      extractObjectsbyName(settings.tts, settings.tts.module_options) ?? {};
-
-    confirmListening = settings.confirm_listening ?? false;
-    confirmListeningEnd = settings.confirm_listening_end ?? false;
-
-    stt = settings.stt.module ?? "";
-    sttModelType = settings.stt[stt]?.model ?? "";
-    sttModelTypeOptions = settings.stt.model_type ?? [];
-    console.log(sttModelTypeOptions);
-    API_BASE_URL = settings.API_BASE_URL ?? OLLAMA_API_BASE_URL;
-    system = settings.system ?? "";
 
     requestFormat = settings.requestFormat ?? "";
 
@@ -271,57 +214,7 @@
 
         <button
           class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-          'advanced'
-            ? 'bg-gray-200 dark:bg-gray-700'
-            : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
-          on:click={() => {
-            selectedTab = "advanced";
-          }}
-        >
-          <div class=" self-center mr-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                d="M17 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM17 15.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM3.75 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM4.5 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM10 11a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0v-5.5A.75.75 0 0110 11zM10.75 2.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM10 6a2 2 0 100 4 2 2 0 000-4zM3.75 10a2 2 0 100 4 2 2 0 000-4zM16.25 10a2 2 0 100 4 2 2 0 000-4z"
-              />
-            </svg>
-          </div>
-          <div class=" self-center">Advanced</div>
-        </button>
-
-        <button
-          class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-          'output'
-            ? 'bg-gray-200 dark:bg-gray-700'
-            : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
-          on:click={() => {
-            selectedTab = "output_audio";
-          }}
-        >
-          <div class=" self-center mr-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 1c3.866 0 7 1.79 7 4s-3.134 4-7 4-7-1.79-7-4 3.134-4 7-4zm5.694 8.13c.464-.264.91-.583 1.306-.952V10c0 2.21-3.134 4-7 4s-7-1.79-7-4V8.178c.396.37.842.688 1.306.953C5.838 10.006 7.854 10.5 10 10.5s4.162-.494 5.694-1.37zM3 13.179V15c0 2.21 3.134 4 7 4s7-1.79 7-4v-1.822c-.396.37-.842.688-1.306.953-1.532.875-3.548 1.369-5.694 1.369s-4.162-.494-5.694-1.37A7.009 7.009 0 013 13.179z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <div class=" self-center">Output Audio</div>
-        </button>
-
-        <button
-          class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-          'addons'
+          'voice'
             ? 'bg-gray-200 dark:bg-gray-700'
             : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
           on:click={() => {
@@ -341,6 +234,31 @@
             </svg>
           </div>
           <div class=" self-center">Voice</div>
+        </button>
+        <button
+          class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
+          'audio'
+            ? 'bg-gray-200 dark:bg-gray-700'
+            : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
+          on:click={() => {
+            selectedTab = "audio";
+          }}
+        >
+          <div class=" self-center mr-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 1c3.866 0 7 1.79 7 4s-3.134 4-7 4-7-1.79-7-4 3.134-4 7-4zm5.694 8.13c.464-.264.91-.583 1.306-.952V10c0 2.21-3.134 4-7 4s-7-1.79-7-4V8.178c.396.37.842.688 1.306.953C5.838 10.006 7.854 10.5 10 10.5s4.162-.494 5.694-1.37zM3 13.179V15c0 2.21 3.134 4 7 4s7-1.79 7-4v-1.822c-.396.37-.842.688-1.306.953-1.532.875-3.548 1.369-5.694 1.369s-4.162-.494-5.694-1.37A7.009 7.009 0 013 13.179z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+          <div class=" self-center">Audio</div>
         </button>
 
         {#if !$config || ($config && !$config.auth)}
@@ -370,7 +288,29 @@
             <div class=" self-center">Authentication</div>
           </button>
         {/if}
-
+        <button
+          class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
+          'advanced'
+            ? 'bg-gray-200 dark:bg-gray-700'
+            : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
+          on:click={() => {
+            selectedTab = "advanced";
+          }}
+        >
+          <div class=" self-center mr-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                d="M17 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM17 15.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM3.75 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM4.5 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM10 11a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0v-5.5A.75.75 0 0110 11zM10.75 2.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM10 6a2 2 0 100 4 2 2 0 000-4zM3.75 10a2 2 0 100 4 2 2 0 000-4zM16.25 10a2 2 0 100 4 2 2 0 000-4z"
+              />
+            </svg>
+          </div>
+          <div class=" self-center">Advanced</div>
+        </button>
         <button
           class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
           'about'
@@ -399,119 +339,12 @@
       </div>
       <div class="flex-1 md:min-h-[340px]">
         {#if selectedTab === "general"}
-          <div class="flex flex-col space-y-3">
-            <div>
-              <div class=" py-1 flex w-full justify-between">
-                <div class=" self-center text-sm font-medium">Theme</div>
-
-                <button
-                  class="p-1 px-3 text-xs flex rounded transition"
-                  on:click={() => {
-                    toggleTheme();
-                  }}
-                >
-                  {#if theme === "dark"}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M7.455 2.004a.75.75 0 01.26.77 7 7 0 009.958 7.967.75.75 0 011.067.853A8.5 8.5 0 116.647 1.921a.75.75 0 01.808.083z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-
-                    <span class="ml-2 self-center"> Dark </span>
-                  {:else}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      class="w-4 h-4 self-center"
-                    >
-                      <path
-                        d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.061 1.06l1.06 1.06z"
-                      />
-                    </svg>
-                    <span class="ml-2 self-center"> Light </span>
-                  {/if}
-                </button>
-              </div>
-            </div>
-
-            <hr class=" dark:border-gray-700" />
-            <div>
-              <div class=" mb-2.5 text-sm font-medium">Ollama Server URL</div>
-              <div class="flex w-full">
-                <div class="flex-1 mr-2">
-                  <input
-                    class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                    placeholder="Enter URL (e.g. http://localhost:11434/api)"
-                    bind:value={API_BASE_URL}
-                  />
-                </div>
-                <button
-                  class="px-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-700 rounded transition"
-                  on:click={() => {
-                    checkOllamaConnection();
-                  }}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    class="w-4 h-4"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                Trouble accessing Ollama? <a
-                  class=" text-gray-500 dark:text-gray-300 font-medium"
-                  href="https://github.com/ollama-webui/ollama-webui#troubleshooting"
-                  target="_blank"
-                >
-                  Click here for help.
-                </a>
-              </div>
-            </div>
-
-            <hr class=" dark:border-gray-700" />
-
-            <div>
-              <div class=" mb-2.5 text-sm font-medium">System Prompt</div>
-              <textarea
-                bind:value={system}
-                class="w-full rounded p-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none resize-none"
-                rows="4"
-              />
-            </div>
-
-            <div class="flex justify-end pt-3 text-sm font-medium">
-              <button
-                class=" px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-100 transition rounded"
-                on:click={() => {
-                  saveSettings({
-                    API_BASE_URL:
-                      API_BASE_URL === "" ? OLLAMA_API_BASE_URL : API_BASE_URL,
-                    system: system !== "" ? system : undefined,
-                  });
-                  show = false;
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
+          <General
+            on:save={() => {
+              show = false;
+            }}
+            {saveSettings}
+          />
         {:else if selectedTab === "advanced"}
           <div class="flex flex-col h-full justify-between text-sm">
             <div class=" space-y-3 pr-1.5 overflow-y-scroll max-h-72">
@@ -598,299 +431,20 @@
               </button>
             </div>
           </div>
-        {:else if selectedTab === "output_audio"}
-          <form
-            class="flex flex-col h-full justify-between space-y-3 text-sm"
-            on:submit|preventDefault={() => {
-              saveSettings(
-                {
-                  confirm_listening: confirmListening,
-                  confirm_listening_end: confirmListeningEnd,
-                  tts: { module: tts },
-                  sounds: {
-                    start_listening:
-                      tts === "elevenlabs"
-                        ? "elevenlabs_takt"
-                        : "openai"
-                        ? "openai_echo"
-                        : "mimic3"
-                        ? "mimic3_apl"
-                        : undefined,
-                  },
-                },
-                true
-              );
-              show = false;
-            }}
-          >
-            <div class="flex flex-col space-y-3 text-sm mb-10">
-              <div>
-                <div>
-                  <div class=" py-1 flex w-full justify-between">
-                    <div class=" self-center text-sm font-medium">
-                      Start Listening Sound
-                    </div>
-
-                    <button
-                      class="p-1 px-3 text-xs flex rounded transition"
-                      on:click={() => {
-                        toggleListeningSound();
-                      }}
-                      type="button"
-                    >
-                      {#if confirmListening === true}
-                        <span class="ml-2 self-center">On</span>
-                      {:else}
-                        <span class="ml-2 self-center">Off</span>
-                      {/if}
-                    </button>
-                  </div>
-                  <div class=" py-1 flex w-full justify-between">
-                    <div class=" self-center text-sm font-medium">
-                      End Listening Sound
-                    </div>
-
-                    <button
-                      class="p-1 px-3 text-xs flex rounded transition"
-                      on:click={() => {
-                        toggleListeningEndSound();
-                      }}
-                      type="button"
-                    >
-                      {#if confirmListeningEnd === true}
-                        <span class="ml-2 self-center">On</span>
-                      {:else}
-                        <span class="ml-2 self-center">Off</span>
-                      {/if}
-                    </button>
-                  </div>
-                </div>
-                <!-- <div class="flex w-full"> -->
-                <!--   <div class="flex-1 mr-2"> -->
-                <!--     <input -->
-                <!--       class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
-                <!--       placeholder="Enter model tag (e.g. mistral:7b)" -->
-                <!--       bind:value={modelTag} -->
-                <!--     /> -->
-                <!--   </div> -->
-                <!--   <button -->
-                <!--     class="px-3 text-gray-100 bg-emerald-600 hover:bg-emerald-700 rounded transition" -->
-                <!--     on:click={() => { -->
-                <!--       pullModelHandler(); -->
-                <!--     }} -->
-                <!--   > -->
-                <!--     <svg -->
-                <!--       xmlns="http://www.w3.org/2000/svg" -->
-                <!--       viewBox="0 0 20 20" -->
-                <!--       fill="currentColor" -->
-                <!--       class="w-4 h-4" -->
-                <!--     > -->
-                <!--       <path -->
-                <!--         d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" -->
-                <!--       /> -->
-                <!--       <path -->
-                <!--         d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" -->
-                <!--       /> -->
-                <!--     </svg> -->
-                <!--   </button> -->
-                <!-- </div> -->
-
-                <!-- <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
-                <!--   To access the available model names for downloading, <a -->
-                <!--     class=" text-gray-500 dark:text-gray-300 font-medium" -->
-                <!--     href="https://ollama.ai/library" -->
-                <!--     target="_blank">click here.</a -->
-                <!--   > -->
-                <!-- </div> -->
-
-                <!-- {#if pullProgress !== null} -->
-                <!--   <div class="mt-2"> -->
-                <!--     <div class=" mb-2 text-xs">Pull Progress</div> -->
-                <!--     <div class="w-full rounded-full dark:bg-gray-800"> -->
-                <!--       <div -->
-                <!--         class="dark:bg-gray-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" -->
-                <!--         style="width: {Math.max(15, pullProgress ?? 0)}%" -->
-                <!--       > -->
-                <!--         {pullProgress ?? 0}% -->
-                <!--       </div> -->
-                <!--     </div> -->
-                <!--     <div -->
-                <!--       class="mt-1 text-xs dark:text-gray-500" -->
-                <!--       style="font-size: 0.5rem;" -->
-                <!--     > -->
-                <!--       {digest} -->
-                <!--     </div> -->
-                <!--   </div> -->
-                <!-- {/if} -->
-              </div>
-              <hr class=" dark:border-gray-700" />
-
-              <div>
-                <div class=" mb-2.5 text-sm font-medium">Set Voice module</div>
-                <div class="flex w-full">
-                  <div class="flex-1 mr-2">
-                    <div>
-                      <div class="flex w-full">
-                        <div class="flex-1">
-                          <select
-                            class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                            bind:value={tts}
-                            placeholder="Select tts module"
-                          >
-                            <option value="" selected>Default</option>
-                            {#each Object.keys(_voices) as voice}
-                              <option
-                                value={voice}
-                                class="bg-gray-100 dark:bg-gray-700"
-                                >{voice}</option
-                              >
-                            {/each}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- <input -->
-
-                    <!--   class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
-                    <!--   placeholder="Enter module (e.g. openai, mimic) " -->
-                    <!--   bind:value={tts} -->
-                    <!-- /> -->
-                  </div>
-                </div>
-              </div>
-
-              <hr class=" dark:border-gray-700" />
-            </div>
-
-            <div class="flex justify-end pt-3 text-sm font-medium">
-              <button
-                class=" px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-100 transition rounded"
-                type="submit"
-              >
-                Save
-              </button>
-            </div>
-          </form>
         {:else if selectedTab === "voice"}
-          <form
-            class="flex flex-col h-full justify-between space-y-3 text-sm"
-            on:submit|preventDefault={() => {
-              saveSettings(
-                {
-                  stt: {
-                    module: stt !== "" ? stt : undefined,
-                    whisper: { model: sttModelType },
-                  },
-                },
-                true
-              );
+          <Voice
+            on:save={() => {
               show = false;
             }}
-          >
-            <div class="flex flex-col space-y-3 text-sm mb-10">
-              <!--   <div> -->
-              <!--     <div class=" py-1 flex w-full justify-between"> -->
-              <!--       <div class=" self-center text-sm font-medium"> -->
-              <!--         Title Auto Generation -->
-              <!--       </div> -->
-              <!---->
-              <!--       <button -->
-              <!--         class="p-1 px-3 text-xs flex rounded transition" -->
-              <!--         on:click={() => { -->
-              <!--           toggleTitleAutoGenerate(); -->
-              <!--         }} -->
-              <!--         type="button" -->
-              <!--       > -->
-              <!--         {#if titleAutoGenerate === true} -->
-              <!--           <span class="ml-2 self-center">On</span> -->
-              <!--         {:else} -->
-              <!--           <span class="ml-2 self-center">Off</span> -->
-              <!--         {/if} -->
-              <!--       </button> -->
-              <!--     </div> -->
-              <!--   </div> -->
-              <!---->
-              <!--   <hr class=" dark:border-gray-700" /> -->
-              <!---->
-              <!--   <div> -->
-              <!--     <div class=" py-1 flex w-full justify-between"> -->
-              <!--       <div class=" self-center text-sm font-medium"> -->
-              <!--         Voice Input Auto-Send -->
-              <!--       </div> -->
-              <!---->
-              <!--       <button -->
-              <!--         class="p-1 px-3 text-xs flex rounded transition" -->
-              <!--         on:click={() => { -->
-              <!--           toggleSpeechAutoSend(); -->
-              <!--         }} -->
-              <!--         type="button" -->
-              <!--       > -->
-              <!--         {#if speechAutoSend === true} -->
-              <!--           <span class="ml-2 self-center">On</span> -->
-              <!--         {:else} -->
-              <!--           <span class="ml-2 self-center">Off</span> -->
-              <!--         {/if} -->
-              <!--       </button> -->
-              <!--     </div> -->
-              <!--   </div> -->
-
-              <div>
-                <div class=" mb-2.5 text-sm font-medium">
-                  Speech-to-Text Module
-                </div>
-                <div class="flex w-full">
-                  <div class="flex-1">
-                    <input
-                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      placeholder="enter stt module for spee recognition"
-                      bind:value={stt}
-                      autocomplete="off"
-                      type="text"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <hr class=" dark:border-gray-700" />
-              <div>
-                <div class=" mb-2.5 text-sm font-medium">Model Type</div>
-                <div class="flex w-full">
-                  <div class="flex-1">
-                    <select
-                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      bind:value={sttModelType}
-                      placeholder="Select tts module"
-                    >
-                      <option value="" selected>Default</option>
-                      {#each sttModelTypeOptions as modeloptions}
-                        <option
-                          value={modeloptions}
-                          class="bg-gray-100 dark:bg-gray-700"
-                          >{modeloptions}</option
-                        >
-                      {/each}
-                    </select>
-                    <!-- <input -->
-                    <!--   class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
-                    <!--   placeholder="enter stt model for selected module" -->
-                    <!--   bind:value={sttModelType} -->
-                    <!--   autocomplete="off" -->
-                    <!-- /> -->
-                  </div>
-                </div>
-              </div>
-              <hr class=" dark:border-gray-700" />
-            </div>
-
-            <div class="flex justify-end pt-3 text-sm font-medium">
-              <button
-                class=" px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-100 transition rounded"
-                type="submit"
-              >
-                Save
-              </button>
-            </div>
-          </form>
+            {saveSettings}
+          />
+        {:else if selectedTab === "audio"}
+          <Audio
+            on:save={() => {
+              show = false;
+            }}
+            {saveSettings}
+          />
         {:else if selectedTab === "auth"}
           <form
             class="flex flex-col h-full justify-between space-y-3 text-sm"
