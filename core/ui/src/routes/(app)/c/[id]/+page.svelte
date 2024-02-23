@@ -10,7 +10,7 @@
   } from "$lib/utils";
   import { goto } from "$app/navigation";
 
-  import { config, user, settings, db, chats, chatId } from "$lib/stores";
+  import { settings, db, chats, chatId, systemSpeaking } from "$lib/stores";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
@@ -141,7 +141,11 @@
     }, 30000);
   }
 
-  async function handleMessage(response: Object) {
+  async function handleMessage(response: {
+    role: string;
+    content: any;
+    data: string;
+  }) {
     if (response.role === "user") {
       console.log(`user message: ${response.content}`);
       let userMessageId = uuidv4();
@@ -190,9 +194,9 @@
       } else if (response.data === "recognizer_loop:record_end") {
         speechRecognitionListening = false;
       } else if (response.data === "recognizer_loop:audio_output_start") {
-        systemSpeaking = true;
+        systemSpeaking.set(true);
       } else if (response.data === "recognizer_loop:audio_output_end") {
-        systemSpeaking = false;
+        systemSpeaking.set(false);
       }
     }
   }
@@ -332,9 +336,10 @@
     }
   };
 
-  const stopResponse = async () => {
+  const stopSpeaking = async () => {
     stopResponseFlag = true;
 
+    console.log("stopping sytem speech");
     try {
       // TODO: if response is false system speaking == false
       await fetch(
@@ -346,8 +351,7 @@
       toast.error(error.detail);
     }
 
-    systemSpeaking = false;
-    // console.log("stopResponse");
+    systemSpeaking.set(true);
   };
 
   const regenerateResponse = async () => {
@@ -450,7 +454,6 @@
       bind:prompt
       bind:autoScroll
       bind:isMicrophoneMuted
-      bind:systemSpeaking
       bind:speechRecognitionListening
       suggestionPrompts={[
         {
@@ -473,7 +476,7 @@
       {messages}
       {listenHandler}
       {submitPrompt}
-      {stopResponse}
+      {stopSpeaking}
       {microphoneHandler}
     />
   </div>

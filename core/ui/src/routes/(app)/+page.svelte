@@ -4,15 +4,12 @@
 
   import { OLLAMA_API_BASE_URL } from "$lib/constants";
   import { onMount, tick } from "svelte";
-  import { splitStream } from "$lib/utils";
-  import { goto } from "$app/navigation";
 
-  import { config, user, settings, db, chats, chatId } from "$lib/stores";
+  import { settings, db, chats, chatId, systemSpeaking } from "$lib/stores";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
-  import { page } from "$app/stores";
 
   const socket = new WebSocket("ws://localhost:8080/ws");
 
@@ -22,7 +19,6 @@
 
   let title = "";
   let prompt = "";
-  let systemSpeaking = false;
   let speechRecognitionListening = false;
 
   let messages = [];
@@ -104,7 +100,11 @@
     }, 30000);
   }
 
-  async function handleMessage(response) {
+  async function handleMessage(response: {
+    role: string;
+    content: any;
+    data: string;
+  }) {
     if (response.role === "user") {
       console.log(`user message: ${response.content}`);
       let userMessageId = uuidv4();
@@ -170,9 +170,11 @@
       } else if (response.data === "recognizer_loop:record_end") {
         speechRecognitionListening = false;
       } else if (response.data === "recognizer_loop:audio_output_start") {
-        systemSpeaking = true;
+        systemSpeaking.set(true);
+        console.log("system speaking");
       } else if (response.data === "recognizer_loop:audio_output_end") {
-        systemSpeaking = false;
+        systemSpeaking.set(false);
+        console.log("system done speaking");
       }
     }
   }
@@ -302,7 +304,7 @@
     }
   };
 
-  const stopResponse = async () => {
+  const stopSpeaking = async () => {
     stopResponseFlag = true;
 
     try {
@@ -316,8 +318,7 @@
       toast.error(error.detail);
     }
 
-    systemSpeaking = false;
-    // console.log("stopResponse");
+    systemSpeaking.set(false);
   };
 
   const regenerateResponse = async () => {
@@ -411,7 +412,6 @@
     bind:prompt
     bind:autoScroll
     bind:isMuted={isMicrophoneMuted}
-    bind:systemSpeaking
     bind:speechRecognitionListening
     suggestionPrompts={[
       {
@@ -434,7 +434,7 @@
     {messages}
     {listenHandler}
     {submitPrompt}
-    {stopResponse}
+    {stopSpeaking}
     {microphoneHandler}
   />
 </div>

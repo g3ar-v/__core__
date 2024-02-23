@@ -167,13 +167,13 @@ async def send_system_listening_stop() -> JSONResponse:
     response_description="audio recording start status sent",
     dependencies=[Depends(JWTBearer())],
 )
-async def send_audio_recording_start() -> JSONResponse:
+async def send_audio_output_start() -> JSONResponse:
     """Request to send status of the audio recording beginning
 
     :return: HTTP status code
     :rtype: int
     """
-    payload: Dict = {"type": "status", "data": "recognizer_loop:audio_output_start"}
+    payload: Dict = {"role": "status", "data": "recognizer_loop:audio_output_start"}
     await websocket_manager.send_data(payload)
     return JSONResponse(content={})
 
@@ -187,7 +187,7 @@ async def send_audio_recording_start() -> JSONResponse:
     response_description="audio output stop status sent",
     dependencies=[Depends(JWTBearer())],
 )
-async def send_audio_recording_stop() -> JSONResponse:
+async def send_audio_output_stop() -> JSONResponse:
     """Request to send status of the audio no longer recording
 
     :return: HTTP status code

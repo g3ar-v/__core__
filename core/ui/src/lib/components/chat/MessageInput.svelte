@@ -1,17 +1,16 @@
 <script lang="ts">
-  import { settings } from "$lib/stores";
+  import { systemSpeaking } from "$lib/stores";
   import toast from "svelte-french-toast";
   import Suggestions from "./MessageInput/Suggestions.svelte";
 
   export let submitPrompt: Function;
-  export let stopResponse: Function;
+  export let stopSpeaking: Function;
   export let microphoneHandler: Function;
   export let listenHandler: Function;
 
   export let suggestionPrompts = [];
   export let autoScroll = true;
 
-  export let systemSpeaking = false;
   export let speechRecognitionListening = false;
   export let isMuted = false;
 
@@ -61,70 +60,94 @@
         <form
           class=" flex flex-col relative w-full rounded-xl border dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-100"
           on:submit|preventDefault={() => {
-            if (systemSpeaking) {
-              stopResponse();
+            if ($systemSpeaking) {
+              stopSpeaking();
+            } else if (speechRecognitionListening) {
+              console.log("speech is listening");
+              stopListening();
             } else {
               submitPrompt(prompt);
             }
           }}
         >
           {#if speechRecognitionListening == true}
-            <div class="flex ml-5 align-items content-center;">
-              <svg
-                class=" w-10 h-10 translate-y-[0.5px] fill-yellow-950"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                ><style>
-                  .spinner_qM83 {
-                    animation: spinner_8HQG 1.05s infinite;
-                  }
-                  .spinner_oXPr {
-                    animation-delay: 0.1s;
-                  }
-                  .spinner_ZTLf {
-                    animation-delay: 0.2s;
-                  }
-                  @keyframes spinner_8HQG {
-                    0%,
-                    57.14% {
-                      animation-timing-function: cubic-bezier(
-                        0.33,
-                        0.66,
-                        0.66,
-                        1
-                      );
-                      transform: translate(0);
+            <div class="flex justify-between">
+              <div class="flex ml-5 align-items content-center;">
+                <svg
+                  class=" w-10 h-10 translate-y-[0.5px] fill-gray-50"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                  ><style>
+                    .spinner_qM83 {
+                      animation: spinner_8HQG 1.05s infinite;
                     }
-                    28.57% {
-                      animation-timing-function: cubic-bezier(
-                        0.33,
-                        0,
-                        0.66,
-                        0.33
-                      );
-                      transform: translateY(-6px);
+                    .spinner_oXPr {
+                      animation-delay: 0.1s;
                     }
-                    100% {
-                      transform: translate(0);
+                    .spinner_ZTLf {
+                      animation-delay: 0.2s;
                     }
-                  }
-                </style><circle
-                  class="spinner_qM83"
-                  cx="4"
-                  cy="12"
-                  r="2.5"
-                /><circle
-                  class="spinner_qM83 spinner_oXPr"
-                  cx="12"
-                  cy="12"
-                  r="2.5"
-                /><circle
-                  class="spinner_qM83 spinner_ZTLf"
-                  cx="20"
-                  cy="12"
-                  r="2.5"
-                /></svg
-              >
+                    @keyframes spinner_8HQG {
+                      0%,
+                      57.14% {
+                        animation-timing-function: cubic-bezier(
+                          0.33,
+                          0.66,
+                          0.66,
+                          1
+                        );
+                        transform: translate(0);
+                      }
+                      28.57% {
+                        animation-timing-function: cubic-bezier(
+                          0.33,
+                          0,
+                          0.66,
+                          0.33
+                        );
+                        transform: translateY(-6px);
+                      }
+                      100% {
+                        transform: translate(0);
+                      }
+                    }
+                  </style><circle
+                    class="spinner_qM83"
+                    cx="4"
+                    cy="12"
+                    r="2.5"
+                  /><circle
+                    class="spinner_qM83 spinner_oXPr"
+                    cx="12"
+                    cy="12"
+                    r="2.5"
+                  /><circle
+                    class="spinner_qM83 spinner_ZTLf"
+                    cx="20"
+                    cy="12"
+                    r="2.5"
+                  /></svg
+                >
+              </div>
+              <div class="self-end mb-1 flex space-x-1.5 mr-2">
+                <button
+                  class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1.5"
+                  on:click={stopListening()}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="w-5 h-5"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           {:else}
             <div class=" flex">
@@ -150,7 +173,7 @@
               />
 
               <div class="self-end mb-2 flex space-x-1.5 mr-2">
-                {#if systemSpeaking === false}
+                {#if $systemSpeaking === false}
                   <!-- listen button -->
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
