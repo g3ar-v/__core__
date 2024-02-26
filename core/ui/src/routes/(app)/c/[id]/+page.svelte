@@ -16,6 +16,7 @@
   import Messages from "$lib/components/chat/Messages.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
   import { page } from "$app/stores";
+  // import { update } from "svelte-french-toast/dist/core/store";
 
   const socket = new WebSocket("ws://localhost:8080/ws");
 
@@ -26,16 +27,20 @@
 
   let title = "";
   let prompt = "";
-  let systemSpeaking = false;
   let speechRecognitionListening = false;
 
-  let messages = [];
-  let history = {
+  let messages: any[] = [];
+  let history: {
+    messages: any;
+    currentId: any;
+  } = {
     messages: {},
     currentId: null,
   };
 
+  // Update messages based on history if currentId is not null
   $: if (history.currentId !== null) {
+    // console.log("history.currentId", history.currentId);
     let _messages = [];
 
     let currentMessage = history.messages[history.currentId];
@@ -47,6 +52,9 @@
           : null;
     }
     messages = _messages;
+  } else {
+    // Reset messages if currentId is null
+    messages = [];
   }
 
   $: if ($page.params.id) {
@@ -78,8 +86,13 @@
       socket.close();
     });
 
-    isMicrophoneMuted = await getMicrophoneStatus();
-    console.log(`microphone mute status: ${isMicrophoneMuted}`);
+    let microphoneStatus = await getMicrophoneStatus();
+    if (microphoneStatus !== undefined) {
+      isMicrophoneMuted = microphoneStatus;
+      console.log(`microphone mute status: ${isMicrophoneMuted}`);
+    } else {
+      console.error("Failed to get microphone status.");
+    }
     checkWsConnection(socket);
   });
 
@@ -91,6 +104,8 @@
     await chatId.set($page.params.id);
     const chat = await $db.getChatById($chatId);
 
+    // console.log("chat: " + JSON.stringify(chat, null, 4));
+    console.log("chat", chat);
     if (chat) {
       // console.log($chatId + ": chat exists");
 
@@ -111,7 +126,7 @@
           body: JSON.stringify({ context: formattedHistory }),
         }
       );
-      console.log(formattedHistory);
+      // console.log(formattedHistory);
       await settings.set({
         ...$settings,
       });
@@ -133,7 +148,7 @@
     const timer = setInterval(() => {
       if (ws.readyState !== 1) {
         clearInterval(timer);
-        console.log("Couldn't connect to websocket. Reloading webpage.");
+        toast.error("Couldn't connect to websocket. Reloading webpage.");
 
         location.reload();
       }
@@ -156,37 +171,28 @@
         role: "user",
         content: response.content,
       };
-      if (messages.length !== 0) {
-        history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
-      }
+      // if (messages.length !== 0) {
+      //   history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
+      // }
 
       history.messages[userMessageId] = userMessage;
       history.currentId = userMessageId;
-
-      let responseMessageId = uuidv4();
-      let responseMessage = {
-        parentId: userMessageId,
-        role: "assistant",
-        id: responseMessageId,
-        childrenIds: [],
-        content: "",
-      };
-
-      history.messages[responseMessageId] = responseMessage;
-      history.currentId = responseMessageId;
-
-      if (userMessage.parentId !== null) {
-        history.messages[userMessage.parentId].childrenIds = [
-          ...history.messages[userMessage.parentId].childrenIds,
-          responseMessageId,
-        ];
-      }
+      updateChatAndScroll(response.content);
     } else if (response.role === "system") {
       console.log(`system message: ${response.content}`);
-      if (messages.length !== 0) {
-        history.messages[history.currentId].content = response.content;
-        history.messages[history.currentId].done = true;
-      }
+      let systemMessageId = uuidv4();
+      let systemMessage = {
+        parentId: messages.length !== 0 ? messages.at(-1).id : null,
+        role: "assistant",
+        id: systemMessageId,
+        childrenIds: [],
+        content: response.content,
+      };
+
+      // let previousMessage = messages.at(-1);
+      history.messages[systemMessageId] = systemMessage;
+      history.currentId = systemMessageId;
+      updateChatAndScroll(response.content);
     } else if (response.role === "status") {
       if (response.data === "recognizer_loop:record_begin") {
         speechRecognitionListening = true;
@@ -204,7 +210,10 @@
   // Ollama functions
   //////////////////////////
 
-  const sendPrompt = async (userPrompt, parentId) => {
+  const sendPrompt = async (
+    userPrompt: any,
+    parentId: string | number | null
+  ) => {
     // await sendPromptCore(userPrompt, parentId);
 
     console.log(`send to core_backend: ${userPrompt}`);
@@ -262,32 +271,10 @@
       }
     }
 
-    await tick();
-    if (autoScroll) {
-      window.scrollTo({ top: document.body.scrollHeight });
-    }
-
-    await $db.updateChatById($chatId, {
-      title: title === "" ? "New Chat" : title,
-      messages: messages,
-      history: history,
-    });
-
-    stopResponseFlag = false;
-
-    await tick();
-    if (autoScroll) {
-      window.scrollTo({ top: document.body.scrollHeight });
-    }
-
-    if (messages.length == 2) {
-      window.history.replaceState(history.state, "", `/c/${$chatId}`);
-      await setChatTitle($chatId, userPrompt);
-    }
-    await chats.set(await $db.getChats());
+    await updateChatAndScroll(userPrompt);
   };
 
-  const submitPrompt = async (userPrompt) => {
+  const submitPrompt = async (userPrompt: any) => {
     console.log("submitPrompt");
 
     if (messages.length != 0 && messages.at(-1).done != true) {
@@ -347,11 +334,37 @@
         { method: "DELETE" }
       );
     } catch (error) {
-      console.log(error);
+      // console.log(error);
       toast.error(error.detail);
     }
 
     systemSpeaking.set(true);
+  };
+
+  const updateChatAndScroll = async (userPrompt) => {
+    await tick();
+    if (autoScroll) {
+      window.scrollTo({ top: document.body.scrollHeight });
+    }
+
+    await $db.updateChatById($chatId, {
+      title: title === "" ? "New Chat" : title,
+      messages: messages,
+      history: history,
+    });
+
+    stopResponseFlag = false;
+
+    await tick();
+    if (autoScroll) {
+      window.scrollTo({ top: document.body.scrollHeight });
+    }
+
+    if (messages.length == 2) {
+      window.history.replaceState(history.state, "", `/c/${$chatId}`);
+      await generateChatTitle($chatId, userPrompt);
+    }
+    await chats.set(await $db.getChats());
   };
 
   const regenerateResponse = async () => {
@@ -365,6 +378,62 @@
 
       await sendPrompt(userPrompt, userMessage.id);
     }
+  };
+  const generateChatTitle = async (_chatId, userPrompt) => {
+    // if ($settings.titleAutoGenerate ?? true) {
+    console.log("generateChatTitle");
+
+    const res = await fetch(
+      `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/system/generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // ...($settings.authHeader && {
+          //   Authorization: $settings.authHeader,
+          // }),
+          // ...($user && { Authorization: `Bearer ${localStorage.token}` }),
+        },
+        body: JSON.stringify({
+          prompt: `Generate a brief 3-5 word title for this question, excluding the term 'title.' Then, please reply with only the title: ${userPrompt}`,
+        }),
+      }
+    )
+      .then(async (res) => {
+        if (!res.ok) throw await res.json();
+        return res.json();
+      })
+      .catch((error) => {
+        if ("detail" in error) {
+          toast.error(error.detail);
+        }
+        console.log(error);
+        return null;
+      });
+
+    if (res) {
+      await setChatTitle(
+        _chatId,
+        res.response === "" ? "New Chat" : res.response
+      );
+    }
+    // } else {
+    //   await setChatTitle(_chatId, `${userPrompt}`);
+    // }
+  };
+
+  const stopListening = async () => {
+    try {
+      await fetch(
+        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/listen`,
+        { method: "DELETE" }
+      );
+    } catch (error) {
+      console.log(error);
+      toast.error(error.detail);
+    }
+
+    speechRecognitionListening = false;
   };
 
   // NOTE: what would be the right return type if there's an error in getting the
@@ -455,26 +524,9 @@
       bind:autoScroll
       bind:isMicrophoneMuted
       bind:speechRecognitionListening
-      suggestionPrompts={[
-        {
-          title: ["Help me study", "vocabulary for a college entrance exam"],
-          content: `Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.`,
-        },
-        {
-          title: ["Give me ideas", `for what to do with my kids' art`],
-          content: `What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.`,
-        },
-        {
-          title: ["Tell me a fun fact", "about the Roman Empire"],
-          content: "Tell me a random fun fact about the Roman Empire",
-        },
-        {
-          title: ["Show me a code snippet", `of a website's sticky header`],
-          content: `Show me a code snippet of a website's sticky header in CSS and JavaScript.`,
-        },
-      ]}
       {messages}
       {listenHandler}
+      {stopListening}
       {submitPrompt}
       {stopSpeaking}
       {microphoneHandler}

@@ -141,6 +141,26 @@ def listen() -> JSONStructure:
         ) from err
 
 
+def stop_listening() -> JSONStructure:
+    """Stop the recording
+
+    Send `core.mic.stop` message to the bus to stop the recording.
+
+    :return: Return HTTP 204 or 400
+    :rtype: int
+    """
+    try:
+        payload: Dict = {"type": "core.mic.stop"}
+        ws_send(payload)
+        return status.HTTP_204_NO_CONTENT
+    except Exception as err:
+        print(err)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="unable to stop the recording",
+        ) from err
+
+
 def handle_utterance(message) -> JSONStructure:
     """Send a recording request to CORE
 

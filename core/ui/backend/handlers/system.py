@@ -1,10 +1,13 @@
 import json
 from typing import Dict, Optional
+
 from fastapi import HTTPException, status
+
 from core.ui.backend.common.typing import JSONStructure
-from core.ui.backend.common.utils import ws_send, sanitize
+from core.ui.backend.common.utils import sanitize, ws_send
 from core.ui.backend.config import get_settings
-from core.ui.backend.models.system import Config
+from core.ui.backend.models.system import Config, Prompt
+from core.util.log import LOG
 
 settings = get_settings()
 
@@ -81,4 +84,29 @@ def set_config(config: Config):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="unable to set configuration",
+        ) from err
+
+
+def generate_response(prompt: Prompt):
+    """Generate a response based on the provided prompt
+
+    :param prompt: The prompt to generate a response from
+    :type prompt: str
+    :return: Generated response
+    :rtype: JSONResponse
+    """
+    try:
+        # Add code here to generate a response based on the provided prompt
+        payload: Dict = {
+            "type": "core.api.generate",
+            "data": {"prompt": prompt.content},
+        }
+        response = ws_send(payload, "core.api.generate.response")
+        # response = "Generated response based on the prompt: " + prompt
+        LOG.info(f"generated response: {response}")
+        return {"response": response.get("data", {}).get("response")}
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating response",
         ) from err

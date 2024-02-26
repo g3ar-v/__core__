@@ -1,18 +1,19 @@
 <script lang="ts">
   import { systemSpeaking } from "$lib/stores";
   import toast from "svelte-french-toast";
-  import Suggestions from "./MessageInput/Suggestions.svelte";
+  // import Suggestions from "./MessageInput/Suggestions.svelte";
 
   export let submitPrompt: Function;
   export let stopSpeaking: Function;
   export let microphoneHandler: Function;
   export let listenHandler: Function;
+  export let stopListening: Function;
 
-  export let suggestionPrompts = [];
+  // export let suggestionPrompts = [];
   export let autoScroll = true;
 
   export let speechRecognitionListening = false;
-  export let isMuted = false;
+  export let isMicrophoneMuted = false;
 
   export let prompt = "";
   export let messages = [];
@@ -21,9 +22,9 @@
 <div class="fixed bottom-0 w-full bg-white dark:bg-gray-800">
   <div class=" absolute right-0 left-0 bottom-0 mb-20">
     <div class="max-w-3xl px-2.5 pt-2.5 -mb-0.5 mx-auto inset-x-0">
-      {#if messages.length == 0 && suggestionPrompts.length !== 0}
-        <Suggestions {suggestionPrompts} {submitPrompt} />
-      {/if}
+      <!-- {#if messages.length == 0 && suggestionPrompts.length !== 0} -->
+      <!--   <Suggestions {suggestionPrompts} {submitPrompt} /> -->
+      <!-- {/if} -->
 
       {#if autoScroll === false && messages.length > 0}
         <div class=" flex justify-center mb-4">
@@ -212,12 +213,12 @@
                     on:click={() => {
                       const mutedFlag = microphoneHandler();
                       mutedFlag.then((muteMicrophoneFlag) => {
-                        isMuted = muteMicrophoneFlag;
+                        isMicrophoneMuted = muteMicrophoneFlag;
                       });
                     }}
                   >
                     <!-- mute/unmute button -->
-                    {#if isMuted}
+                    {#if isMicrophoneMuted}
                       <span
                         class="before:content-[attr(data-tip)]
                           before:absolute

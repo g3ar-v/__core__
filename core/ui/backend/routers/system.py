@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from core.ui.backend.auth.bearer import JWTBearer
 from core.ui.backend.common.utils import websocket_manager
 from core.ui.backend.handlers import system
-from core.ui.backend.models.system import ConfigResults, Message
+from core.ui.backend.models.system import ConfigResults, Message, Prompt
 from core.util.log import LOG
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -221,3 +221,30 @@ async def set_configuration(
     """
     LOG.info("SETTING CONFIGURATION: %s", config)
     return JSONResponse(content=system.set_config(config))
+
+
+@router.post(
+    "/generate",
+    status_code=status.HTTP_200_OK,
+    summary="Generate response based on prompt",
+    description="Generate a response based on the provided prompt",
+    response_description="Response generated successfully",
+    dependencies=[Depends(JWTBearer())],
+)
+async def generate_response(
+    prompt: Prompt = Body(
+        default=None,
+        description="Message to send to UI",
+        example='{ "content": "Create a concise, 3-5 word phrase as a header for the following query,\
+      strictly adhering to the 3-5 word limit and avoiding the use of the word `title`: \
+        what is the purpose of chemistry in the universe?"}',
+    ),
+) -> JSONResponse:
+    """Generate a response based on the provided prompt
+
+    :param prompt: The prompt to generate a response from
+    :type prompt: str
+    :return: Generated response
+    :rtype: JSONResponse
+    """
+    return JSONResponse(content=system.generate_response(prompt))

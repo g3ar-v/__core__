@@ -158,3 +158,15 @@ async def send_context(
     ),
 ) -> JSONResponse:
     return JSONResponse(content=voice.send_context(context_data))
+
+
+@router.delete(
+    "/listen",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Stop listening",
+    description="Stop the recording",
+    response_description="Response to the stop listening request",
+    dependencies=[Depends(JWTBearer())],
+)
+async def stop_listening() -> JSONResponse:
+    return JSONResponse(content=voice.stop_listening())

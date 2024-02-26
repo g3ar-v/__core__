@@ -4,7 +4,7 @@
   import { WEB_UI_VERSION, OLLAMA_API_BASE_URL } from "$lib/constants";
   import toast from "svelte-french-toast";
   import { onMount } from "svelte";
-  import { config, voices, settings, user } from "$lib/stores";
+  import { config, settings, user } from "$lib/stores";
   import { splitStream, extractObjectsbyName } from "$lib/utils";
   import Advanced from "./Settings/Advanced.svelte";
   import Voice from "./Settings/Voice.svelte";
