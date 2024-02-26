@@ -13,7 +13,7 @@ TOP=$(pwd -L)
 
 function clean_core_files() {
 	echo '
-This will completely remove any files installed by mycroft (including pairing
+This will completely remove any files installed by CORE (including pairing
 information). 
 
 Do you wish to continue? (y/n)'
@@ -38,7 +38,7 @@ Do you wish to continue? (y/n)'
 function show_help() {
 	echo '
 Usage: dev_setup.sh [options]
-Prepare your environment for running the mycroft-core services.
+Prepare your environment for running the CORE services.
 
 Options:
     --clean                 Remove files and folders created by this script
@@ -145,6 +145,7 @@ if found_exe tput; then
 		BLUE=$(tput setaf 4)
 		CYAN=$(tput setaf 6)
 		YELLOW=$(tput setaf 3)
+		RED=$(tput setaf 1)
 		RESET=$(tput sgr0)
 		HIGHLIGHT=$YELLOW
 	fi
@@ -220,7 +221,7 @@ fi
 # Create a link to the 'skills' folder.
 sleep 0.5
 echo
-echo 'The standard location for core skills is under /opt/core/skills.'
+echo -e "The standard location for core skills is under $HIGHLIGHT/opt/core/skills. $RESET"
 if [[ ! -d /opt/core/skills ]]; then
 	echo 'This script will create that folder for you.  This requires sudo'
 	echo 'permission and might ask you for a password...'
@@ -285,18 +286,19 @@ function install_deps() {
 	fi
 }
 
+# NOTE coda using sudo might not work depending on it's installation
 function install_venv() {
 	if [[ ! $(conda env list | grep -w $CONDA_ENV_NAME) ]]; then
 		echo "$HIGHLIGHT Conda environment ($CONDA_ENV_NAME) does not exist. Creating..." $RESET
-		sudo conda create --name $CONDA_ENV_NAME python=$opt_python
+		conda create --name $CONDA_ENV_NAME python=$opt_python
 	else
 		echo "$HIGHLIGHT Not creating ($CONDA_ENV_NAME) environment as it already exists." $RESET
 		echo 'Do you want to delete the existing conda environment? y/N' | tee -a /var/log/core/setup.log
 		read -rn1 delete_env
 		if [[ $delete_env == 'y' ]]; then
 			echo # create a gap in the terminal
-			sudo conda remove --name $CONDA_ENV_NAME --all
-			sudo conda create --name $CONDA_ENV_NAME python=$opt_python
+			conda remove --name $CONDA_ENV_NAME --all
+			conda create --name $CONDA_ENV_NAME python=$opt_python
 		fi
 	fi
 
@@ -444,6 +446,12 @@ chmod +x bin/core-speak
 
 # Build and install core
 # pip install -e .
+CONDA_BIN=$(dirname "$CONDA_EXE")
+source "$CONDA_BIN/activate" $CONDA_ENV_NAME
+# conda init
+# conda activate $CONDA_ENV_NAME
+# $CONDA_EXE activate $CONDA_ENV_NAME
+
 # TODO: handle if poetry isn't installed
 poetry install
 

@@ -17,7 +17,7 @@ DIR="$(pwd)"
 UI_DIR="$(pwd)/core/ui"
 echo "ui directory $UI_DIR"
 export CONDA_ENV_NAME="core"
-VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
+# VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
 function found_exe() {
 	hash "$1" 2>/dev/null
@@ -98,7 +98,8 @@ source_venv() {
 		# . "${VIRTUALENV_ROOT}/bin/activate"
 		# TODO: dynmaically get miniconda path
 		# source "/home/parallels/miniconda3/bin/activate" $CONDA_ENV_NAME
-		source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
+		# source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
+		$CONDA_EXE activate $CONDA_ENV_NAME
 		if [[ $? -ne "0" ]]; then
 			echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
 		else

@@ -1,7 +1,7 @@
 """file utils.
 
-This module contains functions handling core's resource files and things like
-accessing and curating core's cache.
+This module contains functions handling CORE's resource files and things like
+accessing and curating CORE's cache.
 """
 
 import os
@@ -20,8 +20,13 @@ from .log import LOG
 
 
 class FileWatcher:
-    def __init__(self, files: List[str], callback: callable,
-                 recursive: bool = False, ignore_creation: bool = False):
+    def __init__(
+        self,
+        files: List[str],
+        callback: callable,
+        recursive: bool = False,
+        ignore_creation: bool = False,
+    ):
         """
         Initialize a FileWatcher to monitor the specified files for changes
         @param files: list of paths to monitor for file changes
@@ -36,9 +41,11 @@ class FileWatcher:
                 watch_dir = dirname(file_path)
             else:
                 watch_dir = file_path
-            self.observer.schedule(FileEventHandler(file_path, callback,
-                                                    ignore_creation),
-                                   watch_dir, recursive=recursive)
+            self.observer.schedule(
+                FileEventHandler(file_path, callback, ignore_creation),
+                watch_dir,
+                recursive=recursive,
+            )
         self.observer.start()
 
     def shutdown(self):
@@ -50,8 +57,9 @@ class FileWatcher:
 
 
 class FileEventHandler(FileSystemEventHandler):
-    def __init__(self, file_path: str, callback: callable,
-                 ignore_creation: bool = False):
+    def __init__(
+        self, file_path: str, callback: callable, ignore_creation: bool = False
+    ):
         """
         Create a handler for file change events
         @param file_path: file_path being watched Unused(?)
@@ -62,9 +70,9 @@ class FileEventHandler(FileSystemEventHandler):
         self._callback = callback
         self._file_path = file_path
         if ignore_creation:
-            self._events = ('modified')
+            self._events = "modified"
         else:
-            self._events = ('created', 'modified')
+            self._events = ("created", "modified")
         self._changed_files = []
         self._lock = RLock()
 
@@ -79,8 +87,9 @@ class FileEventHandler(FileSystemEventHandler):
                     try:
                         self._callback(event.src_path)
                     except:
-                        LOG.exception("An error occurred handling file "
-                                      "change event callback")
+                        LOG.exception(
+                            "An error occurred handling file " "change event callback"
+                        )
 
             elif event.event_type in self._events:
                 if event.src_path not in self._changed_files:
@@ -122,24 +131,24 @@ def resolve_resource_file(res_name):
         return res_name
 
     # Now look for XDG_DATA_DIRS
-    for conf_dir in xdg.BaseDirectory.load_data_paths('core'):
+    for conf_dir in xdg.BaseDirectory.load_data_paths("core"):
         filename = os.path.join(conf_dir, res_name)
         if os.path.isfile(filename):
             return filename
 
     # Now look in the old user location
-    filename = os.path.join(os.path.expanduser('~'), '.core', res_name)
+    filename = os.path.join(os.path.expanduser("~"), ".core", res_name)
     if os.path.isfile(filename):
         return filename
 
     # Next look for /opt/core/res/res_name
-    data_dir = os.path.join(os.path.expanduser(config['data_dir']), 'res')
+    data_dir = os.path.join(os.path.expanduser(config["data_dir"]), "res")
     filename = os.path.expanduser(os.path.join(data_dir, res_name))
     if os.path.isfile(filename):
         return filename
 
     # Finally look for it in the source package
-    filename = os.path.join(os.path.dirname(__file__), '..', 'res', res_name)
+    filename = os.path.join(os.path.dirname(__file__), "..", "res", res_name)
     filename = os.path.abspath(os.path.normpath(filename))
     if os.path.isfile(filename):
         return filename
@@ -156,14 +165,14 @@ def read_stripped_lines(filename):
     Returns:
         (list) list of lines stripped from leading and ending white chars.
     """
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         for line in f:
             line = line.strip()
             if line:
                 yield line
 
 
-def read_dict(filename, div='='):
+def read_dict(filename, div="="):
     """Read file into dict.
 
     A file containing:
@@ -184,7 +193,7 @@ def read_dict(filename, div='='):
         (dict) generated dictionary
     """
     d = {}
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         for line in f:
             key, val = line.split(div)
             d[key.strip()] = val.strip()
@@ -216,8 +225,11 @@ def _get_cache_entries(directory):
     entries = ((os.stat(path), path) for path in entries)
 
     # leave only regular files, insert modification date
-    return ((stat[ST_MTIME], stat[ST_SIZE], path)
-            for stat, path in entries if S_ISREG(stat[ST_MODE]))
+    return (
+        (stat[ST_MTIME], stat[ST_SIZE], path)
+        for stat, path in entries
+        if S_ISREG(stat[ST_MODE])
+    )
 
 
 def _delete_oldest(entries, bytes_needed):
@@ -269,7 +281,7 @@ def curate_cache(directory, min_free_percent=5.0, min_free_disk=50):
     min_free_disk = mb_to_bytes(min_free_disk)
     percent_free = 100.0 - space.percent
     if percent_free < min_free_percent and space.free < min_free_disk:
-        LOG.info('Low diskspace detected, cleaning cache')
+        LOG.info("Low diskspace detected, cleaning cache")
         # calculate how many bytes we need to delete
         bytes_needed = (min_free_percent - percent_free) / 100.0 * space.total
         bytes_needed = int(bytes_needed + 1.0)
@@ -301,7 +313,7 @@ def get_cache_directory(domain=None):
     directory = config.get("cache_path")
     if not directory:
         # If not defined, use /tmp/core/cache
-        directory = get_temp_path('core', 'cache')
+        directory = get_temp_path("core", "cache")
     return ensure_directory_exists(directory, domain)
 
 
@@ -343,8 +355,8 @@ def create_file(filename):
         filename: Path to the file to be created
     """
     ensure_directory_exists(os.path.dirname(filename), permissions=0o775)
-    with open(filename, 'w') as f:
-        f.write('')
+    with open(filename, "w") as f:
+        f.write("")
 
 
 def get_temp_path(*args):
@@ -366,6 +378,7 @@ def get_temp_path(*args):
     try:
         path = os.path.join(tempfile.gettempdir(), *args)
     except TypeError:
-        raise TypeError("Could not create a temp path, get_temp_path() only "
-                        "accepts Strings")
+        raise TypeError(
+            "Could not create a temp path, get_temp_path() only " "accepts Strings"
+        )
     return path
