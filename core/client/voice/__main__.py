@@ -185,14 +185,14 @@ def handle_configuration_update(event):
 def on_ready():
     data = {"utterance": dialog.get("voice.available")}
     context = {"client_name": "core_listener", "source": "audio"}
-    bus.emit(Message("speak", data, context))
+    # bus.emit(Message("speak", data, context))
     LOG.info("VOICE CLIENT IS READY.")
 
 
 def on_stopping():
     data = {"utterance": dialog.get("voice.shutting")}
     context = {"client_name": "core_listener", "source": "audio"}
-    bus.emit(Message("speak", data, context))
+    # bus.emit(Message("speak", data, context))
     LOG.info("VOICE SERVICE IS SHUTTING DOWN...")
 
 

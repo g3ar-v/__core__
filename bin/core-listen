@@ -15,10 +15,10 @@
 # limitations under the License.
 
 SOURCE="${BASH_SOURCE[0]}"
-cd -P "$( dirname "$SOURCE" )" || exit
-DIR="$( pwd )"
+cd -P "$(dirname "$SOURCE")" || exit
+DIR="$(pwd)"
 
-# Enter the Mycroft venv
+# Enter the CORE venv
 source "$DIR/../venv-activate.sh" -q
 
 # Send a message to be spoken

@@ -153,10 +153,10 @@ def _check_for_internet_connection(timeout):
         time.sleep(1)
         counter += 1
     if not connected_to_the_internet():
-        LOG.info("Offline mode")
+        LOG.info("SYSTEM IS IN OFFLINE MODE")
         return False
     else:
-        LOG.info("System is online")
+        LOG.info("SYSTEM IS IN ONLINE MODE")
         return True
 
 

@@ -71,16 +71,17 @@ def _update_log_level(msg, name):
 
     # Respond to requests to adjust the logger settings
     lvl = msg["data"].get("level", "").upper()
-    if lvl in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]:
-        LOG.level = lvl
-        LOG(name).info("Changing log level to: {}".format(lvl))
-        try:
-            logging.getLogger().setLevel(lvl)
-            logging.getLogger("urllib3").setLevel(lvl)
-        except Exception:
-            pass  # We don't really care about if this fails...
-    else:
-        LOG(name).info("Invalid level provided: {}".format(lvl))
+    if lvl:
+        if lvl in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]:
+            LOG.level = lvl
+            LOG(name).info("Changing log level to: {}".format(lvl))
+            try:
+                logging.getLogger().setLevel(lvl)
+                logging.getLogger("urllib3").setLevel(lvl)
+            except Exception:
+                pass  # We don't really care about if this fails...
+        else:
+            LOG(name).info("Invalid level provided: {}".format(lvl))
 
     # Allow enable/disable of messagebus traffic
     log_bus = msg["data"].get("bus", None)

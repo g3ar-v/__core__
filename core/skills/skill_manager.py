@@ -29,7 +29,6 @@ from core.util.log import LOG
 # from ovos_config.config import Configuration
 from .msm_wrapper import build_msm_config
 from .msm_wrapper import create_msm as msm_creator
-
 # from ovos_utils.process_utils import ProcessStatus, StatusCallbackMap, ProcessState
 from .skill_loader import SkillLoader
 
@@ -144,7 +143,6 @@ class SkillManager(Thread):
         self._loaded_status = False  # True after all skills has loaded
 
         self.config = Configuration.get()
-        # self.sysconf = SysConf.get()
 
         self.skill_loaders = {}
         self.plugin_skills = {}

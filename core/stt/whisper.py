@@ -27,14 +27,9 @@ class WhisperSTT(STT):
         model = self.config.get("model")
         if not model:
             model = "base.en"
-        # assert model in self.MODELS  # TODO - better error handling
+        assert model in self.MODELS  # TODO - better error handling
 
-        self.streaming = False
-        self.beam_size = self.config.get("beam_size", 5)
-        self.compute_type = self.config.get("compute_type", "int8")
-        self.use_cuda = self.config.get("use_cuda", False)
-        self.cpu_threads = self.config.get("cpu_threads", 4)
-        # TODO: create a blocker for whisper loading
+        LOG.info(f"whisper model: {model}")
         self.engine = whisper.load_model(model)
         self.transcription = [""]
 

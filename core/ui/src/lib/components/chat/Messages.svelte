@@ -7,7 +7,7 @@
   import auto_render from "katex/dist/contrib/auto-render.mjs";
   import "katex/dist/katex.min.css";
 
-  import { config, db, modelfiles, settings, user } from "$lib/stores";
+  import { config, modelfiles, settings, user } from "$lib/stores";
   import { tick } from "svelte";
 
   import toast from "svelte-french-toast";
@@ -321,9 +321,8 @@
 </script>
 
 {#if messages.length == 0}
-  <div class="m-auto text-center max-w-md pb-52 px-2">
+  <div class="m-auto text-center max-w-md px-2">
     <div class="flex justify-center">
-      <!-- <img src="/ollama.png" class=" w-16 invert-[10%] dark:invert-[100%] rounded-full" /> -->
       <div aria-hidden="true" class="hero-header-item hero-logo">
         <div class="hero-logo-circles">
           <img
@@ -379,8 +378,9 @@
         </div>
       </div>
     </div>
+    <!-- TODO: make this generated -->
     <div class=" mt-10 text-2xl text-gray-800 dark:text-red-800 font-semibold">
-      How can I help you today, Sir?
+      How may I be of service, Sir?
     </div>
   </div>
 {:else}

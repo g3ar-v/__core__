@@ -4,10 +4,10 @@ SOURCE="$0"
 script=${0}
 # echo  "script: $script"
 script=${script##*/}
-echo "$script"
+# echo "$script"
 # NOTE: for macOS, it seems I have to leave script folder to run the other scripts
 if [[ "$script" != "start-core.sh" ]]; then
-	echo "going back .."
+	# echo "going back .."
 	cd -P "$(dirname "$SOURCE")"/.. || exit 1 # Enter scripts folder or fail!
 else
 	cd -P "$(dirname "$SOURCE")" || exit 1 # Enter scripts folder or fail!
@@ -15,9 +15,7 @@ fi
 
 DIR="$(pwd)"
 UI_DIR="$(pwd)/core/ui"
-echo "ui directory $UI_DIR"
 export CONDA_ENV_NAME="core"
-# VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${DIR}/.venv"}
 
 function found_exe() {
 	hash "$1" 2>/dev/null
@@ -29,6 +27,7 @@ if found_exe tput; then
 		BLUE=$(tput setaf 4)
 		CYAN=$(tput setaf 6)
 		YELLOW=$(tput setaf 3)
+		RED=$(tput setaf 1)
 		RESET=$(tput sgr0)
 		HIGHLIGHT=$YELLOW
 	fi
@@ -92,19 +91,13 @@ name_to_script_path() {
 }
 
 source_venv() {
-	# Enter Python virtual environment, unless under Docker
-	# echo "Entering virtual environment ${VIRTUALENV_ROOT}"
-	if [ ! -f "/.dockerenv" ]; then
-		# . "${VIRTUALENV_ROOT}/bin/activate"
-		# TODO: dynmaically get miniconda path
-		# source "/home/parallels/miniconda3/bin/activate" $CONDA_ENV_NAME
-		# source "/opt/miniconda3/bin/activate" $CONDA_ENV_NAME
-		$CONDA_EXE activate $CONDA_ENV_NAME
-		if [[ $? -ne "0" ]]; then
-			echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
-		else
-			echo $RED "Could not enter virtual environment"
-		fi
+	# Enter CONDA virtual environment
+	# TODO: dynmaically get miniconda path
+	$CONDA_EXE activate $CONDA_ENV_NAME
+	if [[ $? -eq "0" ]]; then
+		echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
+	else
+		echo $RED "Could not enter virtual environment $RESET"
 	fi
 }
 
@@ -116,8 +109,6 @@ init_once() {
 		source_venv
 		first_time=false
 	fi
-	# NOTE: this won't be here if first_time is initially false at runtime
-	# source_venv
 }
 
 launch_process() {
@@ -180,7 +171,7 @@ launch_all() {
 	# nohup npm run dev &
 	# cd ..
 
-	nohup uvicorn core.ui.backend.__main__:app &
+	# nohup uvicorn core.ui.backend.__main__:app &
 
 }
 

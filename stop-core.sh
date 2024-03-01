@@ -1,19 +1,5 @@
 #!/bin/sh
 
-# Copyright 2017 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # This script is never sourced but always directly executed, so this is safe to do
 SOURCE="$0"
 
@@ -35,6 +21,7 @@ help() {
 	# echo "  enclosure stop enclosure (hardware/gui interface) service"
 	echo "  ui        stop ui service"
 	echo "  backend   stop ui backend service"
+	echo "  dev   	  stop file monitor for CORE"
 	echo
 	echo "Examples:"
 	echo "  ${script}"
@@ -103,6 +90,10 @@ case ${OPT} in
 	end_process "(python3|python|Python) (.*)-m core.*audio"
 	end_process "uvicorn core.ui.backend.__main__:app"
 	end_process "npm run dev"
+	end_process "entr -s core-start restart skills"
+	end_process "entr -s core-start restart voice"
+	end_process "entr -s core-start restart audio"
+	
 	;;
 "bus")
 	end_process "(python3|python|Python) (.*)-m core.*messagebus.service"
@@ -127,6 +118,11 @@ case ${OPT} in
 	;;
 "ui")
 	end_process "npm run dev"
+	;;
+"dev")
+	end_process "entr -s core-start restart skills"
+	end_process "entr -s core-start restart voice"
+	end_process "entr -s core-start restart audio"
 	;;
 *)
 	help

@@ -45,6 +45,8 @@ langchain-openai = "^0.0.7"
 elevenlabs = "^0.2.27"
 speechrecognition = "^3.10.1"
 msm = "^0.8.9"
+json-repair = "^0.9.0"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.scripts]
 core-voice-client="core.client.voice.__main__:main"

@@ -1,24 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright 2018 Mycroft AI Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
-# This script places the user in the mycroft-core virtual environment,
-# necessary to run unit tests or to interact directly with mycroft-core
-# via an interactive Python shell.
-
 
 # wrap in function to allow local variables, since this file will be source'd
 function main() { 
@@ -59,7 +39,7 @@ function main() {
         SRC_DIR="$( builtin cd "$( dirname "${BASH_SOURCE[0]}" )" || exit 1; pwd -P )"
         source "${SRC_DIR}/.venv/bin/activate"
         
-        # Provide an easier to find "mycroft-" prefixed command.
+        # Provide an easier to find "core-" prefixed command.
         unalias core-venv-activate 2>/dev/null
         # shellcheck disable=SC2139 # The intention _is_ to resolve the variable at define time
         alias core-venv-deactivate="deactivate && unalias core-venv-deactivate 2>/dev/null && alias core-venv-activate=\"source '${SRC_DIR}/venv-activate.sh'\""

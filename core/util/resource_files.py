@@ -23,10 +23,10 @@ from typing import List, Optional, Tuple
 # from ovos_config.config import Configuration
 # from ovos_utils.bracket_expansion import expand_options
 from core.dialog import load_dialogs
-from core.util.log import LOG
-from .file_utils import resolve_resource_file
 from core.util.format import expand_options
+from core.util.log import LOG
 
+from .file_utils import resolve_resource_file
 
 SkillResourceTypes = namedtuple(
     "SkillResourceTypes",
@@ -524,10 +524,6 @@ class SkillResources:
         dialog_file = DialogFile(self.types.dialog, name)
         dialog_file.data = data
         return dialog_file.load()
-
-    def locate_qml_file(self, name):
-        qml_file = QmlFile(self.types.qml, name)
-        return qml_file.load()
 
     def load_list_file(self, name, data=None) -> List[str]:
         """Load a file containing a list of words or phrases

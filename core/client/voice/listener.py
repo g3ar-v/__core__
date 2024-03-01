@@ -240,7 +240,7 @@ class AudioConsumer(Thread):
                     text = self.loop.stt.execute(audio)
                     # for t in text:
                     #     LOG.info("text: %s", t)
-                LOG.info("TIME TO PROCESS SPEECH: " + str(stopwatch))
+                LOG.info("TIME TO TRANSCRIBE SPEECH: " + str(stopwatch))
                 if text is not None:
                     text = text[-1]
                     text = text.lower().strip()
