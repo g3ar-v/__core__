@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { systemSpeaking } from "$lib/stores";
+  import { systemSpeaking, isMicrophoneMuted } from "$lib/stores";
   import toast from "svelte-french-toast";
   // import Suggestions from "./MessageInput/Suggestions.svelte";
 
@@ -13,7 +13,6 @@
   export let autoScroll = true;
 
   export let speechRecognitionListening = false;
-  export let isMicrophoneMuted = false;
 
   export let prompt = "";
   export let messages = [];
@@ -213,12 +212,12 @@
                     on:click={() => {
                       const mutedFlag = microphoneHandler();
                       mutedFlag.then((muteMicrophoneFlag) => {
-                        isMicrophoneMuted = muteMicrophoneFlag;
+                        isMicrophoneMuted.set(muteMicrophoneFlag);
                       });
                     }}
                   >
                     <!-- mute/unmute button -->
-                    {#if isMicrophoneMuted}
+                    {#if $isMicrophoneMuted}
                       <span
                         class="before:content-[attr(data-tip)]
                           before:absolute

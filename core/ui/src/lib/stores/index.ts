@@ -12,4 +12,5 @@ export const modelfiles = writable([]);
 export const settings = writable({});
 export const app = writable(false);
 export const systemSpeaking = writable(false);
+export const isMicrophoneMuted = writable(false);
 export const showSettings = writable(false);
