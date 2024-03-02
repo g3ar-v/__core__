@@ -190,15 +190,15 @@ class MutableMicrophone(Microphone):
                 LOG.exception("Can't start mic!")
             sleep(1)
 
-    def _stream_callback(self, in_data, frame_count, time_info, status):
-        """Callback from pyaudio.
+    # def _stream_callback(self, in_data, frame_count, time_info, status):
+    #     """Callback from pyaudio.
 
-        Rather than buffer chunks, we simply assigned the current chunk to the
-        class instance and signal that it's ready.
-        """
-        self.stream.chunk_deque.append(in_data)
-        self.stream.chunk_ready.set()
-        return (None, pyaudio.paContinue)
+    #     Rather than buffer chunks, we simply assigned the current chunk to the
+    #     class instance and signal that it's ready.
+    #     """
+    #     self.stream.chunk_deque.append(in_data)
+    #     self.stream.chunk_ready.set()
+    #     return (None, pyaudio.paContinue)
 
     def _start(self):
         """Open the selected device and setup the stream."""
@@ -213,7 +213,6 @@ class MutableMicrophone(Microphone):
             format=self.format,
             rate=self.SAMPLE_RATE,
             frames_per_buffer=self.CHUNK,
-            # stream_callback=self._stream_callback,
             input=True,  # stream is an input stream
         )
 

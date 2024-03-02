@@ -94,8 +94,12 @@ source_venv() {
 	# Enter CONDA virtual environment
 	# TODO: dynmaically get miniconda path
 	$CONDA_EXE activate $CONDA_ENV_NAME
-	if [[ $? -eq "0" ]]; then
+	retval=$?
+	# echo "retval $retval"
+	if [[ $retval -eq "0" ]]; then
 		echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
+	elif [[ $retval -eq "2" ]]; then
+		echo "$HIGHLIGHT Already in virtual environment $RESET"
 	else
 		echo $RED "Could not enter virtual environment $RESET"
 	fi
