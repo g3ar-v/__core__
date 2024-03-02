@@ -1,4 +1,5 @@
 """Intent service, providing intent parsing since forever!"""
+import json
 import time
 from collections import namedtuple
 from copy import copy
@@ -9,7 +10,7 @@ from core.api import SystemApi
 from core.audio import wait_while_speaking
 from core.configuration import Configuration, set_default_lf_lang
 from core.dialog import dialog
-from core.llm import LLM
+from core.llm import LLM, notify_prompt
 from core.messagebus.message import Message
 from core.util import flatten_list
 from core.util.intent_service_interface import IntentQueryApi, open_intent_envelope
@@ -288,9 +289,11 @@ class IntentService:
 
         for data in context_data:
             if data["role"] == "user":
-                chat_memory.add_user_message(message=data["content"])
+                if data["content"]:
+                    chat_memory.add_user_message(message=data["content"])
             else:
-                chat_memory.add_ai_message(message=data["content"])
+                if data["content"]:
+                    chat_memory.add_ai_message(message=data["content"])
 
         LLM.set_chat_memory(chat_memory=chat_memory)
 
@@ -331,6 +334,9 @@ class IntentService:
                 except Exception as e:
                     LOG.error(f"couldn't send data: {e}")
 
+            # if LLM.chat_memory:
+            # LLM.chat_memory.add_user_message(flatten_list(combined)[0])
+
             stopwatch = Stopwatch()
 
             # Create matchers
@@ -368,10 +374,6 @@ class IntentService:
                     reply = message.reply(match.intent_type, match.intent_data)
                     reply.data["utterances"] = utterances
                     self.bus.emit(reply)
-
-                # NOTE: should prevent user utterance from already being in chat_history
-                if LLM.chat_memory:
-                    LLM.chat_memory.add_user_message(flatten_list(combined)[0])
 
             else:
                 # Nothing was able to handle the intent
