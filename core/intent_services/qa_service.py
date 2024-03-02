@@ -112,8 +112,9 @@ class QAService:
 
     def handle_query_response(self, utterance: str, message: dict) -> bool:
         try:
+            # get response from llm when chat is initiated from UI
             if message.data.get("context", {}).get("source", {}) == "ui_backend":
-                response = LLM.llm_response(
+                response = LLM.chat_with_system(
                     query=utterance,
                     prompt=main_persona_prompt,
                     send_to_ui=False,
@@ -127,7 +128,7 @@ class QAService:
                 )
 
             else:
-                response = LLM.llm_response(
+                response = LLM.chat_with_system(
                     query=utterance, prompt=main_persona_prompt, parser=parser
                 )
 

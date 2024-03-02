@@ -1,8 +1,8 @@
 # Aim of this module is to create a singular access to llms and ai-kits for core
 # processes
 import os
-from typing import Any
 
+import json_repair
 from langchain.chains import LLMChain
 from langchain.memory import ChatMessageHistory, ConversationBufferWindowMemory
 from langchain_community.llms import Ollama
@@ -53,16 +53,16 @@ class LLM:
         os.environ["LANGCHAIN_PROJECT"] = "jarvis-pa"
 
     @staticmethod
-    def _load_model():  # -> ChatOpenAI | Any:
-        if (
-            LLM.config.get("llm", {}).get("model_type", {}) == "online"
-            and connected_to_the_internet()
-        ):
+    def _load_model(model_type: str):  # -> ChatOpenAI | Any:
+        # if (
+        #     LLM.config.get("llm", {}).get("model_type", {}) == "online"
+        #     and connected_to_the_internet()
+        # ):
+        if model_type.lower() == "online" and connected_to_the_internet():
             return ChatOpenAI(
                 temperature=1.5,
-                max_tokens=1256,
-                model="gpt-3.5-turbo-0125",
-                streaming=False,
+                max_tokens=826,
+                model="gpt-3.5-turbo-1106",
             )
         else:
             return Ollama(model="mistral:7b-instruct")
@@ -103,19 +103,24 @@ class LLM:
             today = now_local()
             date_now = today.strftime("%Y-%m-%d %H:%M %p")
 
-            model = LLM._load_model()
+            model = LLM._load_model("online")
 
             gptchain = LLMChain(
                 llm=model, verbose=False, prompt=prompt, output_parser=parser
             )
 
-            response = gptchain.predict(
-                context=context,
-                query=query,
-                curr_conv=current_conversation,
-                rel_mem=relevant_memory,
-                date_str=date_now,
-            )
+            try:
+                response = gptchain.predict(
+                    context=context,
+                    query=query,
+                    curr_conv=current_conversation,
+                    rel_mem=relevant_memory,
+                    date_str=date_now,
+                )
+            except Exception as e:
+                LOG.error(f"Invalid JSON: {e}")
+                response = json_repair.loads(response, return_objects=True)
+
             LOG.info(f"Response from LLM: {response}")
 
             stt_response = response.get("speech", "Apologies, I can't respond to that")
@@ -123,7 +128,8 @@ class LLM:
             action_response = response.get("action", "")
 
             if chat_history:
-                LLM.chat_memory.add_ai_message(chat_response)
+                LLM.chat_memory.add_user_message(query)
+                LLM.chat_memory.add_ai_message(stt_response)
 
             if send_to_ui:
                 try:
@@ -131,7 +137,7 @@ class LLM:
                 except Exception as e:
                     LOG.error(f"couldn't send data: {e}")
 
-            LLM.speak(
+            LLM._speak(
                 stt_response,
                 True if action_response and "listen" in action_response else False,
             )
