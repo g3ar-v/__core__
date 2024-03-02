@@ -1,18 +1,23 @@
 <script lang="ts">
-  import { systemSpeaking, isMicrophoneMuted } from "$lib/stores";
+  import {
+    settings,
+    systemSpeaking,
+    isMicrophoneMuted,
+    systemListening,
+  } from "$lib/stores";
+  import {
+    microphoneHandler,
+    listenHandler,
+    stopListening,
+    stopSpeaking,
+  } from "$lib/utils";
   import toast from "svelte-french-toast";
-  // import Suggestions from "./MessageInput/Suggestions.svelte";
 
   export let submitPrompt: Function;
-  export let stopSpeaking: Function;
-  export let microphoneHandler: Function;
-  export let listenHandler: Function;
-  export let stopListening: Function;
+  // export let stopListening: Function;
 
   // export let suggestionPrompts = [];
   export let autoScroll = true;
-
-  export let speechRecognitionListening = false;
 
   export let prompt = "";
   export let messages = [];
@@ -21,10 +26,6 @@
 <div class="fixed bottom-0 w-full bg-white dark:bg-gray-800">
   <div class=" absolute right-0 left-0 bottom-0 mb-20">
     <div class="max-w-3xl px-2.5 pt-2.5 -mb-0.5 mx-auto inset-x-0">
-      <!-- {#if messages.length == 0 && suggestionPrompts.length !== 0} -->
-      <!--   <Suggestions {suggestionPrompts} {submitPrompt} /> -->
-      <!-- {/if} -->
-
       {#if autoScroll === false && messages.length > 0}
         <div class=" flex justify-center mb-4">
           <button
@@ -62,15 +63,15 @@
           on:submit|preventDefault={() => {
             if ($systemSpeaking) {
               stopSpeaking();
-            } else if (speechRecognitionListening) {
+            } else if ($systemListening) {
               console.log("speech is listening");
-              stopListening();
+              stopListening($settings);
             } else {
               submitPrompt(prompt);
             }
           }}
         >
-          {#if speechRecognitionListening == true}
+          {#if $systemListening == true}
             <div class="flex justify-between">
               <div class="flex ml-5 align-items content-center;">
                 <svg
@@ -132,7 +133,7 @@
               <div class="self-end mb-1 flex space-x-1.5 mr-2">
                 <button
                   class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1.5"
-                  on:click={stopListening()}
+                  on:click={async () => await stopListening($settings)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -178,7 +179,7 @@
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
-                    on:click={listenHandler()}
+                    on:click={async () => await listenHandler()}
                   >
                     <span
                       class="before:content-[attr(data-tip)]
@@ -209,12 +210,8 @@
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
-                    on:click={() => {
-                      const mutedFlag = microphoneHandler();
-                      mutedFlag.then((muteMicrophoneFlag) => {
-                        isMicrophoneMuted.set(muteMicrophoneFlag);
-                      });
-                    }}
+                    on:click={async () =>
+                      await microphoneHandler($settings, $isMicrophoneMuted)}
                   >
                     <!-- mute/unmute button -->
                     {#if $isMicrophoneMuted}
@@ -271,7 +268,7 @@
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
-                          class="fill-gray-400 w-5 h-5 translate-y-[0.5px]"
+                          class="fill-green-800 w-5 h-5 translate-y-[0.5px]"
                         >
                           <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
                           <path

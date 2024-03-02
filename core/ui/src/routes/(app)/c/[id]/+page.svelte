@@ -7,10 +7,19 @@
   import {
     convertMessagesToHistory,
     formatContextForBackend,
+    getMicrophoneStatus,
+    checkWsConnection,
   } from "$lib/utils";
   import { goto } from "$app/navigation";
 
-  import { settings, db, chats, chatId, systemSpeaking } from "$lib/stores";
+  import {
+    settings,
+    db,
+    chats,
+    chatId,
+    systemSpeaking,
+    isMicrophoneMuted,
+  } from "$lib/stores";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
@@ -21,9 +30,7 @@
   const socket = new WebSocket("ws://localhost:8080/ws");
 
   let loaded = false;
-  let stopResponseFlag = false;
   let autoScroll = true;
-  let isMicrophoneMuted: boolean = false;
 
   let title = "";
   let prompt = "";
@@ -86,10 +93,10 @@
       socket.close();
     });
 
-    let microphoneStatus = await getMicrophoneStatus();
+    let microphoneStatus = await getMicrophoneStatus($settings);
     if (microphoneStatus !== undefined) {
-      isMicrophoneMuted = microphoneStatus;
-      console.log(`microphone mute status: ${isMicrophoneMuted}`);
+      isMicrophoneMuted.set(microphoneStatus);
+      console.log(`microphone mute status: ${$isMicrophoneMuted}`);
     } else {
       console.error("Failed to get microphone status.");
     }
@@ -143,18 +150,6 @@
       return null;
     }
   };
-
-  function checkWsConnection(ws: WebSocket) {
-    const timer = setInterval(() => {
-      if (ws.readyState !== 1) {
-        clearInterval(timer);
-        toast.error("Couldn't connect to websocket. Reloading webpage.");
-
-        location.reload();
-      }
-      // console.log("connected to websocket");
-    }, 30000);
-  }
 
   async function handleMessage(response: {
     role: string;
@@ -323,24 +318,6 @@
     }
   };
 
-  const stopSpeaking = async () => {
-    stopResponseFlag = true;
-
-    console.log("stopping sytem speech");
-    try {
-      // TODO: if response is false system speaking == false
-      await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/speech`,
-        { method: "DELETE" }
-      );
-    } catch (error) {
-      // console.log(error);
-      toast.error(error.detail);
-    }
-
-    systemSpeaking.set(true);
-  };
-
   const updateChatAndScroll = async (userPrompt) => {
     await tick();
     if (autoScroll) {
@@ -352,8 +329,6 @@
       messages: messages,
       history: history,
     });
-
-    stopResponseFlag = false;
 
     await tick();
     if (autoScroll) {
@@ -367,18 +342,6 @@
     await chats.set(await $db.getChats());
   };
 
-  const regenerateResponse = async () => {
-    console.log("regenerateResponse");
-    if (messages.length != 0 && messages.at(-1).done == true) {
-      messages.splice(messages.length - 1, 1);
-      messages = messages;
-
-      let userMessage = messages.at(-1);
-      let userPrompt = userMessage.content;
-
-      await sendPrompt(userPrompt, userMessage.id);
-    }
-  };
   const generateChatTitle = async (_chatId, userPrompt) => {
     // if ($settings.titleAutoGenerate ?? true) {
     console.log("generateChatTitle");
@@ -422,79 +385,6 @@
     // }
   };
 
-  const stopListening = async () => {
-    try {
-      await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/listen`,
-        { method: "DELETE" }
-      );
-    } catch (error) {
-      console.log(error);
-      toast.error(error.detail);
-    }
-
-    speechRecognitionListening = false;
-  };
-
-  // NOTE: what would be the right return type if there's an error in getting the
-  // microphone status
-  const getMicrophoneStatus = async (): Promise<boolean | undefined> => {
-    try {
-      const response = await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const microphoneStatusResponse = await response.json();
-
-      return microphoneStatusResponse.message.content;
-    } catch (error) {
-      toast.error(`Error occurred while fetching microphone status: ${error}`);
-    }
-  };
-
-  // TODO: should the fetch method have throws and catch blocks
-  const microphoneHandler = async () => {
-    const toggleMicrophoneState = async (state) => {
-      const response = await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ state }),
-        }
-      );
-
-      if (state === "unmute") {
-        console.log("unmuting microphone");
-        isMicrophoneMuted = false;
-      } else {
-        console.log("muting microphone");
-        isMicrophoneMuted = true;
-      }
-    };
-
-    if (isMicrophoneMuted == true) {
-      await toggleMicrophoneState("unmute");
-    } else {
-      await toggleMicrophoneState("mute");
-    }
-    return isMicrophoneMuted;
-  };
-
-  //TODO: implement a handler to prevent button spams
-  const listenHandler = async () => {
-    await fetch(`${OLLAMA_API_BASE_URL}v1/voice/listen`, {
-      method: "PUT",
-    });
-  };
-
   const setChatTitle = async (_chatId, _title) => {
     await $db.updateChatById(_chatId, { title: _title });
     if (_chatId === $chatId) {
@@ -519,17 +409,6 @@
       </div>
     </div>
 
-    <MessageInput
-      bind:prompt
-      bind:autoScroll
-      bind:isMicrophoneMuted
-      bind:speechRecognitionListening
-      {messages}
-      {listenHandler}
-      {stopListening}
-      {submitPrompt}
-      {stopSpeaking}
-      {microphoneHandler}
-    />
+    <MessageInput bind:prompt bind:autoScroll {messages} {submitPrompt} />
   </div>
 {/if}

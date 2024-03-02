@@ -379,7 +379,7 @@
       </div>
     </div>
     <!-- TODO: make this generated -->
-    <div class=" mt-10 text-2xl text-gray-800 dark:text-red-800 font-semibold">
+    <div class=" mt-10 text-2xl text-gray-800 dark:text-gray-600 font-semibold">
       How may I be of service, Sir?
     </div>
   </div>
@@ -394,9 +394,7 @@
             {#if message.role === "user"}
               {#if $config === null || !($config?.auth ?? true)}
                 <img
-                  src="{$settings.gravatarUrl
-                    ? $settings.gravatarUrl
-                    : '/user'}.png"
+                  src="{'/user'}.png"
                   class=" max-w-[28px] object-cover rounded-full"
                   alt="User profile"
                 />

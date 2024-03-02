@@ -5,7 +5,16 @@
   import { OLLAMA_API_BASE_URL } from "$lib/constants";
   import { onMount, tick } from "svelte";
 
-  import { settings, db, chats, chatId, systemSpeaking } from "$lib/stores";
+  import {
+    settings,
+    db,
+    chats,
+    chatId,
+    systemSpeaking,
+    isMicrophoneMuted,
+    systemListening,
+  } from "$lib/stores";
+  import { getMicrophoneStatus, checkWsConnection } from "$lib/utils";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
@@ -13,13 +22,11 @@
 
   const socket = new WebSocket("ws://localhost:8080/ws");
 
-  let stopResponseFlag = false;
   let autoScroll = true;
-  let isMicrophoneMuted: boolean = false;
 
   let title = "";
   let prompt = "";
-  let speechRecognitionListening = false;
+  // let speechRecognitionListening = false;
 
   let messages: any[] = [];
   let history: {
@@ -67,10 +74,11 @@
       socket.close();
     });
 
-    let microphoneStatus = await getMicrophoneStatus();
+    // TODO: extract to function for both page.svelte
+    let microphoneStatus = await getMicrophoneStatus($settings);
     if (microphoneStatus !== undefined) {
-      isMicrophoneMuted = microphoneStatus;
-      console.log(`microphone mute status: ${isMicrophoneMuted}`);
+      isMicrophoneMuted.set(microphoneStatus);
+      console.log(`microphone mute status: ${$isMicrophoneMuted}`);
     } else {
       console.error("Failed to get microphone status.");
     }
@@ -98,7 +106,7 @@
     };
   };
 
-  function checkWsConnection(ws: WebSocket) {
+  function checkWsConnection1(ws: WebSocket) {
     const timer = setInterval(() => {
       if (ws.readyState !== 1) {
         clearInterval(timer);
@@ -174,9 +182,9 @@
       updateChatAndScroll(response.content);
     } else if (response.role === "status") {
       if (response.data === "recognizer_loop:record_begin") {
-        speechRecognitionListening = true;
+        systemListening.set(true);
       } else if (response.data === "recognizer_loop:record_end") {
-        speechRecognitionListening = false;
+        systemListening.set(false);
       } else if (response.data === "recognizer_loop:audio_output_start") {
         systemSpeaking.set(true);
         console.log("system speaking");
@@ -244,8 +252,6 @@
       messages = messages;
       responseMessage.done = true;
       // console.log(``)
-
-      stopResponseFlag = false;
     } catch (error) {
       console.log(error);
       if ("detail" in error) {
@@ -304,25 +310,9 @@
     }
   };
 
-  const stopSpeaking = async () => {
-    stopResponseFlag = true;
-
-    try {
-      // TODO: if response is false system speaking == false
-      await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/speech`,
-        { method: "DELETE" }
-      );
-    } catch (error) {
-      console.log(error);
-      toast.error(error.detail);
-    }
-
-    systemSpeaking.set(false);
-  };
-
   const updateChatAndScroll = async (userPrompt) => {
     await tick();
+    console.log("autoscroll: ", autoScroll);
     if (autoScroll) {
       window.scrollTo({ top: document.body.scrollHeight });
     }
@@ -332,8 +322,6 @@
       messages: messages,
       history: history,
     });
-
-    stopResponseFlag = false;
 
     await tick();
     if (autoScroll) {
@@ -345,18 +333,6 @@
       await generateChatTitle($chatId, userPrompt);
     }
     await chats.set(await $db.getChats());
-  };
-  const regenerateResponse = async () => {
-    console.log("regenerateResponse");
-    if (messages.length != 0 && messages.at(-1).done == true) {
-      messages.splice(messages.length - 1, 1);
-      messages = messages;
-
-      let userMessage = messages.at(-1);
-      let userPrompt = userMessage.content;
-
-      await sendPrompt(userPrompt, userMessage.id);
-    }
   };
 
   const generateChatTitle = async (_chatId, userPrompt) => {
@@ -414,77 +390,6 @@
       title = _title;
     }
   };
-  const stopListening = async () => {
-    try {
-      await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/listen`,
-        { method: "DELETE" }
-      );
-    } catch (error) {
-      console.log(error);
-      toast.error(error.detail);
-    }
-
-    speechRecognitionListening = false;
-  };
-
-  // NOTE: what would be the right return type if there's an error in getting the
-  // microphone status
-  const getMicrophoneStatus = async (): Promise<boolean | undefined> => {
-    try {
-      const response = await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const microphoneStatusResponse = await response.json();
-
-      return microphoneStatusResponse.message.content;
-    } catch (error) {
-      toast.error(`Error occurred while fetching microphone status: ${error}`);
-    }
-  };
-
-  const microphoneHandler = async () => {
-    const toggleMicrophoneState = async (state) => {
-      const response = await fetch(
-        `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/microphone`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ state }),
-        }
-      );
-
-      if (state === "unmute") {
-        console.log("unmuting microphone");
-        isMicrophoneMuted = false;
-      } else {
-        console.log("muting microphone");
-        isMicrophoneMuted = true;
-      }
-    };
-
-    if (isMicrophoneMuted == true) {
-      await toggleMicrophoneState("unmute");
-    } else {
-      await toggleMicrophoneState("mute");
-    }
-    return isMicrophoneMuted;
-  };
-
-  //TODO: implement a handler to prevent button spams
-  const listenHandler = async () => {
-    await fetch(`${OLLAMA_API_BASE_URL}v1/voice/listen`, {
-      method: "PUT",
-    });
-  };
 </script>
 
 <svelte:window
@@ -502,16 +407,5 @@
     </div>
   </div>
 
-  <MessageInput
-    bind:prompt
-    bind:autoScroll
-    bind:isMicrophoneMuted
-    bind:speechRecognitionListening
-    {messages}
-    {listenHandler}
-    {stopListening}
-    {submitPrompt}
-    {stopSpeaking}
-    {microphoneHandler}
-  />
+  <MessageInput bind:prompt bind:autoScroll {messages} {submitPrompt} />
 </div>
