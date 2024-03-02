@@ -15,17 +15,6 @@ from core.util.log import LOG
 from core.util.network_utils import connected_to_the_internet
 from core.util.time import now_local
 
-# from langchain.embeddings import OpenAIEmbeddings
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
 
 class LLM:
     """
@@ -87,10 +76,10 @@ class LLM:
         LLM.chat_memory = chat_memory
 
     @staticmethod
-    def llm_response(**kwargs):
+    def chat_with_system(**kwargs):
         """
         Use a Language Model to generate and speak a response based
-        on the given prompt and input.
+        on the given prompt and relevant arguments.
 
         Args:
             **kwargs: Keyword arguments for prompt, context, and query.
@@ -106,7 +95,7 @@ class LLM:
             chat_memory=LLM.chat_memory,
             human_prefix=LLM.user_name,
             ai_prefix=LLM.system_name,
-            k=3,  # if this is a lot then context window is exceeded
+            k=4,  # if this is a lot then context window is exceeded
         )
         current_conversation = chat_history.load_memory_variables({})["history"]
 
@@ -152,7 +141,37 @@ class LLM:
             LOG.error("error in llm response: {}".format(e))
 
     @staticmethod
-    def speak(utterance, expect_response=False, message=None):
+    def get_llm_response(**kwargs):
+        prompt = kwargs.get("prompt", "")
+        context = kwargs.get("context", "")
+        send_to_ui: bool = kwargs.get("send_to_ui", True)
+        speak = kwargs.get("speak", False)
+
+        # USE LOCAL MODEL FOR TITLE GENERATION
+        model = LLM._load_model("offline")
+
+        gptchain = LLMChain(llm=model, verbose=False, prompt=prompt)
+
+        try:
+            response = gptchain.predict(
+                context=context,
+                # ge LOG.info("system_message: " + system_message)
+            )
+        except Exception as e:
+            LOG.error(f"error in llm response: {e}")
+
+        LOG.info(f"Response from LLM: {response}")
+        if send_to_ui:
+            try:
+                LLM.api.send_ai_utterance(response)
+            except Exception as e:
+                LOG.error(f"couldn't send data: {e}")
+        if speak:
+            LLM._speak(response)
+        return response
+
+    @staticmethod
+    def _speak(utterance, expect_response=False, message=None):
         """Speak a sentence.
 
         Args:

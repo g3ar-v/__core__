@@ -127,6 +127,7 @@ class IntentService:
         self.bus.on("core.speech.recognition.unknown", self.reset_converse)
         self.bus.on("core.skills.loaded", self.update_skill_name_dict)
         self.bus.on("intent.service.response.latency", self.handle_response_latency)
+        self.bus.on("core.api.generate", self.handle_generate)
 
         def add_active_skill_handler(message):
             skill_id = message.data["skill_id"]
@@ -267,6 +268,15 @@ class IntentService:
             self.active_skills.insert(0, [skill_id, time.time()])
         else:
             LOG.warning("Skill ID was empty, won't add to list of " "active skills.")
+
+    def handle_generate(self, message):
+        """
+        Generate a response based on the given prompt and send to the UI."""
+        response = LLM.get_llm_response(
+            prompt=notify_prompt, context=message.data["prompt"], send_to_ui=False
+        )
+        m = Message("core.api.generate.response", data={"response": response})
+        self.bus.emit(m)
 
     def handle_context(self, message):
         """Handle context from UI. For every switch to a new chat, the context
