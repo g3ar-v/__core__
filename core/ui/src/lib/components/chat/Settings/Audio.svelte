@@ -190,7 +190,7 @@
 
   <div class="flex justify-end pt-3 text-sm font-medium">
     <button
-      class=" px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-100 transition rounded"
+      class=" px-4 py-2 bg-green-800 hover:bg-green-700 text-gray-100 transition rounded"
       type="submit"
     >
       Save
