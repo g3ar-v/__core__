@@ -1195,17 +1195,6 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
-name = "json-repair"
-version = "0.9.0"
-description = "A package to repair broken json strings"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "json_repair-0.9.0-py3-none-any.whl", hash = "sha256:962a7a5c9cc8a07175aa511f7d89d1049e6bcaad43ce31ec1a40d0ba48a19538"},
-    {file = "json_repair-0.9.0.tar.gz", hash = "sha256:56c5fdc868d59e87aa5efd76ea483ed0ff819d6c02e64175cac17fd4c2792318"},
-]
-
-[[package]]
 name = "jsonlines"
 version = "1.2.0"
 description = "Library with helpers for the jsonlines file format"
@@ -3887,4 +3876,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d33ff083447a238e534bf75a58d23b249a271c0ef0832c73004e2dfc94d64e69"
+content-hash = "38d93f4cca28fda65990601ede12a8aad80a133dd2a7b1a2d9c2927aefc266bf"

@@ -1,22 +1,15 @@
 """Application entrypoint
 """
+
 from typing import Dict
 
-from fastapi import (
-    FastAPI,
-    HTTPException,
-    WebSocket,
-    WebSocketDisconnect,
-    status,
-)
+from fastapi import FastAPI, HTTPException, status
 
 # from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
-from core.util.log import LOG
-
-from .common.utils import websocket_manager, ws_send
+from .common.utils import ws_send
 from .config import get_settings
 from .routers import system, voice
 
@@ -56,7 +49,6 @@ app.add_middleware(
 )
 
 app.openapi = custom_openapi_schema
-# websocket_manager = WebSocketManager()
 
 
 # NOTE: should this be the path?
@@ -76,25 +68,6 @@ async def get_status():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="unable to fetch status"
         ) from error
-
-        print(error)
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-):
-    LOG.debug(f"CONNECTING WITH NEW WEBSOCKET: {websocket}")
-    await websocket_manager.connect(websocket)
-
-    try:
-        while True:
-            data = await websocket.receive_json()
-            LOG.info(data)
-            # Do something with data
-    except WebSocketDisconnect:
-        LOG.info(f"DISCONNECTING WEBSOCKET: {websocket}")
-        await websocket_manager.disconnect(websocket)
 
 
 # app.include_router(auth.router, prefix=settings.prefix_version)

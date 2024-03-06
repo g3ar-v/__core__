@@ -268,7 +268,7 @@ def main(
         callbacks = StatusCallbackMap(
             on_ready=ready_hook, on_error=error_hook, on_stopping=stopping_hook
         )
-        status = ProcessStatus("speech", bus, callbacks)
+        status = ProcessStatus("voice", bus, callbacks)
 
         # Register handlers on internal RecognizerLoop bus
         loop = RecognizerLoop(watchdog)

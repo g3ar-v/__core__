@@ -62,7 +62,7 @@
           class=" flex flex-col relative w-full rounded-xl border dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-100"
           on:submit|preventDefault={() => {
             if ($systemSpeaking) {
-              stopSpeaking();
+              stopSpeaking($settings);
             } else if ($systemListening) {
               console.log("speech is listening");
               stopListening($settings);
@@ -173,40 +173,8 @@
                 }}
               />
 
-              <div class="self-end mb-2 flex space-x-1.5 mr-2">
+              <div class="self-end mb-2 flex justify-between space-x-1.5 mr-2">
                 {#if $systemSpeaking === false}
-                  <!-- listen button -->
-                  <button
-                    class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
-                    type="button"
-                    on:click={async () => await listenHandler()}
-                  >
-                    <span
-                      class="before:content-[attr(data-tip)]
-                          before:absolute
-                          before:px-3 before:py-2
-                          before:right-16 before:bottom-16
-                          before:w-max before:max-w-xs
-                          before:translate-x-2.5 before:translate-y-2.5
-                          before:bg-gray-900 before:text-white
-                          before:rounded-md before:opacity-0
-                          before:transition-all
-
-                          hover:before:opacity-100
-                    "
-                      data-tip="activate listen"
-                    >
-                      <svg
-                        height="16px"
-                        width="16px"
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="fill-red-950"
-                        ><path
-                          d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
-                        /></svg
-                      >
-                    </span>
-                  </button>
                   <button
                     class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
                     type="button"
@@ -268,7 +236,7 @@
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
-                          class="fill-green-800 w-5 h-5 translate-y-[0.5px]"
+                          class="fill-blue-950 w-5 h-5 translate-y-[0.5px]"
                         >
                           <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
                           <path
@@ -277,6 +245,38 @@
                         </svg>
                       </span>
                     {/if}
+                  </button>
+                  <!-- listen button -->
+                  <button
+                    class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition rounded-lg p-1.5"
+                    type="button"
+                    on:click={async () => await listenHandler()}
+                  >
+                    <span
+                      class="before:content-[attr(data-tip)]
+                          before:absolute
+                          before:px-3 before:py-2
+                          before:right-16 before:bottom-16
+                          before:w-max before:max-w-xs
+                          before:translate-x-2.5 before:translate-y-2.5
+                          before:bg-gray-900 before:text-white
+                          before:rounded-md before:opacity-0
+                          before:transition-all
+
+                          hover:before:opacity-100
+                    "
+                      data-tip="activate listen"
+                    >
+                      <svg
+                        height="16px"
+                        width="16px"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-red-950"
+                        ><path
+                          d="m8 1a7 7 0 0 0 -7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0 -7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1 -6 6 6 6 0 0 1 -6-6 6 6 0 0 1 6-6zm0 1a5 5 0 0 0 -5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0 -5-5z"
+                        /></svg
+                      >
+                    </span>
                   </button>
 
                   <!-- submit button -->

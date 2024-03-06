@@ -19,8 +19,9 @@
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
+  import type { AnyNode } from "postcss";
 
-  const socket = new WebSocket("ws://localhost:8080/ws");
+  const socket = new WebSocket("ws://localhost:8081");
 
   let autoScroll = true;
 
@@ -36,6 +37,7 @@
     messages: {},
     currentId: null,
   };
+  let systemMessage = {};
 
   // Update messages based on history if currentId is not null
   $: if (history.currentId !== null) {
@@ -106,26 +108,17 @@
     };
   };
 
-  function checkWsConnection1(ws: WebSocket) {
-    const timer = setInterval(() => {
-      if (ws.readyState !== 1) {
-        clearInterval(timer);
-        toast.error("Couldn't connect to websocket. Reloading webpage.");
-
-        location.reload();
-      }
-      // console.log("connected to websocket");
-    }, 30000);
-  }
-
   // TODO: extract duplicate code on adding messages to chat history
   async function handleMessage(response: {
     role: string;
     content: any;
     data: string;
+    type: string;
+    start: any;
+    end: any;
   }) {
     if (response.role === "user") {
-      console.log(`user message: ${response.content}`);
+      // console.log(`user message: ${response.content}`);
       let userMessageId = uuidv4();
       let userMessage = {
         id: userMessageId,
@@ -153,20 +146,49 @@
 
       history.messages[userMessageId] = userMessage;
       history.currentId = userMessageId;
-      updateChatAndScroll(response.content);
-    } else if (response.role === "system") {
-      console.log(`system message: ${response.content}`);
-      let systemMessageId = uuidv4();
-      let systemMessage = {
-        parentId: messages.length !== 0 ? messages.at(-1).id : null,
-        role: "assistant",
-        id: systemMessageId,
-        childrenIds: [],
-        content: response.content,
-      };
+      await tick();
+      console.log("autoscroll: ", autoScroll);
+      if (autoScroll) {
+        window.scrollTo({ top: document.body.scrollHeight });
+      }
 
-      history.messages[systemMessageId] = systemMessage;
-      history.currentId = systemMessageId;
+      await $db.updateChatById($chatId, {
+        title: title === "" ? "New Chat" : title,
+        messages: messages,
+        history: history,
+      });
+      updateChatAndScroll(response.content);
+    } else if (response.role === "assistant") {
+      if (response.start) {
+        let systemMessageId = uuidv4();
+        systemMessage = {
+          parentId: messages.length !== 0 ? messages.at(-1).id : null,
+          role: "assistant",
+          id: systemMessageId,
+          childrenIds: [],
+          content: "",
+        };
+        // console.log("system message id: ", systemMessageId);
+
+        // console.log("history.currentId: ", history.currentId);
+      } else if (response.content) {
+        systemMessage.content += response.content;
+        history.messages[systemMessage.id] = systemMessage;
+        history.currentId = systemMessage.id;
+
+        // console.log(
+        //   `system message: ${history.messages[systemMessage.id].content}`
+        // );
+      } else if (response.end) {
+        systemMessage.done = true;
+        history.messages[history.currentId] = systemMessage;
+
+        await $db.updateChatById($chatId, {
+          title: title === "" ? "New Chat" : title,
+          messages: messages,
+          history: history,
+        });
+      }
 
       if (messages.length == 0) {
         await $db.createNewChat({
@@ -176,10 +198,8 @@
           history: history,
         });
       }
-      history.messages[history.currentId].content = response.content;
-      history.messages[history.currentId].done = true;
 
-      updateChatAndScroll(response.content);
+      // updateChatAndScroll(response.content);
     } else if (response.role === "status") {
       if (response.data === "recognizer_loop:record_begin") {
         systemListening.set(true);
@@ -312,18 +332,6 @@
 
   const updateChatAndScroll = async (userPrompt) => {
     await tick();
-    console.log("autoscroll: ", autoScroll);
-    if (autoScroll) {
-      window.scrollTo({ top: document.body.scrollHeight });
-    }
-
-    await $db.updateChatById($chatId, {
-      title: title === "" ? "New Chat" : title,
-      messages: messages,
-      history: history,
-    });
-
-    await tick();
     if (autoScroll) {
       window.scrollTo({ top: document.body.scrollHeight });
     }
@@ -389,6 +397,10 @@
     if (_chatId === $chatId) {
       title = _title;
     }
+  };
+  const scrollToBottom = () => {
+    const element = document.getElementById("messages-container");
+    element.scrollTop = element.scrollHeight;
   };
 </script>
 

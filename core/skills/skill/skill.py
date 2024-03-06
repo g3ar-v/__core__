@@ -14,12 +14,12 @@ from adapt.intent import Intent, IntentBuilder
 from xdg import BaseDirectory
 
 from core import dialog
-from core.audio import wait_while_speaking
 
 # from core.enclosure.api import EnclosureAPI
 # from core.enclosure.gui import SkillGUI
 from core.api import SystemApi
-from core.configuration import Configuration
+from core.audio import wait_while_speaking
+from core.configuration.config import Configuration
 from core.dialog import load_dialogs
 from core.filesystem import FileSystemAccess
 from core.messagebus.message import Message, dig_for_message
@@ -1164,8 +1164,8 @@ class Skill:
         m = message.forward("speak", data) if message else Message("speak", data)
         self.bus.emit(m)
         if send_to_ui:
-            self.api.send_ai_utterance(utterance)
-
+            payload = {"role": "assistant", "type": "message", "content": utterance}
+            self.bus.emit(Message("core.utterance.response", {"content": payload}))
         if wait:
             wait_while_speaking()
 

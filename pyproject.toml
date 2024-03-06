@@ -45,7 +45,6 @@ langchain-openai = "^0.0.7"
 elevenlabs = "^0.2.27"
 speechrecognition = "^3.10.1"
 msm = "^0.8.9"
-json-repair = "^0.9.0"
 python-dotenv = "^1.0.1"
 
 [tool.poetry.scripts]
@@ -54,6 +53,7 @@ core-messagebus="core.messagebus.service.__main__:main"  # MESSAGEBUS
 core-skills="core.skills.__main__:main"  # SKILLS
 core-cli-client="core.client.text.__main__:main"# CORE contact with MB
 core-audio="core.audio.__main__:main"  # AUDIO OUTPUT
+core-web-client="core.web.client.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]

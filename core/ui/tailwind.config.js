@@ -32,6 +32,7 @@ export default {
           950: "#C13F21",
         },
         blue: {
+          700: "#82ad9f",
           950: "#659cc8",
         },
         green: {

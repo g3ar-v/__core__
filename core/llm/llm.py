@@ -2,7 +2,6 @@
 # processes
 import os
 
-import json_repair
 from langchain.chains import LLMChain
 from langchain.memory import ChatMessageHistory, ConversationBufferWindowMemory
 from langchain_community.llms import Ollama
@@ -60,9 +59,10 @@ class LLM:
         # ):
         if model_type.lower() == "online" and connected_to_the_internet():
             return ChatOpenAI(
-                temperature=1.5,
+                temperature=1.0,
                 max_tokens=826,
-                model="gpt-3.5-turbo-1106",
+                model="gpt-3.5-turbo-0613",
+                streaming=True,
             )
         else:
             return Ollama(model="mistral:7b-instruct")
@@ -87,10 +87,6 @@ class LLM:
         prompt = kwargs.get("prompt")
         context = kwargs.get("context")
         query = kwargs.get("query")
-        send_to_ui = kwargs.get("send_to_ui", True)
-        parser = kwargs.get("parser")
-
-        relevant_memory = None
         chat_history = ConversationBufferWindowMemory(
             chat_memory=LLM.chat_memory,
             human_prefix=LLM.user_name,
@@ -99,52 +95,93 @@ class LLM:
         )
         current_conversation = chat_history.load_memory_variables({})["history"]
 
-        try:
+        def run_text_llm(prompt, query, current_conversation, context=None):
+            inside_code_block = False
+            accumulated_block = ""
+
             today = now_local()
             date_now = today.strftime("%Y-%m-%d %H:%M %p")
 
             model = LLM._load_model("online")
+            gptchain = MyChain(llm=model, verbose=True, prompt=prompt)
 
-            gptchain = LLMChain(
-                llm=model, verbose=False, prompt=prompt, output_parser=parser
-            )
+            for chunk in gptchain.stream(
+                {
+                    "query": query,
+                    "current_conversation": current_conversation,
+                    "date_str": date_now,
+                }
+            ):
+                if chunk.content == "":
+                    continue
 
-            try:
-                response = gptchain.predict(
-                    context=context,
-                    query=query,
-                    curr_conv=current_conversation,
-                    rel_mem=relevant_memory,
-                    date_str=date_now,
-                )
-            except Exception as e:
-                LOG.error(f"Invalid JSON: {e}")
-                response = json_repair.loads(response, return_objects=True)
+                # LOG.info(f"Response from LLM: {chunk.content}")
 
-            LOG.info(f"Response from LLM: {response}")
+                accumulated_block += chunk.content
 
-            stt_response = response.get("speech", "Apologies, I can't respond to that")
-            chat_response = response.get("chat", stt_response)
-            action_response = response.get("action", "")
+                if accumulated_block.endswith("`"):
+                    # We might be writing "```" one token at a time.
+                    continue
 
-            if chat_history:
-                LLM.chat_memory.add_user_message(query)
-                LLM.chat_memory.add_ai_message(stt_response)
+                #  Did we just enter a code block?
+                if "```" in accumulated_block and not inside_code_block:
+                    inside_code_block = True
+                    accumulated_block = accumulated_block.split("```")[1]
 
-            if send_to_ui:
-                try:
-                    LLM.api.send_ai_utterance(chat_response)
-                except Exception as e:
-                    LOG.error(f"couldn't send data: {e}")
+                #  Did we just exit a code block?
+                if inside_code_block and "```" in accumulated_block:
+                    return
 
-            LLM._speak(
-                stt_response,
-                True if action_response and "listen" in action_response else False,
-            )
-            return chat_response
+                # If we're in a code block,
+                if inside_code_block:
+                    yield {
+                        "role": "assistant",
+                        "type": "code",
+                        "content": chunk.content,
+                    }
+
+                if not inside_code_block:
+                    yield {
+                        "role": "assistant",
+                        "type": "message",
+                        "content": chunk.content,
+                    }
+
+        try:
+            last_flag_base = None
+            messages = ""
+
+            for chunk in run_text_llm(prompt, query, current_conversation):
+                if chunk["content"] == "":
+                    continue
+
+                LOG.info(f"Chunk: {chunk}")
+                # LOG.info(f"last flag base: {last_flag_base}")
+
+                if (
+                    last_flag_base
+                    and "role" in chunk
+                    and "type" in chunk
+                    and last_flag_base["role"] == chunk["role"]
+                    and last_flag_base["type"] == chunk["type"]
+                ):
+                    messages += chunk["content"]
+                else:
+                    if last_flag_base:
+                        yield {**last_flag_base, "content": messages}
+
+                    last_flag_base = {"role": chunk["role"], "type": chunk["type"]}
+                    yield {**last_flag_base, "start": True}
+
+                # Yield the chunk itself
+                yield chunk
+
+            # Yield a final end flag
+            if last_flag_base:
+                yield {**last_flag_base, "end": True}
 
         except Exception as e:
-            LOG.error("error in llm response: {}".format(e))
+            LOG.error("Error occurred during LLM response: {}".format(e), exc_info=True)
 
     @staticmethod
     def get_llm_response(**kwargs):
@@ -154,24 +191,21 @@ class LLM:
         speak = kwargs.get("speak", False)
 
         # USE LOCAL MODEL FOR TITLE GENERATION
-        model = LLM._load_model("offline")
+        model = LLM._load_model("online")
 
         gptchain = LLMChain(llm=model, verbose=False, prompt=prompt)
 
         try:
             response = gptchain.predict(
                 context=context,
-                # ge LOG.info("system_message: " + system_message)
             )
         except Exception as e:
             LOG.error(f"error in llm response: {e}")
 
         LOG.info(f"Response from LLM: {response}")
         if send_to_ui:
-            try:
-                LLM.api.send_ai_utterance(response)
-            except Exception as e:
-                LOG.error(f"couldn't send data: {e}")
+            payload = {"role": "assistant", "type": "message", "content": response}
+            LLM.bus.emit(Message("core.utterance.response", {"content": payload}))
         if speak:
             LLM._speak(response)
         return response
@@ -192,3 +226,15 @@ class LLM:
 
         m = Message("speak", data)
         LLM.bus.emit(m)
+
+
+class MyChain(LLMChain):
+    def stream(
+        self,
+        input,
+        config=None,
+        run_manager=None,
+        **kwargs,
+    ):
+        prompts, stop = self.prep_prompts([input], run_manager=run_manager)
+        yield from self.llm.stream(input=prompts[0], config=config, **kwargs)

@@ -5,7 +5,7 @@ from threading import Lock
 import core.intent_services
 from core.api import SystemApi
 from core.configuration import Configuration
-from core.llm import LLM, main_persona_prompt, parser
+from core.llm import LLM, main_persona_prompt
 from core.messagebus.message import Message
 from core.util import LOG, flatten_list
 from core.util.resource_files import CoreResources
@@ -111,6 +111,8 @@ class QAService:
         return True
 
     def handle_query_response(self, utterance: str, message: dict) -> bool:
+        system_message = ""
+        last_sentence = ""
         try:
             # get response from llm when chat is initiated from UI
             if message.data.get("context", {}).get("source", {}) == "ui_backend":
@@ -118,7 +120,6 @@ class QAService:
                     query=utterance,
                     prompt=main_persona_prompt,
                     send_to_ui=False,
-                    parser=parser,
                 )
                 self.bus.emit(
                     Message(
@@ -128,9 +129,46 @@ class QAService:
                 )
 
             else:
-                response = LLM.chat_with_system(
-                    query=utterance, prompt=main_persona_prompt, parser=parser
-                )
+                for chunk in LLM.chat_with_system(
+                    query=utterance, prompt=main_persona_prompt
+                ):
+                    LOG.debug(f"chunk in qa service: {chunk}")
+                    if "start" in chunk:
+                        self.bus.emit(
+                            Message(
+                                "core.utterance.response",
+                                {"content": chunk},
+                            )
+                        )
+                    if chunk["type"] == "message" and "content" in chunk:
+                        system_message += chunk["content"]
+                        self.bus.emit(
+                            Message(
+                                "core.utterance.response",
+                                {"content": chunk},
+                            )
+                        )
+                        if any([punct in system_message for punct in ".?!\n"]):
+                            LLM._speak(system_message)
+                            system_message = ""
+                        
+
+                    if "end" in chunk:
+                        LOG.debug("system message: " + system_message)
+                        self.bus.emit(
+                            Message(
+                                "core.utterance.response",
+                                {"content": chunk},
+                                {"done": True},
+                            )
+                        )
+                        if system_message:
+                            LLM._speak(
+                                system_message,
+                                "?" in system_message,
+                            )
+
+                            system_message = ""
 
             return True
         except Exception as e:

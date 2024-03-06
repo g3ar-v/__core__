@@ -44,11 +44,11 @@ help() {
 	echo "  bus                      the messagebus service"
 	echo "  skills                   the skill service"
 	echo "  voice                    voice capture service"
-	# echo " ui_backend                the backend for GUI"
 	# echo "  enclosure                enclosure service"
 	echo
 	echo "Tool COMMANDs:"
 	echo "  cli                      the Command Line Interface"
+	echo " 	web                		 the web UI service"
 	# echo "  unittest                 run core unit tests (requires pytest)"
 	# echo "  skillstest               run the skill autotests for all skills (requires pytest)"
 	# echo "  vktest                   run the Voight Kampff integration test suite"
@@ -78,6 +78,7 @@ name_to_script_path() {
 	"audio") _module="core.audio" ;;
 	"voice") _module="core.client.voice" ;;
 	"cli") _module="core.client.text" ;;
+	"web") _module="core.client.web" ;;
 	# "audiotest")         _module="core.util.audio_test" ;;
 	# "wakewordtest")      _module="test.wake_word" ;;
 	# "enclosure")         _module="core.client.enclosure" ;;
@@ -93,7 +94,9 @@ name_to_script_path() {
 source_venv() {
 	# Enter CONDA virtual environment
 	# TODO: dynmaically get miniconda path
-	$CONDA_EXE activate $CONDA_ENV_NAME
+  CONDA_BIN=$(dirname "$CONDA_EXE")
+	# $CONDA_EXE activate $CONDA_ENV_NAME
+  source "$CONDA_BIN/activate" $CONDA_ENV_NAME
 	retval=$?
 	# echo "retval $retval"
 	if [[ $retval -eq "0" ]]; then
@@ -170,6 +173,7 @@ launch_all() {
 	sleep 2 # Add a delay of 5 seconds
 	launch_background voice
 	launch_background skills
+	launch_background web
 	# launch_background enclosure
 	# cd "${UI_DIR}" || exit
 	# nohup npm run dev &
@@ -251,11 +255,13 @@ case ${_opt} in
 
 "debug")
 	launch_all
+  # launch_process web
 	launch_process cli
 	;;
 
 "cli")
 	require_process bus
+	# require_process web
 	require_process skills
 	launch_process "${_opt}"
 	;;
@@ -284,12 +290,6 @@ case ${_opt} in
 	;;
 "wakewordtest")
 	launch_process "${_opt}"
-	;;
-"sdkdoc")
-	source_venv
-	cd doc || exit 1 # Exit if doc directory doesn't exist
-	make "$@"
-	cd ..
 	;;
 "enclosure")
 	launch_background "${_opt}"

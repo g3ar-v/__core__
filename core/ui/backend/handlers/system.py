@@ -12,6 +12,7 @@ from core.util.log import LOG
 settings = get_settings()
 
 
+# TODO: Authenticate settings
 def get_config(sort: Optional[bool] = False, core: Optional[bool] = False) -> Config:
     """Retrieves local or core configuration by leveraging the
     core-api skill

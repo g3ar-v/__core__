@@ -1,5 +1,5 @@
 """Intent service, providing intent parsing since forever!"""
-import json
+
 import time
 from collections import namedtuple
 from copy import copy
@@ -12,7 +12,6 @@ from core.configuration import Configuration, set_default_lf_lang
 from core.dialog import dialog
 from core.llm import LLM, notify_prompt
 from core.messagebus.message import Message
-from core.util import flatten_list
 from core.util.intent_service_interface import IntentQueryApi, open_intent_envelope
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
@@ -327,15 +326,6 @@ class IntentService:
 
             utterances = message.data.get("utterances", [])
             combined = _normalize_all_utterances(utterances)
-
-            if message.data.get("context", {}).get("source", {}) != "ui_backend":
-                try:
-                    self.api.send_user_utterance(flatten_list(combined)[0])
-                except Exception as e:
-                    LOG.error(f"couldn't send data: {e}")
-
-            # if LLM.chat_memory:
-            # LLM.chat_memory.add_user_message(flatten_list(combined)[0])
 
             stopwatch = Stopwatch()
 

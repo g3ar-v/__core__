@@ -17,6 +17,7 @@
     db,
     chats,
     chatId,
+    systemListening,
     systemSpeaking,
     isMicrophoneMuted,
   } from "$lib/stores";
@@ -27,13 +28,14 @@
   import { page } from "$app/stores";
   // import { update } from "svelte-french-toast/dist/core/store";
 
-  const socket = new WebSocket("ws://localhost:8080/ws");
+  const socket = new WebSocket("ws://0.0.0.0:8081");
 
   let loaded = false;
   let autoScroll = true;
 
   let title = "";
   let prompt = "";
+  let systemMessage = {};
   let speechRecognitionListening = false;
 
   let messages: any[] = [];
@@ -155,9 +157,12 @@
     role: string;
     content: any;
     data: string;
+    type: string;
+    start: any;
+    end: any;
   }) {
     if (response.role === "user") {
-      console.log(`user message: ${response.content}`);
+      // console.log(`user message: ${response.content}`);
       let userMessageId = uuidv4();
       let userMessage = {
         id: userMessageId,
@@ -166,38 +171,90 @@
         role: "user",
         content: response.content,
       };
+
+      // This code checks if there are any existing messages in the chat history and
+      // updates the childrenIds of the last message with the newly generated user
+      // message ID.
       // if (messages.length !== 0) {
       //   history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
       // }
 
+      if (messages.length == 0) {
+        await $db.createNewChat({
+          id: $chatId,
+          title: "New Chat",
+          messages: messages,
+          history: history,
+        });
+      }
+
       history.messages[userMessageId] = userMessage;
       history.currentId = userMessageId;
-      updateChatAndScroll(response.content);
-    } else if (response.role === "system") {
-      console.log(`system message: ${response.content}`);
-      let systemMessageId = uuidv4();
-      let systemMessage = {
-        parentId: messages.length !== 0 ? messages.at(-1).id : null,
-        role: "assistant",
-        id: systemMessageId,
-        childrenIds: [],
-        content: response.content,
-      };
+      await tick();
+      console.log("autoscroll: ", autoScroll);
+      if (autoScroll) {
+        window.scrollTo({ top: document.body.scrollHeight });
+      }
 
-      // let previousMessage = messages.at(-1);
-      history.messages[systemMessageId] = systemMessage;
-      history.currentId = systemMessageId;
-      updateChatAndScroll(response.content);
+      await $db.updateChatById($chatId, {
+        title: title === "" ? "New Chat" : title,
+        messages: messages,
+        history: history,
+      });
+      // updateChatAndScroll(response.content);
+    } else if (response.role === "assistant") {
+      if (response.start) {
+        let systemMessageId = uuidv4();
+        systemMessage = {
+          parentId: messages.length !== 0 ? messages.at(-1).id : null,
+          role: "assistant",
+          id: systemMessageId,
+          childrenIds: [],
+          content: "",
+        };
+        // console.log("system message id: ", systemMessageId);
+
+        // console.log("history.currentId: ", history.currentId);
+      } else if (response.content) {
+        systemMessage.content += response.content;
+        history.messages[systemMessage.id] = systemMessage;
+        history.currentId = systemMessage.id;
+
+        // console.log(
+        //   `system message: ${history.messages[systemMessage.id].content}`
+        // );
+      } else if (response.end) {
+        systemMessage.done = true;
+        history.messages[history.currentId] = systemMessage;
+
+        await $db.updateChatById($chatId, {
+          title: title === "" ? "New Chat" : title,
+          messages: messages,
+          history: history,
+        });
+      }
+
+      if (messages.length == 0) {
+        await $db.createNewChat({
+          id: $chatId,
+          title: "New Chat",
+          messages: messages,
+          history: history,
+        });
+      }
+
+      // updateChatAndScroll(response.content);
     } else if (response.role === "status") {
       if (response.data === "recognizer_loop:record_begin") {
-        speechRecognitionListening = true;
-        // NOTE: should the websocket send back data or just a request sent to the backend
+        systemListening.set(true);
       } else if (response.data === "recognizer_loop:record_end") {
-        speechRecognitionListening = false;
+        systemListening.set(false);
       } else if (response.data === "recognizer_loop:audio_output_start") {
         systemSpeaking.set(true);
+        console.log("system speaking");
       } else if (response.data === "recognizer_loop:audio_output_end") {
         systemSpeaking.set(false);
+        console.log("system done speaking");
       }
     }
   }
