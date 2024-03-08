@@ -19,30 +19,34 @@ def async_wrapper(coroutine, payload):
 
 async def handle_websocket(websocket, path):
     global ws
+    ws = websocket
 
     while True:
         try:
-            ws = websocket
+            # Wait for a message with a timeout, to periodically check for websocket
+            # closure
+            try:
+                message = await asyncio.wait_for(queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                # No message within timeout period, continue to check for websocket
+                # closure
+                continue
 
-            while True:
-                try: 
-                    message = queue.get_nowait()
+            if message is None:
+                continue
 
-                except asyncio.QueueEmpty:
-                    continue
+            LOG.info(f"message: {message}")
+            await ws.send(json.dumps(message))
+            # LOG.info(f"websocket: {ws} and {websocket}")
 
-                if message is None:
-                    continue
-
-                LOG.info(f"message: {message}")
-                await ws.send(json.dumps(message))
-                # LOG.info(f"websocket: {ws} and {websocket}")
-
-            message = await websocket.recv()
-            print(f"Received message: {message}")
-            # Process the received message as needed
-            # You can send a response back using await websocket.send(response)
+            # message = await websocket.recv()
         except websockets.ConnectionClosedOK:
+            # Properly handle the connection closed exception
+            LOG.info("Websocket connection closed gracefully")
+            break
+        except Exception as e:
+            # Handle other exceptions that may occur
+            LOG.error(f"Unexpected error: {e}")
             break
 
 
@@ -131,5 +135,5 @@ def handle_utterance(event):
 
 
 def handle_utterance_response(event):
-        payload: Dict = event.data.get("content", {})
-        queue.put_nowait(payload)
+    payload: Dict = event.data.get("content", {})
+    queue.put_nowait(payload)

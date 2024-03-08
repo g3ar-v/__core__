@@ -119,6 +119,9 @@ case ${OPT} in
 "ui")
 	end_process "npm run dev"
 	;;
+"web")
+	end_process "(python3|python|Python) (.*)-m core.*web"
+  ;;
 "dev")
 	end_process "entr -s core-start restart skills"
 	end_process "entr -s core-start restart voice"

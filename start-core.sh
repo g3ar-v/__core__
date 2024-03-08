@@ -97,12 +97,9 @@ source_venv() {
   CONDA_BIN=$(dirname "$CONDA_EXE")
 	# $CONDA_EXE activate $CONDA_ENV_NAME
   source "$CONDA_BIN/activate" $CONDA_ENV_NAME
-	retval=$?
-	# echo "retval $retval"
-	if [[ $retval -eq "0" ]]; then
+	exit_status=$?
+	if [[ $exit_status -eq "0" ]]; then
 		echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
-	elif [[ $retval -eq "2" ]]; then
-		echo "$HIGHLIGHT Already in virtual environment $RESET"
 	else
 		echo $RED "Could not enter virtual environment $RESET"
 	fi
@@ -222,7 +219,7 @@ shift
 if [ "${1}" = "restart" ] || [ "${_opt}" = "restart" ]; then
 	_force_restart=true
 	if [ "${_opt}" = "restart" ]; then
-		# Support "start-mycroft.sh restart all" as well as "start-mycroft.sh all restart"
+		# Support "start-core.sh restart all" as well as "start-core.sh all restart"
 		_opt=$1
 	fi
 
@@ -252,7 +249,9 @@ case ${_opt} in
 "voice")
 	launch_background "${_opt}"
 	;;
-
+"web")
+	launch_background "${_opt}"
+	;;
 "debug")
 	launch_all
   # launch_process web
@@ -283,7 +282,7 @@ case ${_opt} in
 	pytest test/integrationtests/skills/discover_tests.py "$@"
 	;;
 "vktest")
-	"$DIR/bin/mycroft-skill-testrunner" vktest "$@"
+	"$DIR/bin/core-skill-testrunner" vktest "$@"
 	;;
 "audiotest")
 	launch_process "${_opt}"
