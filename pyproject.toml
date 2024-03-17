@@ -7,6 +7,7 @@ version_files = [
 
 [tool.ruff]
 line-length = 88
+ignore = ["F401"]
 
 [tool.ruff.format]
 indent-style = "space"
@@ -23,16 +24,16 @@ authors = ["victor <vfranktor@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.9,<3.12"
 mycroft-mimic3-tts = "^0.2.4"
 mycroft-messagebus-client = "^0.10.1"
 pyxdg = "0.27"
 psutil = "^5.9.8"
 watchdog = "^4.0.0"
-lingua-franca = "^0.4.3"
+# lingua-franca = "^0.4.3"
 uvicorn = "^0.27.1"
 openai-whisper = {git = "https://github.com/openai/whisper.git"}
-fastapi = "^0.109.2"
+fastapi = "0.110.0"
 pvporcupine = "3.0.0"
 fann2 = "1.0.7"
 padatious = "0.4.8"
@@ -46,6 +47,7 @@ elevenlabs = "^0.2.27"
 speechrecognition = "^3.10.1"
 msm = "^0.8.9"
 python-dotenv = "^1.0.1"
+open-interpreter = { path = "../open-interpreter" }
 
 [tool.poetry.scripts]
 core-voice-client="core.client.voice.__main__:main"
@@ -54,6 +56,7 @@ core-skills="core.skills.__main__:main"  # SKILLS
 core-cli-client="core.client.text.__main__:main"# CORE contact with MB
 core-audio="core.audio.__main__:main"  # AUDIO OUTPUT
 core-web-client="core.web.client.__main__:main"
+
 
 [build-system]
 requires = ["poetry-core"]
