@@ -29,14 +29,16 @@ math {
 }
 
 ::-webkit-scrollbar-thumb {
-  --tw-border-opacity: 1;
-  background-color: rgba(217, 217, 227, 0.8);
-  border-color: rgba(255, 255, 255, var(--tw-border-opacity));
+  --tw-border-opacity: 0.5;
+  background-color: rgba(63, 63, 63, 1.00);
+  /* border-color: rgba(212, 162, 74, var(--tw-border-opacity)); */
   border-radius: 9999px;
   border-width: 1px;
+  width: 0.1em; /* Smaller scrollbar thumb width */
 }
 
 ::-webkit-scrollbar {
+  background-color: rgba(40, 40, 40, 1.0);
   height: 1rem;
   width: 0.5rem;
 }
