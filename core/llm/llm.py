@@ -91,7 +91,7 @@ class LLM:
             chat_memory=LLM.chat_memory,
             human_prefix=LLM.user_name,
             ai_prefix=LLM.system_name,
-            k=4,  # if this is a lot then context window is exceeded
+            k=8,  # if this is a lot then context window is exceeded
         )
         current_conversation = chat_history.load_memory_variables({})["history"]
 
@@ -155,7 +155,7 @@ class LLM:
                 if chunk["content"] == "":
                     continue
 
-                LOG.info(f"Chunk: {chunk}")
+                LOG.debug(f"Chunk: {chunk}")
                 # LOG.info(f"last flag base: {last_flag_base}")
 
                 if (
@@ -167,8 +167,10 @@ class LLM:
                 ):
                     messages += chunk["content"]
                 else:
-                    if last_flag_base:
-                        yield {**last_flag_base, "content": messages}
+                    # NOTE: this could be the reason for the "double concatenated"
+                    # messages being yielded in streaming response
+                    # if last_flag_base:
+                    #     yield {**last_flag_base, "content": messages}
 
                     last_flag_base = {"role": chunk["role"], "type": chunk["type"]}
                     yield {**last_flag_base, "start": True}
@@ -191,7 +193,7 @@ class LLM:
         speak = kwargs.get("speak", False)
 
         # USE LOCAL MODEL FOR TITLE GENERATION
-        model = LLM._load_model("online")
+        model = LLM._load_model("offline")
 
         gptchain = LLMChain(llm=model, verbose=False, prompt=prompt)
 

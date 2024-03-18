@@ -5,7 +5,7 @@
   import toast from "svelte-french-toast";
   import { onMount } from "svelte";
   import { config, settings, user } from "$lib/stores";
-  import { splitStream, extractObjectsbyName } from "$lib/utils";
+  import { splitStream, fetchAndSetCoreSettings } from "$lib/utils";
   import Advanced from "./Settings/Advanced.svelte";
   import Voice from "./Settings/Voice.svelte";
   import Audio from "./Settings/Audio.svelte";
@@ -13,15 +13,28 @@
 
   export let show = false;
 
+  /**
+   * Saves the updated settings both locally and optionally to the backend.
+   *
+   * This function merges the updated settings with the current settings and saves them
+   * to the local storage. If specified, the updated settings are also sent to the backend.
+   *
+   * @param {Object} updated - The updated settings to be saved.
+   * @param {Boolean} [sendToBackend=false] - Flag indicating whether to send the updated settings to the backend.
+   */
   const saveSettings = async (
     updated: Object,
     sendToBackend: Boolean = false
   ) => {
-    settings.set({ ...$settings, ...updated });
-    localStorage.setItem("settings", JSON.stringify($settings));
-    // TODO: code that sets config in the backend
-    if (sendToBackend === true) {
-      setBackendSettings(updated);
+    // settings.set({ ...$settings, ...updated });
+    // Save the updated settings to local storage
+    // localStorage.setItem("settings", JSON.stringify($settings));
+    // If sendToBackend flag is true, send the updated settings to the backend
+    if (sendToBackend) {
+      await setBackendSettings(updated);
+      await fetchAndSetCoreSettings($settings);
+    } else {
+      await fetchAndSetCoreSettings($settings);
     }
   };
 
@@ -103,36 +116,9 @@
     authEnabled = !authEnabled;
   };
 
-  const getCoreSettings = async () => {
-    try {
-      const response = await fetch(
-        `${
-          $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
-        }v1/system/config?sort=true&core=true`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const config = await response.json();
-      return config;
-    } catch (error) {
-      console.error("Error fetching core settings:", error);
-      toast.error("Error fetching core settings:", error);
-      return null;
-    }
-  };
-
   onMount(() => {
     let settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-    getCoreSettings()
-      .then(saveSettings)
-      .catch((error) => console.error("Failed to save core settings:", error));
+
     // console.log("settings conf: " + JSON.stringify(backend_settings, null, 4));
 
     requestFormat = settings.requestFormat ?? "";
@@ -261,56 +247,56 @@
           <div class=" self-center">Audio</div>
         </button>
 
-        {#if !$config || ($config && !$config.auth)}
-          <button
-            class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-            'auth'
-              ? 'bg-gray-200 dark:bg-gray-700'
-              : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
-            on:click={() => {
-              selectedTab = "auth";
-            }}
-          >
-            <div class=" self-center mr-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-4 h-4"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-            </div>
-            <div class=" self-center">Authentication</div>
-          </button>
-        {/if}
-        <button
-          class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
-          'advanced'
-            ? 'bg-gray-200 dark:bg-gray-700'
-            : ' hover:bg-gray-300 dark:hover:bg-gray-800'}"
-          on:click={() => {
-            selectedTab = "advanced";
-          }}
-        >
-          <div class=" self-center mr-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                d="M17 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM17 15.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM3.75 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM4.5 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM10 11a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0v-5.5A.75.75 0 0110 11zM10.75 2.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM10 6a2 2 0 100 4 2 2 0 000-4zM3.75 10a2 2 0 100 4 2 2 0 000-4zM16.25 10a2 2 0 100 4 2 2 0 000-4z"
-              />
-            </svg>
-          </div>
-          <div class=" self-center">Advanced</div>
-        </button>
+        <!-- {#if !$config || ($config && !$config.auth)} -->
+        <!--   <button -->
+        <!--     class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab === -->
+        <!--     'auth' -->
+        <!--       ? 'bg-gray-200 dark:bg-gray-700' -->
+        <!--       : ' hover:bg-gray-300 dark:hover:bg-gray-800'}" -->
+        <!--     on:click={() => { -->
+        <!--       selectedTab = "auth"; -->
+        <!--     }} -->
+        <!--   > -->
+        <!--     <div class=" self-center mr-2"> -->
+        <!--       <svg -->
+        <!--         xmlns="http://www.w3.org/2000/svg" -->
+        <!--         viewBox="0 0 24 24" -->
+        <!--         fill="currentColor" -->
+        <!--         class="w-4 h-4" -->
+        <!--       > -->
+        <!--         <path -->
+        <!--           fill-rule="evenodd" -->
+        <!--           d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" -->
+        <!--           clip-rule="evenodd" -->
+        <!--         /> -->
+        <!--       </svg> -->
+        <!--     </div> -->
+        <!--     <div class=" self-center">Authentication</div> -->
+        <!--   </button> -->
+        <!-- {/if} -->
+        <!-- <button -->
+        <!--   class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab === -->
+        <!--   'advanced' -->
+        <!--     ? 'bg-gray-200 dark:bg-gray-700' -->
+        <!--     : ' hover:bg-gray-300 dark:hover:bg-gray-800'}" -->
+        <!--   on:click={() => { -->
+        <!--     selectedTab = "advanced"; -->
+        <!--   }} -->
+        <!-- > -->
+        <!--   <div class=" self-center mr-2"> -->
+        <!--     <svg -->
+        <!--       xmlns="http://www.w3.org/2000/svg" -->
+        <!--       viewBox="0 0 20 20" -->
+        <!--       fill="currentColor" -->
+        <!--       class="w-4 h-4" -->
+        <!--     > -->
+        <!--       <path -->
+        <!--         d="M17 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM17 15.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM3.75 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM4.5 2.75a.75.75 0 00-1.5 0v5.5a.75.75 0 001.5 0v-5.5zM10 11a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0v-5.5A.75.75 0 0110 11zM10.75 2.75a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM10 6a2 2 0 100 4 2 2 0 000-4zM3.75 10a2 2 0 100 4 2 2 0 000-4zM16.25 10a2 2 0 100 4 2 2 0 000-4z" -->
+        <!--       /> -->
+        <!--     </svg> -->
+        <!--   </div> -->
+        <!--   <div class=" self-center">Advanced</div> -->
+        <!-- </button> -->
         <button
           class="px-2.5 py-2.5 min-w-fit rounded-lg flex-1 md:flex-none flex text-right transition {selectedTab ===
           'about'
@@ -345,92 +331,92 @@
             }}
             {saveSettings}
           />
-        {:else if selectedTab === "advanced"}
-          <div class="flex flex-col h-full justify-between text-sm">
-            <div class=" space-y-3 pr-1.5 overflow-y-scroll max-h-72">
-              <div class=" text-sm font-medium">Parameters</div>
-
-              <Advanced bind:options />
-              <hr class=" dark:border-gray-700" />
-
-              <div>
-                <div class=" py-1 flex w-full justify-between">
-                  <div class=" self-center text-sm font-medium">
-                    Request Mode
-                  </div>
-
-                  <button
-                    class="p-1 px-3 text-xs flex rounded transition"
-                    on:click={() => {
-                      toggleRequestFormat();
-                    }}
-                  >
-                    {#if requestFormat === ""}
-                      <span class="ml-2 self-center"> Default </span>
-                    {:else if requestFormat === "json"}
-                      <!-- <svg
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 20 20"
-												fill="currentColor"
-												class="w-4 h-4 self-center"
-											>
-												<path
-													d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.061 1.06l1.06 1.06z"
-												/>
-											</svg> -->
-                      <span class="ml-2 self-center"> JSON </span>
-                    {/if}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex justify-end pt-3 text-sm font-medium">
-              <button
-                class=" px-4 py-2 bg-green-800 hover:bg-green-700 text-gray-100 transition rounded"
-                on:click={() => {
-                  saveSettings({
-                    options: {
-                      seed:
-                        (options.seed !== 0 ? options.seed : undefined) ??
-                        undefined,
-                      stop: options.stop !== "" ? options.stop : undefined,
-                      temperature:
-                        options.temperature !== ""
-                          ? options.temperature
-                          : undefined,
-                      repeat_penalty:
-                        options.repeat_penalty !== ""
-                          ? options.repeat_penalty
-                          : undefined,
-                      repeat_last_n:
-                        options.repeat_last_n !== ""
-                          ? options.repeat_last_n
-                          : undefined,
-                      mirostat:
-                        options.mirostat !== "" ? options.mirostat : undefined,
-                      mirostat_eta:
-                        options.mirostat_eta !== ""
-                          ? options.mirostat_eta
-                          : undefined,
-                      mirostat_tau:
-                        options.mirostat_tau !== ""
-                          ? options.mirostat_tau
-                          : undefined,
-                      top_k: options.top_k !== "" ? options.top_k : undefined,
-                      top_p: options.top_p !== "" ? options.top_p : undefined,
-                      tfs_z: options.tfs_z !== "" ? options.tfs_z : undefined,
-                      num_ctx:
-                        options.num_ctx !== "" ? options.num_ctx : undefined,
-                    },
-                  });
-                  show = false;
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
+          <!-- {:else if selectedTab === "advanced"} -->
+          <!--   <div class="flex flex-col h-full justify-between text-sm"> -->
+          <!--     <div class=" space-y-3 pr-1.5 overflow-y-scroll max-h-72"> -->
+          <!--       <div class=" text-sm font-medium">Parameters</div> -->
+          <!---->
+          <!--       <Advanced bind:options /> -->
+          <!--       <hr class=" dark:border-gray-700" /> -->
+          <!---->
+          <!--       <div> -->
+          <!--         <div class=" py-1 flex w-full justify-between"> -->
+          <!--           <div class=" self-center text-sm font-medium"> -->
+          <!--             Request Mode -->
+          <!--           </div> -->
+          <!---->
+          <!--           <button -->
+          <!--             class="p-1 px-3 text-xs flex rounded transition" -->
+          <!--             on:click={() => { -->
+          <!--               toggleRequestFormat(); -->
+          <!--             }} -->
+          <!--           > -->
+          <!--             {#if requestFormat === ""} -->
+          <!--               <span class="ml-2 self-center"> Default </span> -->
+          <!--             {:else if requestFormat === "json"} -->
+          <!--               <!-- <svg -->
+          <!-- 				xmlns="http://www.w3.org/2000/svg" -->
+          <!-- 				viewBox="0 0 20 20" -->
+          <!-- 				fill="currentColor" -->
+          <!-- 				class="w-4 h-4 self-center" -->
+          <!-- 			> -->
+          <!-- 				<path -->
+          <!-- 					d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.061 1.06l1.06 1.06z" -->
+          <!-- 				/> -->
+          <!-- </svg>  -->
+          <!--               <span class="ml-2 self-center"> JSON </span> -->
+          <!--             {/if} -->
+          <!--           </button> -->
+          <!--         </div> -->
+          <!--       </div> -->
+          <!--     </div> -->
+          <!---->
+          <!--     <div class="flex justify-end pt-3 text-sm font-medium"> -->
+          <!--       <button -->
+          <!--         class=" px-4 py-2 bg-green-800 hover:bg-green-700 text-gray-100 transition rounded" -->
+          <!--         on:click={() => { -->
+          <!--           saveSettings({ -->
+          <!--             options: { -->
+          <!--               seed: -->
+          <!--                 (options.seed !== 0 ? options.seed : undefined) ?? -->
+          <!--                 undefined, -->
+          <!--               stop: options.stop !== "" ? options.stop : undefined, -->
+          <!--               temperature: -->
+          <!--                 options.temperature !== "" -->
+          <!--                   ? options.temperature -->
+          <!--                   : undefined, -->
+          <!--               repeat_penalty: -->
+          <!--                 options.repeat_penalty !== "" -->
+          <!--                   ? options.repeat_penalty -->
+          <!--                   : undefined, -->
+          <!--               repeat_last_n: -->
+          <!--                 options.repeat_last_n !== "" -->
+          <!--                   ? options.repeat_last_n -->
+          <!--                   : undefined, -->
+          <!--               mirostat: -->
+          <!--                 options.mirostat !== "" ? options.mirostat : undefined, -->
+          <!--               mirostat_eta: -->
+          <!--                 options.mirostat_eta !== "" -->
+          <!--                   ? options.mirostat_eta -->
+          <!--                   : undefined, -->
+          <!--               mirostat_tau: -->
+          <!--                 options.mirostat_tau !== "" -->
+          <!--                   ? options.mirostat_tau -->
+          <!--                   : undefined, -->
+          <!--               top_k: options.top_k !== "" ? options.top_k : undefined, -->
+          <!--               top_p: options.top_p !== "" ? options.top_p : undefined, -->
+          <!--               tfs_z: options.tfs_z !== "" ? options.tfs_z : undefined, -->
+          <!--               num_ctx: -->
+          <!--                 options.num_ctx !== "" ? options.num_ctx : undefined, -->
+          <!--             }, -->
+          <!--           }); -->
+          <!--           show = false; -->
+          <!--         }} -->
+          <!--       > -->
+          <!--         Save -->
+          <!--       </button> -->
+          <!--     </div> -->
+          <!--   </div> -->
         {:else if selectedTab === "voice"}
           <Voice
             on:save={() => {
@@ -445,179 +431,179 @@
             }}
             {saveSettings}
           />
-        {:else if selectedTab === "auth"}
-          <form
-            class="flex flex-col h-full justify-between space-y-3 text-sm"
-            on:submit|preventDefault={() => {
-              console.log("auth save");
-              saveSettings({
-                authHeader: authEnabled
-                  ? `${authType} ${authContent}`
-                  : undefined,
-              });
-              show = false;
-            }}
-          >
-            <div class=" space-y-3">
-              <div>
-                <div class=" py-1 flex w-full justify-between">
-                  <div class=" self-center text-sm font-medium">
-                    Authorization Header
-                  </div>
-
-                  <button
-                    class="p-1 px-3 text-xs flex rounded transition"
-                    type="button"
-                    on:click={() => {
-                      toggleAuthHeader();
-                    }}
-                  >
-                    {#if authEnabled === true}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        class="w-4 h-4"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-
-                      <span class="ml-2 self-center"> On </span>
-                    {:else}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        class="w-4 h-4"
-                      >
-                        <path
-                          d="M18 1.5c2.9 0 5.25 2.35 5.25 5.25v3.75a.75.75 0 01-1.5 0V6.75a3.75 3.75 0 10-7.5 0v3a3 3 0 013 3v6.75a3 3 0 01-3 3H3.75a3 3 0 01-3-3v-6.75a3 3 0 013-3h9v-3c0-2.9 2.35-5.25 5.25-5.25z"
-                        />
-                      </svg>
-
-                      <span class="ml-2 self-center">Off</span>
-                    {/if}
-                  </button>
-                </div>
-              </div>
-
-              {#if authEnabled}
-                <hr class=" dark:border-gray-700" />
-
-                <div class="mt-2">
-                  <div class=" py-1 flex w-full space-x-2">
-                    <button
-                      class=" py-1 font-semibold flex rounded transition"
-                      on:click={() => {
-                        authType = authType === "Basic" ? "Bearer" : "Basic";
-                      }}
-                      type="button"
-                    >
-                      {#if authType === "Basic"}
-                        <span class="self-center mr-2">Basic</span>
-                      {:else if authType === "Bearer"}
-                        <span class="self-center mr-2">Bearer</span>
-                      {/if}
-                    </button>
-
-                    <div class="flex-1">
-                      <input
-                        class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                        placeholder="Enter Authorization Header Content"
-                        bind:value={authContent}
-                      />
-                    </div>
-                  </div>
-                  <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                    Toggle between <span
-                      class=" text-gray-500 dark:text-gray-300 font-medium"
-                      >'Basic'</span
-                    >
-                    and
-                    <span class=" text-gray-500 dark:text-gray-300 font-medium"
-                      >'Bearer'</span
-                    > by clicking on the label next to the input.
-                  </div>
-                </div>
-
-                <hr class=" dark:border-gray-700" />
-
-                <div>
-                  <div class=" mb-2.5 text-sm font-medium">
-                    Preview Authorization Header
-                  </div>
-                  <textarea
-                    value={JSON.stringify({
-                      Authorization: `${authType} ${authContent}`,
-                    })}
-                    class="w-full rounded p-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none resize-none"
-                    rows="2"
-                    disabled
-                  />
-                </div>
-              {/if}
-              <div>
-                <div class=" mb-2.5 text-sm font-medium">
-                  Gravatar Email <span class=" text-gray-400 text-sm"
-                    >(optional)</span
-                  >
-                </div>
-                <div class="flex w-full">
-                  <div class="flex-1">
-                    <input
-                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      placeholder="Enter Your Email"
-                      bind:value={gravatarEmail}
-                      autocomplete="off"
-                      type="email"
-                    />
-                  </div>
-                </div>
-                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  Changes user profile image to match your <a
-                    class=" text-gray-500 dark:text-gray-300 font-medium"
-                    href="https://gravatar.com/"
-                    target="_blank">Gravatar.</a
-                  >
-                </div>
-              </div>
-
-              <hr class=" dark:border-gray-700" />
-              <div>
-                <div class=" mb-2.5 text-sm font-medium">
-                  OpenAI API Key <span class=" text-gray-400 text-sm"
-                    >(optional)</span
-                  >
-                </div>
-                <div class="flex w-full">
-                  <div class="flex-1">
-                    <input
-                      class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
-                      placeholder="Enter OpenAI API Key"
-                      bind:value={OPENAI_API_KEY}
-                      autocomplete="off"
-                    />
-                  </div>
-                </div>
-                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  Adds optional support for 'gpt-*' models available.
-                </div>
-              </div>
-            </div>
-
-            <div class="flex justify-end pt-3 text-sm font-medium">
-              <button
-                class=" px-4 py-2 bg-green-800 hover:bg-green-700 text-gray-100 transition rounded"
-                type="submit"
-              >
-                Save
-              </button>
-            </div>
-          </form>
+          <!-- {:else if selectedTab === "auth"} -->
+          <!--   <form -->
+          <!--     class="flex flex-col h-full justify-between space-y-3 text-sm" -->
+          <!--     on:submit|preventDefault={() => { -->
+          <!--       console.log("auth save"); -->
+          <!--       saveSettings({ -->
+          <!--         authHeader: authEnabled -->
+          <!--           ? `${authType} ${authContent}` -->
+          <!--           : undefined, -->
+          <!--       }); -->
+          <!--       show = false; -->
+          <!--     }} -->
+          <!--   > -->
+          <!--     <div class=" space-y-3"> -->
+          <!--       <div> -->
+          <!--         <div class=" py-1 flex w-full justify-between"> -->
+          <!--           <div class=" self-center text-sm font-medium"> -->
+          <!--             Authorization Header -->
+          <!--           </div> -->
+          <!---->
+          <!--           <button -->
+          <!--             class="p-1 px-3 text-xs flex rounded transition" -->
+          <!--             type="button" -->
+          <!--             on:click={() => { -->
+          <!--               toggleAuthHeader(); -->
+          <!--             }} -->
+          <!--           > -->
+          <!--             {#if authEnabled === true} -->
+          <!--               <svg -->
+          <!--                 xmlns="http://www.w3.org/2000/svg" -->
+          <!--                 viewBox="0 0 24 24" -->
+          <!--                 fill="currentColor" -->
+          <!--                 class="w-4 h-4" -->
+          <!--               > -->
+          <!--                 <path -->
+          <!--                   fill-rule="evenodd" -->
+          <!--                   d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" -->
+          <!--                   clip-rule="evenodd" -->
+          <!--                 /> -->
+          <!--               </svg> -->
+          <!---->
+          <!--               <span class="ml-2 self-center"> On </span> -->
+          <!--             {:else} -->
+          <!--               <svg -->
+          <!--                 xmlns="http://www.w3.org/2000/svg" -->
+          <!--                 viewBox="0 0 24 24" -->
+          <!--                 fill="currentColor" -->
+          <!--                 class="w-4 h-4" -->
+          <!--               > -->
+          <!--                 <path -->
+          <!--                   d="M18 1.5c2.9 0 5.25 2.35 5.25 5.25v3.75a.75.75 0 01-1.5 0V6.75a3.75 3.75 0 10-7.5 0v3a3 3 0 013 3v6.75a3 3 0 01-3 3H3.75a3 3 0 01-3-3v-6.75a3 3 0 013-3h9v-3c0-2.9 2.35-5.25 5.25-5.25z" -->
+          <!--                 /> -->
+          <!--               </svg> -->
+          <!---->
+          <!--               <span class="ml-2 self-center">Off</span> -->
+          <!--             {/if} -->
+          <!--           </button> -->
+          <!--         </div> -->
+          <!--       </div> -->
+          <!---->
+          <!--       {#if authEnabled} -->
+          <!--         <hr class=" dark:border-gray-700" /> -->
+          <!---->
+          <!--         <div class="mt-2"> -->
+          <!--           <div class=" py-1 flex w-full space-x-2"> -->
+          <!--             <button -->
+          <!--               class=" py-1 font-semibold flex rounded transition" -->
+          <!--               on:click={() => { -->
+          <!--                 authType = authType === "Basic" ? "Bearer" : "Basic"; -->
+          <!--               }} -->
+          <!--               type="button" -->
+          <!--             > -->
+          <!--               {#if authType === "Basic"} -->
+          <!--                 <span class="self-center mr-2">Basic</span> -->
+          <!--               {:else if authType === "Bearer"} -->
+          <!--                 <span class="self-center mr-2">Bearer</span> -->
+          <!--               {/if} -->
+          <!--             </button> -->
+          <!---->
+          <!--             <div class="flex-1"> -->
+          <!--               <input -->
+          <!--                 class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
+          <!--                 placeholder="Enter Authorization Header Content" -->
+          <!--                 bind:value={authContent} -->
+          <!--               /> -->
+          <!--             </div> -->
+          <!--           </div> -->
+          <!--           <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
+          <!--             Toggle between <span -->
+          <!--               class=" text-gray-500 dark:text-gray-300 font-medium" -->
+          <!--               >'Basic'</span -->
+          <!--             > -->
+          <!--             and -->
+          <!--             <span class=" text-gray-500 dark:text-gray-300 font-medium" -->
+          <!--               >'Bearer'</span -->
+          <!--             > by clicking on the label next to the input. -->
+          <!--           </div> -->
+          <!--         </div> -->
+          <!---->
+          <!--         <hr class=" dark:border-gray-700" /> -->
+          <!---->
+          <!--         <div> -->
+          <!--           <div class=" mb-2.5 text-sm font-medium"> -->
+          <!--             Preview Authorization Header -->
+          <!--           </div> -->
+          <!--           <textarea -->
+          <!--             value={JSON.stringify({ -->
+          <!--               Authorization: `${authType} ${authContent}`, -->
+          <!--             })} -->
+          <!--             class="w-full rounded p-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none resize-none" -->
+          <!--             rows="2" -->
+          <!--             disabled -->
+          <!--           /> -->
+          <!--         </div> -->
+          <!--       {/if} -->
+          <!--       <div> -->
+          <!--         <div class=" mb-2.5 text-sm font-medium"> -->
+          <!--           Gravatar Email <span class=" text-gray-400 text-sm" -->
+          <!--             >(optional)</span -->
+          <!--           > -->
+          <!--         </div> -->
+          <!--         <div class="flex w-full"> -->
+          <!--           <div class="flex-1"> -->
+          <!--             <input -->
+          <!--               class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
+          <!--               placeholder="Enter Your Email" -->
+          <!--               bind:value={gravatarEmail} -->
+          <!--               autocomplete="off" -->
+          <!--               type="email" -->
+          <!--             /> -->
+          <!--           </div> -->
+          <!--         </div> -->
+          <!--         <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
+          <!--           Changes user profile image to match your <a -->
+          <!--             class=" text-gray-500 dark:text-gray-300 font-medium" -->
+          <!--             href="https://gravatar.com/" -->
+          <!--             target="_blank">Gravatar.</a -->
+          <!--           > -->
+          <!--         </div> -->
+          <!--       </div> -->
+          <!---->
+          <!--       <hr class=" dark:border-gray-700" /> -->
+          <!--       <div> -->
+          <!--         <div class=" mb-2.5 text-sm font-medium"> -->
+          <!--           OpenAI API Key <span class=" text-gray-400 text-sm" -->
+          <!--             >(optional)</span -->
+          <!--           > -->
+          <!--         </div> -->
+          <!--         <div class="flex w-full"> -->
+          <!--           <div class="flex-1"> -->
+          <!--             <input -->
+          <!--               class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none" -->
+          <!--               placeholder="Enter OpenAI API Key" -->
+          <!--               bind:value={OPENAI_API_KEY} -->
+          <!--               autocomplete="off" -->
+          <!--             /> -->
+          <!--           </div> -->
+          <!--         </div> -->
+          <!--         <div class="mt-2 text-xs text-gray-400 dark:text-gray-500"> -->
+          <!--           Adds optional support for 'gpt-*' models available. -->
+          <!--         </div> -->
+          <!--       </div> -->
+          <!--     </div> -->
+          <!---->
+          <!--     <div class="flex justify-end pt-3 text-sm font-medium"> -->
+          <!--       <button -->
+          <!--         class=" px-4 py-2 bg-green-800 hover:bg-green-700 text-gray-100 transition rounded" -->
+          <!--         type="submit" -->
+          <!--       > -->
+          <!--         Save -->
+          <!--       </button> -->
+          <!--     </div> -->
+          <!--   </form> -->
         {:else if selectedTab === "about"}
           <div
             class="flex flex-col h-full justify-between space-y-3 text-sm mb-6"

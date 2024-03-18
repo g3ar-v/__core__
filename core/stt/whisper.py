@@ -25,11 +25,13 @@ class WhisperSTT(STT):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         model = self.config.get("model")
+
+        LOG.info(f"whisper model: {model}")
+
         if not model:
             model = "base.en"
         assert model in self.MODELS  # TODO - better error handling
 
-        LOG.info(f"whisper model: {model}")
         self.engine = whisper.load_model(model)
         self.transcription = [""]
 

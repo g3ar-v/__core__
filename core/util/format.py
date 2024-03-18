@@ -25,30 +25,54 @@ do most of the actual parsing. However methods may be wrapped specifically for
 use in Mycroft Skills.
 """
 import datetime
+import re
 import warnings
-
 from calendar import leapdays
 from enum import Enum
 
-# These are the main functions we are using lingua franca to provide
-from lingua_franca import get_default_loc
-# TODO 21.08 - move nice_duration methods to Lingua Franca.
-from lingua_franca.format import (
-    join_list,
-    nice_date,
-    nice_date_time,
-    nice_number,
-    nice_time,
-    nice_year,
-    pronounce_number
-)
+from .lingua_franca import SentenceTreeParser
+
+
 # TODO 21.08 - remove import of private method _translate_word
 # Consider whether the remaining items here are necessary.
-from lingua_franca.format import (NUMBER_TUPLE, DateTimeFormat,
-                                  date_time_format, expand_options,
-                                  _translate_word)
-from padatious.util import expand_parentheses
+# These are the main functions we are using lingua franca to provide
+# from lingua_franca import get_default_loc
+# TODO 21.08 - move nice_duration methods to Lingua Franca.
+# from lingua_franca.format import _translate_word, pronounce_number
+def expand_parentheses(sent):
+    """
+    ['1', '(', '2', '|', '3, ')'] -> [['1', '2'], ['1', '3']]
+    For example:
+    Will it (rain|pour) (today|tomorrow|)?
+    ---->
+    Will it rain today?
+    Will it rain tomorrow?
+    Will it rain?
+    Will it pour today?
+    Will it pour tomorrow?
+    Will it pour?
 
+    Args:
+        sent (list<str>): List of tokens in sentence
+
+    Returns:
+        list<list<str>>: Multiple possible sentences from original
+    """
+    return SentenceTreeParser(sent).expand_parentheses()
+
+def expand_options(parentheses_line: str) -> list:
+    """
+    Convert 'test (a|b)' -> ['test a', 'test b']
+
+    Args:
+        parentheses_line: Input line to expand
+
+    Returns:
+        List of expanded possibilities
+    """
+    # 'a(this|that)b' -> [['a', 'this', 'b'], ['a', 'that', 'b']]
+    options = expand_parentheses(re.split(r'([(|)])', parentheses_line))
+    return [re.sub(r'\s+', ' ', ' '.join(i)).strip() for i in options]
 
 class TimeResolution(Enum):
     YEARS = 1

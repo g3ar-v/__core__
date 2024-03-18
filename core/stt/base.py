@@ -1,18 +1,18 @@
 from abc import ABCMeta, abstractmethod
 
-from core.configuration import Configuration
 from speech_recognition import Recognizer
+
+from core.configuration import Configuration
 
 
 class STT(metaclass=ABCMeta):
     """STT Base class, all STT backends derive from this one."""
 
     def __init__(self):
-        config_core = Configuration.get()
+        config_core = Configuration.get().get("voice")
         self.lang = str(self.init_language(config_core))
         config_stt = config_core.get("stt", {})
         self.config = config_stt.get(config_stt.get("module"), {})
-        self.credential = self.config.get("credential", {})
         self.recognizer = Recognizer()
         self.can_stream = False
 

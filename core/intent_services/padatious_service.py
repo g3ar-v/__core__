@@ -1,25 +1,26 @@
 """Intent service wrapping padatious."""
+from os.path import expanduser, isfile
 from subprocess import call
 from threading import Event
-from time import time as get_time, sleep
+from time import sleep
+from time import time as get_time
 
-from os.path import expanduser, isfile
-
+import core.intent_services
 from core.configuration import Configuration
 from core.messagebus.message import Message
 from core.util.log import LOG
-import core.intent_services
 
 
 class PadatiousMatcher:
     """Matcher class to avoid redundancy in padatious intent matching."""
+
     def __init__(self, service):
         self.service = service
         self.has_result = False
         self.ret = None
         self.conf = None
 
-    def _match_level(self, utterances, limit):
+    def _match_level(self, utterance, limit):
         """Match intent and make sure a certain level of confidence is reached.
 
         Args:
@@ -29,22 +30,22 @@ class PadatiousMatcher:
         """
         if not self.has_result:
             padatious_intent = None
-            LOG.debug('Padatious Matching confidence > {}'.format(limit))
-            for utt in utterances:
-                for variant in utt:
-                    intent = self.service.calc_intent(variant)
-                    if intent:
-                        best = padatious_intent.conf \
-                            if padatious_intent else 0.0
-                        if best < intent.conf:
-                            padatious_intent = intent
-                            padatious_intent.matches['utterance'] = utt[0]
+            LOG.debug("Padatious Matching confidence > {}".format(limit))
+
+            intent = self.service.calc_intent(utterance)
+            if intent:
+                best = padatious_intent.conf if padatious_intent else 0.0
+                if best < intent.conf:
+                    padatious_intent = intent
+                    padatious_intent.matches["utterance"] = utterance
 
             if padatious_intent:
-                skill_id = padatious_intent.name.split(':')[0]
+                skill_id = padatious_intent.name.split(":")[0]
                 self.ret = core.intent_services.IntentMatch(
-                    'Padatious', padatious_intent.name,
-                    padatious_intent.matches, skill_id
+                    "Padatious",
+                    padatious_intent.name,
+                    padatious_intent.matches,
+                    skill_id,
                 )
                 self.conf = padatious_intent.conf
             self.has_result = True
@@ -53,48 +54,54 @@ class PadatiousMatcher:
             return self.ret
         return None
 
-    def match_high(self, utterances, _=None, __=None):
+    def match_high(self, utterance, _=None, __=None):
         """Intent matcher for high confidence.
 
         Args:
             utterances (list of tuples): Utterances to parse, originals paired
                                          with optional normalized version.
         """
-        return self._match_level(utterances, 0.95)
+        return self._match_level(utterance, 0.95)
 
-    def match_medium(self, utterances, _=None, __=None):
+    def match_medium(self, utterance, _=None, __=None):
         """Intent matcher for medium confidence.
 
         Args:
             utterances (list of tuples): Utterances to parse, originals paired
                                          with optional normalized version.
         """
-        return self._match_level(utterances, 0.8)
+        return self._match_level(utterance, 0.8)
 
-    def match_low(self, utterances, _=None, __=None):
+    def match_low(self, utterance, _=None, __=None):
         """Intent matcher for low confidence.
 
         Args:
             utterances (list of tuples): Utterances to parse, originals paired
                                          with optional normalized version.
         """
-        return self._match_level(utterances, 0.5)
+        return self._match_level(utterance, 0.5)
 
 
 class PadatiousService:
     """Service class for padatious intent matching."""
+
     def __init__(self, bus, config):
         self.padatious_config = config
         self.bus = bus
-        intent_cache = expanduser(self.padatious_config['intent_cache'])
+        intent_cache = expanduser(self.padatious_config["intent_cache"])
 
         try:
             from padatious import IntentContainer
         except ImportError:
-            LOG.error('Padatious not installed. Please re-run dev_setup.sh')
+            LOG.error("Padatious not installed. Please re-run dev_setup.sh")
             try:
-                call(['notify-send', 'Padatious not installed',
-                      'Please run build_host_setup and dev_setup again'])
+                call(
+                    [
+                        "notify-send",
+                        "Padatious not installed",
+                        "Please run build_host_setup and dev_setup again",
+                    ]
+                )
             except OSError:
                 pass
             return
@@ -102,16 +109,16 @@ class PadatiousService:
         self.container = IntentContainer(intent_cache)
 
         self._bus = bus
-        self.bus.on('padatious:register_intent', self.register_intent)
-        self.bus.on('padatious:register_entity', self.register_entity)
-        self.bus.on('detach_intent', self.handle_detach_intent)
-        self.bus.on('detach_skill', self.handle_detach_skill)
-        self.bus.on('core.skills.initialized', self.train)
+        self.bus.on("padatious:register_intent", self.register_intent)
+        self.bus.on("padatious:register_entity", self.register_entity)
+        self.bus.on("detach_intent", self.handle_detach_intent)
+        self.bus.on("detach_skill", self.handle_detach_skill)
+        self.bus.on("core.skills.initialized", self.train)
 
         self.finished_training_event = Event()
         self.finished_initial_train = False
 
-        self.train_delay = self.padatious_config['train_delay']
+        self.train_delay = self.padatious_config["train_delay"]
         self.train_time = get_time() + self.train_delay
 
         self.registered_intents = []
@@ -123,23 +130,21 @@ class PadatiousService:
         Args:
             message (Message): optional triggering message
         """
-        padatious_single_thread = Configuration.get()[
-            'padatious']['single_thread']
+        padatious_single_thread = Configuration.get()["padatious"]["single_thread"]
         if message is None:
             single_thread = padatious_single_thread
         else:
-            single_thread = message.data.get('single_thread',
-                                             padatious_single_thread)
+            single_thread = message.data.get("single_thread", padatious_single_thread)
 
         self.finished_training_event.clear()
 
-        LOG.info('Training... (single_thread={})'.format(single_thread))
+        LOG.info("Training... (single_thread={})".format(single_thread))
         self.container.train(single_thread=single_thread)
-        LOG.info('Training complete.')
+        LOG.info("Training complete.")
 
         self.finished_training_event.set()
         if not self.finished_initial_train:
-            self.bus.emit(Message('core.skills.trained'))
+            self.bus.emit(Message("core.skills.trained"))
             self.finished_initial_train = True
 
     def wait_and_train(self):
@@ -155,7 +160,7 @@ class PadatiousService:
             self.train()
 
     def __detach_intent(self, intent_name):
-        """ Remove an intent if it has been registered.
+        """Remove an intent if it has been registered.
 
         Args:
             intent_name (str): intent identifier
@@ -170,7 +175,7 @@ class PadatiousService:
         Args:
             message (Message): message triggering action
         """
-        self.__detach_intent(message.data.get('intent_name'))
+        self.__detach_intent(message.data.get("intent_name"))
 
     def handle_detach_skill(self, message):
         """Messagebus handler for detaching all intents for skill.
@@ -178,7 +183,7 @@ class PadatiousService:
         Args:
             message (Message): message triggering action
         """
-        skill_id = message.data['skill_id']
+        skill_id = message.data["skill_id"]
         remove_list = [i for i in self.registered_intents if skill_id in i]
         for i in remove_list:
             self.__detach_intent(i)
@@ -191,13 +196,13 @@ class PadatiousService:
             object_name (str): type of entry to register
             register_func (callable): function to call for registration
         """
-        file_name = message.data['file_name']
-        name = message.data['name']
+        file_name = message.data["file_name"]
+        name = message.data["name"]
 
-        LOG.debug('Registering Padatious ' + object_name + ': ' + name)
+        LOG.debug("Registering Padatious " + object_name + ": " + name)
 
         if not isfile(file_name):
-            LOG.warning('Could not find file ' + file_name)
+            LOG.warning("Could not find file " + file_name)
             return
 
         register_func(name, file_name)
@@ -210,8 +215,8 @@ class PadatiousService:
         Args:
             message (Message): message triggering action
         """
-        self.registered_intents.append(message.data['name'])
-        self._register_object(message, 'intent', self.container.load_intent)
+        self.registered_intents.append(message.data["name"])
+        self._register_object(message, "intent", self.container.load_intent)
 
     def register_entity(self, message):
         """Messagebus handler for registering entities.
@@ -220,7 +225,7 @@ class PadatiousService:
             message (Message): message triggering action
         """
         self.registered_entities.append(message.data)
-        self._register_object(message, 'entity', self.container.load_entity)
+        self._register_object(message, "entity", self.container.load_entity)
 
     def calc_intent(self, utt):
         """Cached version of container calc_intent.

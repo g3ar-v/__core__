@@ -262,7 +262,7 @@ def main(
     try:
         reset_sigint_handler()
         PIDLock("voice")
-        config = Configuration.get()
+        config = Configuration.get().get("voice", {})
         bus = start_message_bus_client("VOICE")
         connect_bus_events(bus)
         callbacks = StatusCallbackMap(

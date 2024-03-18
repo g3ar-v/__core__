@@ -5,18 +5,23 @@ accessing and curating CORE's cache.
 """
 
 import os
-import psutil
+import tempfile
 from os.path import dirname
+from stat import S_ISREG, ST_MODE, ST_MTIME, ST_SIZE
+from threading import RLock
 from typing import List
-from stat import S_ISREG, ST_MTIME, ST_MODE, ST_SIZE
+
+import psutil
+import xdg.BaseDirectory
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from threading import RLock
-import tempfile
-import xdg.BaseDirectory
 
 import core.configuration
+
 from .log import LOG
+
+# from core import CORE_ROOT_PATH
+
 
 
 class FileWatcher:
@@ -95,6 +100,65 @@ class FileEventHandler(FileSystemEventHandler):
                 if event.src_path not in self._changed_files:
                     self._changed_files.append(event.src_path)
 
+# def find_resource(self, res_name, res_dirname=None):
+#         """Find a resource file.
+
+#         Searches for the given filename using this scheme:
+
+#         1. Search the resource lang directory:
+
+#            <skill>/<res_dirname>/<lang>/<res_name>
+
+#         2. Search the resource directory:
+
+#            <skill>/<res_dirname>/<res_name>
+
+#         3. Search the locale lang directory or other subdirectory:
+
+#            <skill>/locale/<lang>/<res_name> or
+
+#            <skill>/locale/<lang>/.../<res_name>
+
+#         Args:
+#             res_name (string): The resource name to be found
+#             res_dirname (string, optional): A skill resource directory, such
+#                                             'dialog', 'vocab', 'regex' or 'ui'.
+#                                             Defaults to None.
+
+#         Returns:
+#             string: The full path to the resource file or None if not found
+#         """
+#         result = _find_resource(res_name, self.lang, res_dirname)
+#         if not result and self.lang != "en-us":
+#             # when resource not found try fallback to en-us
+#             LOG.warning(
+#                 "Resource '{}' for lang '{}' not found: trying 'en-us'".format(
+#                     res_name, self.lang
+#                 )
+#             )
+#             result = _find_resource(res_name, "en-us", res_dirname)
+#         return result
+
+# def _find_resource(res_name, lang, res_dirname=None):
+#         """Finds a resource by name, lang and dir"""
+#         if res_dirname:
+#             # Try the old translated directory (dialog/vocab/regex)
+#             path = join(CORE_ROOT_PATH, res_dirname, lang, res_name)
+#             if exists(path):
+#                 return path
+
+#             # Try old-style non-translated resource
+#             path = join(CORE_ROOT_PATH, res_dirname, res_name)
+#             if exists(path):
+#                 return path
+
+#         # New scheme:  search for res_name under the 'locale' folder
+#         root_path = join(CORE_ROOT_PATH, "locale", lang)
+#         for path, _, files in walk(root_path):
+#             if res_name in files:
+#                 return join(path, res_name)
+#         # Not found
+#         return None  
 
 def resolve_resource_file(res_name):
     """Convert a resource into an absolute filename.
@@ -304,7 +368,7 @@ def get_cache_directory(domain=None):
     the file.
 
     Args:
-        domain (str): The cache domain.  Basically just a subdirectory.
+        # domain (str): The cache domain.  Basically just a subdirectory.
 
     Returns:
         (str) a path to the directory where you can cache data

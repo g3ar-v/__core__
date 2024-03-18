@@ -27,7 +27,7 @@ async def config(
         default=True, description="Sort alphabetically the settings"
     ),
     core: Optional[bool] = Query(
-        default=True, description="Display the core configuration"
+        default=False, description="Display the core configuration"
     ),
 ) -> JSONResponse:
     """Collect local or core configuration

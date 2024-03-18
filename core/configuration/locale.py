@@ -3,7 +3,7 @@ The mycroft.util.lang module provides the main interface for setting up the
 lingua-franca (https://github.com/mycroftai/lingua-franca) selected language
 """
 
-from lingua_franca import set_default_lang as _set_default_lf_lang
+# from lingua_franca import set_default_lang as _set_default_lf_lang
 
 
 def set_default_lf_lang(lang_code="en-us"):
@@ -16,4 +16,5 @@ def set_default_lf_lang(lang_code="en-us"):
     Args:
         lang (str): BCP-47 language code, e.g. "en-us" or "es-mx"
     """
-    return _set_default_lf_lang(lang_code=lang_code)
+    # return _set_default_lf_lang(lang_code=lang_code)
+    return "en-us"

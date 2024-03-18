@@ -15,6 +15,7 @@
     modelfiles,
   } from "$lib/stores";
 
+  import { fetchAndSetCoreSettings } from "$lib/utils";
   import SettingsModal from "$lib/components/chat/SettingsModal.svelte";
   import Sidebar from "$lib/components/layout/Sidebar.svelte";
   import toast from "svelte-french-toast";
@@ -100,9 +101,10 @@
       await goto("/auth");
     }
 
-    await settings.set(
-      JSON.parse(localStorage.getItem("settings") ?? JSON.stringify($settings))
-    );
+    fetchAndSetCoreSettings($settings);
+    // await settings.set(
+    //   JSON.parse(localStorage.getItem("settings") ?? JSON.stringify($settings))
+    // );
 
     // let _models = await getModels();
     // await models.set(_models);

@@ -15,7 +15,6 @@ from core.messagebus.message import Message
 from core.util.intent_service_interface import IntentQueryApi, open_intent_envelope
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
-from core.util.parse import normalize
 
 from .adapt_service import AdaptIntent, AdaptService  # noqa: F401
 from .fallback_service import FallbackService
@@ -43,36 +42,6 @@ def _get_message_lang(message):
     """
     default_lang = Configuration.get().get("lang", "en-us")
     return message.data.get("lang", default_lang).lower()
-
-
-def _normalize_all_utterances(utterances):
-    """Create normalized versions and pair them with the original utterance.
-
-    This will create a list of tuples with the original utterance as the
-    first item and if normalizing changes the utterance the normalized version
-    will be set as the second item in the tuple, if normalization doesn't
-    change anything the tuple will only have the "raw" original utterance.
-
-    Args:
-        utterances (list): list of utterances to normalize
-
-    Returns:
-        list of tuples, [(original utterance, normalized) ... ]
-    """
-    # normalize() changes "it's a boy" to "it is a boy", etc.
-    norm_utterances = [normalize(u.lower(), remove_articles=False) for u in utterances]
-
-    # Create pairs of original and normalized counterparts for each entry
-    # in the input list.
-    combined = []
-    for utt, norm in zip(utterances, norm_utterances):
-        if utt == norm:
-            combined.append((utt,))
-        else:
-            combined.append((utt, norm))
-
-    LOG.debug("Utterances: {}".format(combined))
-    return combined
 
 
 class IntentService:
@@ -129,23 +98,23 @@ class IntentService:
         self.bus.on("intent.service.response.latency", self.handle_response_latency)
         self.bus.on("core.api.generate", self.handle_generate)
 
-        def add_active_skill_handler(message):
-            skill_id = message.data["skill_id"]
-            self.add_active_skill(skill_id)
-            LOG.debug("Adding active skill: " + skill_id)
+        # def add_active_skill_handler(message):
+        #     skill_id = message.data["skill_id"]
+        #     self.add_active_skill(skill_id)
+        #     LOG.debug("Adding active skill: " + skill_id)
 
-        def remove_active_skill_handler(message):
-            skill_id = message.data["skill_id"]
-            self.remove_active_skill(skill_id)
-            LOG.debug("Removing active skill: " + skill_id)
+        # def remove_active_skill_handler(message):
+        #     skill_id = message.data["skill_id"]
+        #     self.remove_active_skill(skill_id)
+        #     LOG.debug("Removing active skill: " + skill_id)
 
-        self.bus.on("active_skill_request", add_active_skill_handler)
-        self.bus.on("remove_active_skill", remove_active_skill_handler)
+        # self.bus.on("active_skill_request", add_active_skill_handler)
+        # self.bus.on("remove_active_skill", remove_active_skill_handler)
 
         self.active_skills = []  # [skill_id , timestamp]
         # HACK: set to 0.5 for qa to not loop for a long time and let padatious handle
         # intent
-        self.converse_timeout = 5  # minutes to prune active_skills
+        self.converse_timeout = 10  # minutes to prune active_skills
 
         # Intents API
         self.registered_vocab = []
@@ -321,11 +290,11 @@ class IntentService:
             message (Message): The messagebus data
         """
         try:
+            # TODO: Remove this soon
             lang = _get_message_lang(message)
             set_default_lf_lang(lang)
 
-            utterances = message.data.get("utterances", [])
-            combined = _normalize_all_utterances(utterances)
+            utterance = message.data.get("utterances", [])[0]
 
             stopwatch = Stopwatch()
 
@@ -350,8 +319,9 @@ class IntentService:
             with stopwatch:
                 # Loop through the matching functions until a match is found.
                 for match_func in match_funcs:
-                    match = match_func(combined, lang, message)
+                    match = match_func(utterance, lang, message)
                     if match:
+
                         break
             if match:
                 if match.skill_id:
@@ -362,17 +332,18 @@ class IntentService:
                 # Launch skill if not handled by the match function
                 if match.intent_type:
                     reply = message.reply(match.intent_type, match.intent_data)
-                    reply.data["utterances"] = utterances
+                    reply.data["utterances"] = utterance
                     self.bus.emit(reply)
 
             else:
                 # Nothing was able to handle the intent
                 # Ask politely for forgiveness for failing in this vital task
                 self.send_complete_intent_failure(message)
+
         except Exception as err:
             LOG.exception(err)
 
-    def _converse(self, utterances, lang, message):
+    def _converse(self, utterance, lang, message):
         """Give active skills a chance at the utterance
 
         Args:
@@ -383,7 +354,6 @@ class IntentService:
         Returns:
             IntentMatch if handled otherwise None.
         """
-        utterances = [item for tup in utterances for item in tup]
         # check for conversation time-out
         self.active_skills = [
             skill
@@ -396,7 +366,7 @@ class IntentService:
 
         # check if any skill wants to handle utterance
         for skill in copy(self.active_skills):
-            if self.do_converse(utterances, skill[0], lang, message):
+            if self.do_converse(utterance, skill[0], lang, message):
                 # update timestamp, or there will be a timeout where
                 # intent stops conversing whether its being used or not
                 return IntentMatch("Converse", None, None, skill[0])
@@ -496,7 +466,6 @@ class IntentService:
         """
         utterance = message.data["utterance"]
         lang = message.data.get("lang", "en-us")
-        combined = _normalize_all_utterances([utterance])
 
         # Create matchers
         padatious_matcher = PadatiousMatcher(self.padatious_service)
@@ -516,7 +485,7 @@ class IntentService:
         ]
         # Loop through the matching functions until a match is found.
         for match_func in match_funcs:
-            match = match_func(combined, lang, message)
+            match = match_func(utterance, lang, message)
             if match:
                 if match.intent_type:
                     intent_data = match.intent_data
@@ -564,8 +533,8 @@ class IntentService:
         """
         utterance = message.data["utterance"]
         lang = message.data.get("lang", "en-us")
-        combined = _normalize_all_utterances([utterance])
-        intent = self.adapt_service.match_intent(combined, lang)
+
+        intent = self.adapt_service.match_intent(utterance, lang)
         intent_data = intent.intent_data if intent else None
         self.bus.emit(
             message.reply("intent.service.adapt.reply", {"intent": intent_data})

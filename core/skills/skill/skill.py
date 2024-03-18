@@ -26,10 +26,10 @@ from core.messagebus.message import Message, dig_for_message
 
 # from core.metrics import report_metric
 from core.util import camel_case_split, play_audio_file, resolve_resource_file
-from core.util.format import join_list, pronounce_number
+
+# from core.util.format import join_list, pronounce_number
 from core.util.intent_service_interface import IntentServiceInterface
 from core.util.log import LOG
-from core.util.parse import extract_number, match_one
 
 from ..event_scheduler import EventSchedulerInterface
 from ..settings import get_local_settings, save_settings
@@ -44,6 +44,8 @@ from ..skill_data import (
     to_alnum,
 )
 from .event_container import EventContainer, create_wrapper, get_handler_name
+
+# from core.util.parse import extract_number, match_one
 
 
 def simple_trace(stack_trace):
@@ -181,16 +183,6 @@ class Skill:
         self.settings = get_local_settings(settings_read_path, self.name)
         self._initial_settings = deepcopy(self.settings)
 
-    # @property
-    # def enclosure(self):
-    #     if self._enclosure:
-    #         return self._enclosure
-    #     else:
-    #         LOG.error('Skill not fully initialized. Move code ' +
-    #                   'from  __init__() to initialize() to correct this.')
-    #         LOG.error(simple_trace(traceback.format_stack()))
-    #         raise Exception('Accessed Skill.enclosure in __init__')
-
     @property
     def bus(self):
         if self._bus:
@@ -229,7 +221,7 @@ class Skill:
     @property
     def lang(self):
         """Get the configured language."""
-        return self.config_core.get("lang")
+        return self.config_core.get("audio").get("lang")
 
     def bind(self, bus):
         """Register messagebus emitter with skill.
@@ -419,7 +411,13 @@ class Skill:
     # TODO: add send prompt to UI impelementation
 
     def get_response(
-        self, dialog="", data=None, validator=None, on_fail=None, num_retries=-1
+        self,
+        dialog="",
+        data=None,
+        validator=None,
+        on_fail=None,
+        num_retries=-1,
+        send_to_ui=False,  # Add this parameter to control whether to send to UI
     ):
         """Get response from user.
 
@@ -450,9 +448,8 @@ class Skill:
 
             num_retries (int): Times to ask user for input, -1 for infinite
                 NOTE: User can not respond and timeout or say "cancel" to stop
-
-        Returns:
-            str: User's reply or None if timed out or canceled
+            send_to_ui (bool): Determines if speech should be sent to UI
+                along with whether it's a system or user utterance.
         """
         data = data or {}
 
@@ -477,7 +474,13 @@ class Skill:
         # Speak query and wait for user response
         dialog_exists = self.dialog_renderer.render(dialog, data)
         if dialog_exists:
-            self.speak_dialog(dialog, data, expect_response=True, wait=True)
+            self.speak_dialog(
+                dialog,
+                data,
+                expect_response=True,
+                wait=True,
+                send_to_ui=send_to_ui,
+            )
         else:
             self.bus.emit(Message("core.mic.listen"))
         return self._wait_response(is_cancel, validator, on_fail_fn, num_retries)
@@ -540,63 +543,6 @@ class Skill:
             return "no"
         else:
             return resp
-
-    def ask_selection(
-        self, options, dialog="", data=None, min_conf=0.65, numeric=False
-    ):
-        """Read options, ask dialog question and wait for an answer.
-
-        This automatically deals with fuzzy matching and selection by number
-        e.g.
-
-        * "first option"
-        * "last option"
-        * "second option"
-        * "option number four"
-
-        Args:
-              options (list): list of options to present user
-              dialog (str): a dialog id or string to read AFTER all options
-              data (dict): Data used to render the dialog
-              min_conf (float): minimum confidence for fuzzy match, if not
-                                reached return None
-              numeric (bool): speak options as a numeric menu
-        Returns:
-              string: list element selected by user, or None
-        """
-        assert isinstance(options, list)
-
-        if not len(options):
-            return None
-        elif len(options) == 1:
-            return options[0]
-
-        if numeric:
-            for idx, opt in enumerate(options):
-                opt_str = "{number}, {option_text}".format(
-                    number=pronounce_number(idx + 1, self.lang), option_text=opt
-                )
-
-                self.speak(opt_str, wait=True)
-        else:
-            opt_str = join_list(options, "or", lang=self.lang) + "?"
-            self.speak(opt_str, wait=True)
-
-        resp = self.get_response(dialog=dialog, data=data)
-
-        if resp:
-            match, score = match_one(resp, options)
-            if score < min_conf:
-                if self.voc_match(resp, "last"):
-                    resp = options[-1]
-                else:
-                    num = extract_number(resp, ordinals=True, lang=self.lang)
-                    resp = None
-                    if num and num <= len(options):
-                        resp = options[num - 1]
-            else:
-                resp = match
-        return resp
 
     def voc_match(self, utt, voc_filename, lang=None, exact=False):
         """Determine if the given utterance contains the vocabulary provided.
@@ -1137,9 +1083,15 @@ class Skill:
             self.intent_service.register_adapt_regex(regex)
 
     def speak(
-        self, utterance, expect_response=False, wait=False, meta=None, send_to_ui=False
+        self,
+        utterance,
+        expect_response=False,
+        wait=False,
+        meta=None,
+        send_to_ui=True,
+        utterance_type="assistant",
     ):
-        """Speak a sentence.
+        """Speak a sentence and optionally send it to the UI.
 
         Args:
             utterance (str):        sentence core should speak
@@ -1149,12 +1101,12 @@ class Skill:
             wait (bool):            set to True to block while the text
                                     is being spoken.
             meta:                   Information of what built the sentence.
-            send_to_ui:             Determines if speech should be sent to UI
+            send_to_ui (bool):      Determines if speech should be sent to UI.
+            utterance_type (str):   "assistant" for system utterances, "user"
+                                    for user utterances.
         """
-        # registers the skill as being active
         meta = meta or {}
         meta["skill"] = self.name
-        # self.enclosure.register(self.name)
         data = {
             "utterance": utterance,
             "expect_response": expect_response,
@@ -1163,14 +1115,31 @@ class Skill:
         message = dig_for_message()
         m = message.forward("speak", data) if message else Message("speak", data)
         self.bus.emit(m)
+
         if send_to_ui:
-            payload = {"role": "assistant", "type": "message", "content": utterance}
-            self.bus.emit(Message("core.utterance.response", {"content": payload}))
+            self.send_to_ui(utterance, utterance_type)
+
         if wait:
             wait_while_speaking()
 
+    def send_to_ui(self, utterance, utterance_type):
+        """Send the utterance to the UI.
+
+        Args:
+            utterance (str):        sentence to send to the UI.
+            utterance_type (str):   "assistant" for system utterances, "user"
+            for user utterances.
+        """
+        payload = {"role": utterance_type, "type": "message", "content": utterance}
+        self.bus.emit(Message("core.utterance.response", {"content": payload}))
+
     def speak_dialog(
-        self, key, data=None, expect_response=False, wait=False, send_to_ui=False
+        self,
+        key,
+        data=None,
+        expect_response=False,
+        wait=False,
+        send_to_ui=True,
     ):
         """Speak a random sentence from a dialog file.
 
@@ -1329,9 +1298,8 @@ class Skill:
             self.shutdown()
         except Exception as e:
             LOG.error(
-                "Skill specific shutdown function encountered " "an error: {}".format(
-                    repr(e)
-                )
+                "Skill specific shutdown function encountered "
+                "an error: {}".format(repr(e))
             )
 
         self.settings_change_callback = None

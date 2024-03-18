@@ -14,7 +14,11 @@
     isMicrophoneMuted,
     systemListening,
   } from "$lib/stores";
-  import { getMicrophoneStatus, checkWsConnection } from "$lib/utils";
+  import {
+    getMicrophoneStatus,
+    checkWsConnection,
+    formatContextForBackend,
+  } from "$lib/utils";
 
   import MessageInput from "$lib/components/chat/MessageInput.svelte";
   import Messages from "$lib/components/chat/Messages.svelte";
@@ -89,6 +93,19 @@
       await initNewChat();
     });
 
+    const formattedHistory = formatContextForBackend(history);
+    console.log("formatted History: " + formattedHistory);
+    await fetch(
+      `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/context`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ context: formattedHistory }),
+      }
+    );
+
     checkWsConnection(socket);
   });
   //////////////////////////
@@ -106,6 +123,19 @@
       messages: {},
       currentId: null,
     };
+
+    const formattedHistory = formatContextForBackend(history);
+    console.log("formatted History: " + formattedHistory);
+    await fetch(
+      `${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}v1/voice/context`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ context: formattedHistory }),
+      }
+    );
   };
 
   // TODO: extract duplicate code on adding messages to chat history

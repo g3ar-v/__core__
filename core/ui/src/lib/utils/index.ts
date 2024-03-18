@@ -5,6 +5,7 @@ import {
   isMicrophoneMuted,
   systemListening,
   systemSpeaking,
+  settings,
 } from "$lib/stores";
 import toast from "svelte-french-toast";
 
@@ -24,6 +25,35 @@ export function checkWsConnection(ws: WebSocket) {
   }, 30000);
 }
 
+/**
+ * Efficiently fetches core settings from the Core API, updates the local settings store, and saves settings to local storage.
+ */
+export const fetchAndSetCoreSettings = async ($settings) => {
+  try {
+    const response = await fetch(
+      `${
+        $settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL
+      }v1/system/config?sort=true&core=true`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const config = await response.json();
+
+    // Update local settings store and save to local storage
+    settings.set({ ...config });
+    localStorage.setItem("settings", JSON.stringify(config));
+  } catch (error) {
+    console.error("Error fetching core settings:", error);
+    toast.error("Error fetching core settings:", error);
+  }
+};
 //////////////////////////
 // Helper functions
 //////////////////////////
@@ -64,7 +94,17 @@ export const getMicrophoneStatus = async (
   }
 };
 
+let isListening = false;
+
 export const stopListening = async ($settings) => {
+  // Prevents multiple listen requests from being sent at once
+  // which also prevents the listener from crashing
+  if (isListening) {
+    return;
+  }
+
+  isListening = true;
+
   try {
     console.log("stop listening with settings", $settings);
     await fetch(
@@ -74,6 +114,8 @@ export const stopListening = async ($settings) => {
   } catch (error) {
     console.log(error);
     toast.error(error.detail);
+  } finally {
+    isListening = false;
   }
 
   systemListening.set(false);
@@ -176,7 +218,7 @@ export const extractObjectsbyName = (mainObject, listOptions) => {
 
 export const formatContextForBackend = (history: {
   messages: any;
-  currentId: string;
+  currentId: string | null;
 }) => {
   return Object.keys(history.messages).map((key) => ({
     role: history.messages[key].role,
@@ -277,4 +319,3 @@ const regenerateResponse = async () => {
     await sendPrompt(userPrompt, userMessage.id);
   }
 };
-

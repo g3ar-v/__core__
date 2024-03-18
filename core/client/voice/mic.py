@@ -332,7 +332,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         self.api = SystemApi()
         self._watchdog = watchdog or (lambda: None)  # Default to dummy func
         self.config = Configuration.get()
-        listener_config = self.config.get("listener")
+        listener_config = self.config.get("voice", {}).get("listener", {})
         self.wake_word_name = wake_word_recognizer.key_phrase
 
         self.overflow_exc = listener_config.get("overflow_exception", False)
@@ -493,7 +493,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     SilenceResultType.TIMEOUT,
                     SilenceResultType.PHRASE_END,
                 }:
-                    LOG.debug("voice recognition state: " + repr(result.type))
+                    # LOG.debug("voice recognition state: " + repr(result.type))
                     break
                 # Periodically write the energy level to the mic level file.
                 if num_chunks % 10 == 0:
@@ -501,7 +501,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
                     self.write_mic_level(result.energy, source)
                 num_chunks += 1
 
-        LOG.info("THE RECORDED MAX SILENCE TO END PHRASE IS: " + str(stopwatch))
+        LOG.debug("THE RECORDED MAX SILENCE TO END PHRASE IS: " + str(stopwatch))
 
         self.silence_detector.stop()
         return byte_data
@@ -626,11 +626,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         said_wake_word = False
         audio_data = silence
 
-        # NOTE: this should only be used if an event wants to detect user speech to
-        # avoid too much resources used for real-time speech detection
-        # self.silence_detector.start()
-        # counter = 0
-        LOG.info("WAITING FOR WAKEWORD")
         while (
             not said_wake_word
             and not self._stop_signaled
@@ -695,13 +690,13 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         """
         if self._skip_wake_word():
             audio_file = resolve_resource_file(
-                self.config.get("sounds").get("activation_sound")
+                self.config.get("audio").get("sounds").get("activation_sound")
             )
             self._listen_triggered = False
         else:
-            tts = self.config.get("sounds").get("start_listening")
+            tts = self.config.get("audio").get("sounds").get("start_listening")
             audio_file = resolve_resource_file(
-                random.choice(self.config.get("sounds").get(tts))
+                random.choice(self.config.get("audio").get("sounds").get(tts))
             )
         LOG.info(audio_file)
         if audio_file:
@@ -713,14 +708,13 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             return False
 
     def play_end_listening_sound(self, source):
-        if self.config.get("confirm_listening_end"):
-            audio_file = resolve_resource_file(
-                self.config.get("sounds").get("end_sound")
-            )
-            LOG.info(audio_file)
-            source.mute()
-            play_wav(audio_file).wait()
-            source.unmute()
+        audio_file = resolve_resource_file(
+            self.config.get("audio").get("sounds").get("end_sound")
+        )
+        LOG.info(audio_file)
+        # source.mute()
+        play_wav(audio_file).wait()
+        # source.unmute()
 
     def listen(
         self,
@@ -773,7 +767,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         LOG.debug("Recording...")
         # If enabled, play a wave file with a short sound to audibly
         # indicate recording has begun.
-        if self.config.get("confirm_listening"):
+        if self.config.get("voice").get("confirm_listening"):
             # NOTE: Aim is to avoid interference of the activation
             # sound with system speech
             wait_while_speaking()
@@ -791,7 +785,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
         emitter.emit("recognizer_loop:record_end")
 
         # Play a wav file to indicate audio recording has ended
-        self.play_end_listening_sound(source)
+        if self.config.get("voice").get("confirm_listening_end"):
+            self.play_end_listening_sound(source)
 
         return audio_data
 

@@ -14,7 +14,7 @@ from core.client.voice.hotword_factory import HotWordFactory
 from core.client.voice.mic import MutableMicrophone, ResponsiveRecognizer
 from core.configuration import Configuration
 from core.stt import STTFactory
-from core.util import find_input_device, connected_to_the_internet
+from core.util import connected_to_the_internet, find_input_device
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
 
@@ -68,7 +68,7 @@ class AudioProducer(Thread):
     mic for potential speech chunks and pushes them onto the queue.
     """
 
-    def __init__(self, loop):
+    def __init__(self, state, queue, mic, recognizer, emitter, stream_handler):
         """
         Initializes the AudioProducer with the given parameters.
         :param state: The state of the RecognizerLoop.
@@ -80,29 +80,33 @@ class AudioProducer(Thread):
         """
         super(AudioProducer, self).__init__()
         self.daemon = True
-        self.loop = loop
-        self.stream_handler = None
-        # if self.loop.stt.can_stream:
-        #     self.stream_handler = AudioStreamHandler(self.loop.queue)
+        self.state = state
+        self.queue = queue
+        self.mic = mic
+        self.recognizer = recognizer
+        self.emitter = emitter
+        self.stream_handler = stream_handler
+        # if self.recognizer.can_stream:
+        #     self.stream_handler = AudioStreamHandler(self.queue)
 
     def run(self):
         restart_attempts = 0
-        with self.loop.microphone as source:
-            self.loop.responsive_recognizer.adjust_for_ambient_noise(source)
-            while self.loop.state.running:
+        with self.mic as source:
+            self.recognizer.adjust_for_ambient_noise(source)
+            while self.state.running:
                 try:
                     LOG.info("RUNNING LISTENER LOOP")
 
                     # NOTE: why return full audio when we can return while speech is
                     # made?
-                    audio = self.loop.responsive_recognizer.listen(
-                        source, self.loop, self.stream_handler
+                    audio = self.recognizer.listen(
+                        source, self.emitter, self.stream_handler
                     )
 
                     # NOTE: from ignorance I'd say this is a fallback if streaming
                     # doesn't work
                     if audio is not None:
-                        self.loop.queue.put((AUDIO_DATA, audio))
+                        self.queue.put((AUDIO_DATA, audio))
                     else:
                         LOG.warning("Audio contains no data.")
                 except IOError as e:
@@ -124,9 +128,16 @@ class AudioProducer(Thread):
                         raise
                 except Exception:
                     LOG.exception("Exception in AudioProducer")
-                    raise
+                    # raise
+                    if restart_attempts < MAX_MIC_RESTARTS:
+                        restart_attempts += 1
+                        LOG.info("Restarting the AudioProducer...")
+                        time.sleep(1)  # Wait a bit before restarting
+                    else:
+                        LOG.error("Restarting AudioProducer doesn't seem to work. " "Stopping...")
+                        self.state.running = False 
                 else:
-                    # Reset restart attempt counter on sucessful audio read
+                    # Reset restart attempt counter on successful audio read
                     restart_attempts = 0
                 # NOTE: should stream be stopped here
                 finally:
@@ -135,8 +146,8 @@ class AudioProducer(Thread):
 
     def stop(self):
         """Stop producer thread."""
-        self.loop.state.running = False
-        self.loop.responsive_recognizer.stop()
+        self.state.running = False
+        self.recognizer.stop()
 
 
 class AudioConsumer(Thread):
@@ -154,19 +165,26 @@ class AudioConsumer(Thread):
     # In seconds, the minimum audio size to be sent to remote STT
     MIN_AUDIO_SIZE = 0.5
 
-    def __init__(self, loop):
+    def __init__(
+        self, state, queue, emitter, stt, wakeup_recognizer, wakeword_recognizer
+    ):
         super(AudioConsumer, self).__init__()
         self.daemon = True
-        self.loop = loop
+        self.state = state
+        self.queue = queue
+        self.emitter = emitter
+        self.stt = stt
+        self.wakeup_recognizer = wakeup_recognizer
+        self.wakeword_recognizer = wakeword_recognizer
         self.transcription = None
 
     def run(self):
-        while self.loop.state.running:
+        while self.state.running:
             self.read()
 
     def read(self):
         try:
-            message = self.loop.queue.get(timeout=0.5)
+            message = self.queue.get(timeout=0.5)
 
         except Empty:
             return
@@ -178,32 +196,32 @@ class AudioConsumer(Thread):
 
         if tag == AUDIO_DATA:
             if data is not None:
-                # self.loop.stt.execute(data)
-                if self.loop.state.sleeping:
+                # self.stt.execute(data)
+                if self.state.sleeping:
                     self.wake_up(data)
                 else:
                     self.process(data)
         elif tag == STREAM_START:
-            self.loop.stt.stream_start()
+            self.stt.stream_start()
         elif tag == STREAM_DATA:
-            self.loop.stt.stream_data(data)
+            self.stt.stream_data(data)
 
         elif tag == STREAM_STOP:
-            self.transcription = self.loop.stt.stream_stop()
+            self.transcription = self.stt.stream_stop()
             payload = {
                 "utterances": [self.transcription],
-                "lang": self.loop.stt.lang,
+                "lang": self.stt.lang,
             }
-            self.loop.emit("recognizer_loop:utterance", payload)
+            self.emitter.emit("recognizer_loop:utterance", payload)
 
         else:
             # LOG.error("Unknown audio queue type %r" % message)
             LOG.error("Unknown audio queue type {}".format(tag))
 
     def wake_up(self, audio):
-        if self.loop.wakeup_recognizer.found_wake_word(audio.frame_data):
-            self.loop.state.sleeping = False
-            self.emit("recognizer_loop:awoken")
+        if self.wakeup_recognizer.found_wake_word(audio.frame_data):
+            self.state.sleeping = False
+            self.emitter.emit("recognizer_loop:awoken")
 
     @staticmethod
     def _audio_length(audio):
@@ -219,10 +237,10 @@ class AudioConsumer(Thread):
                 # STT succeeded, send the transcribed speech on for processing
                 payload = {
                     "utterances": [transcription],
-                    "lang": self.loop.stt.lang,
+                    "lang": self.stt.lang,
                     "ident": ident,
                 }
-                self.loop.emit("recognizer_loop:utterance", payload)
+                self.emitter.emit("recognizer_loop:utterance", payload)
 
             else:
                 ident = str(stopwatch.timestamp)
@@ -235,26 +253,26 @@ class AudioConsumer(Thread):
         try:
             # Invoke the STT engine on the audio clip
             stopwatch = Stopwatch()
-            with self.loop.lock:
-                with stopwatch:
-                    text = self.loop.stt.execute(audio)
-                    # for t in text:
-                    #     LOG.info("text: %s", t)
-                LOG.info("TIME TO TRANSCRIBE SPEECH: " + str(stopwatch))
-                if text is not None:
-                    text = text[-1]
-                    text = text.lower().strip()
-                    LOG.debug("STT: " + text)
-                else:
-                    self.send_unknown_intent()
-                    LOG.info("no words were transcribed")
-                return text
+            with stopwatch:
+                text = self.stt.execute(audio)
+                # for t in text:
+                #     LOG.info("text: %s", t)
+            LOG.info("TIME TO TRANSCRIBE SPEECH: " + str(stopwatch))
+            if text is not None:
+                text = text[-1]
+                text = text.lower().strip()
+                LOG.debug("STT: " + text)
+            else:
+                self.send_unknown_intent()
+                LOG.info("no words were transcribed")
+            return text
+
         except sr.RequestError as e:
             LOG.error("Could not request Speech Recognition {0}".format(e))
         except ConnectionError as e:
             LOG.error("Connection Error: {0}".format(e))
 
-            self.loop.emit("recognizer_loop:no_internet")
+            self.emitter.emit("recognizer_loop:no_internet")
         except RequestException as e:
             LOG.error(e.__class__.__name__ + ": " + str(e))
         except Exception as e:
@@ -269,11 +287,11 @@ class AudioConsumer(Thread):
 
     def __speak(self, utterance):
         payload = {"utterance": utterance}
-        self.loop.emit("speak", payload)
+        self.emitter.emit("speak", payload)
 
     def send_unknown_intent(self):
         """Send message that nothing was transcribed."""
-        self.loop.emit("recognizer_loop:speech.recognition.unknown")
+        self.emitter.emit("recognizer_loop:speech.recognition.unknown")
 
 
 class RecognizerLoopState:
@@ -288,7 +306,9 @@ def recognizer_conf_hash(config):
         "listener": config.get("listener"),
         "hotwords": config.get("hotwords"),
         "stt": config.get("stt"),
-        "opt_in": config.get("opt_in", False),
+        "lang": config.get("lang"),
+        "confirm_listening": config.get("confirm_listening"),
+        "confirm_listening_end": config.get("confirm_listening_end"),
     }
     return hash(json.dumps(c, sort_keys=True))
 
@@ -314,7 +334,7 @@ class RecognizerLoop(EventEmitter):
 
     def _load_config(self):
         """Load configuration parameters from configuration."""
-        config = Configuration.get()
+        config = Configuration.get()["voice"]
         self.config_core = config
         self._config_hash = recognizer_conf_hash(config)
         self.lang = config.get("lang")
@@ -369,13 +389,29 @@ class RecognizerLoop(EventEmitter):
 
     def start_async(self):
         """Start consumer and producer threads."""
+        LOG.info("Starting Asynchronous Listener thread")
         self.state.running = True
-        self.stt = STTFactory.create()
-        self.queue = Queue()
+        stt = STTFactory.create()
+        queue = Queue()
+        stream_handler = None
 
-        self.producer = AudioProducer(self)
+        self.producer = AudioProducer(
+            self.state,
+            queue,
+            self.microphone,
+            self.responsive_recognizer,
+            self,
+            stream_handler,
+        )
         self.producer.start()
-        self.consumer = AudioConsumer(self)
+        self.consumer = AudioConsumer(
+            self.state,
+            queue,
+            self,
+            stt,
+            self.wakeup_recognizer,
+            self.wakeword_recognizer,
+        )
         self.consumer.start()
 
     def stop(self):
@@ -432,7 +468,9 @@ class RecognizerLoop(EventEmitter):
         while self.state.running:
             try:
                 time.sleep(1)
-                current_hash = recognizer_conf_hash(Configuration().get())
+                current_hash = recognizer_conf_hash(
+                    Configuration().get().get("voice", {})
+                )
                 if current_hash != self._config_hash:
                     self._config_hash = current_hash
                     LOG.debug("Voice: Config has changed, reloading...")
@@ -447,10 +485,14 @@ class RecognizerLoop(EventEmitter):
 
     def reload(self):
         """Reload configuration and restart consumer and producer."""
-        with self.lock:
+        # with self.lock:
+        try:
             self.stop()
             self.wakeword_recognizer.stop()
             # load config
             self._load_config()
             # restart
             self.start_async()
+
+        except Exception as e:
+            LOG.error("Failed to reload: " + repr(e))

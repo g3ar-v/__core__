@@ -1,5 +1,6 @@
 """Factory functions for loading hotword engines - both internal and plugins.
 """
+
 import struct
 from os.path import abspath, dirname, expanduser, join
 from threading import Thread
@@ -49,7 +50,7 @@ class HotWordEngine:
         self.key_phrase = str(key_phrase).lower()
 
         if config is None:
-            config = Configuration.get().get("hotwords", {})
+            config = Configuration.get().get("voice", {}).get("hotwords", {})
             config = config.get(self.key_phrase, {})
         self.config = config
 
@@ -58,7 +59,7 @@ class HotWordEngine:
         phoneme_duration = msec_to_sec(config.get("phoneme_duration", 120))
         self.expected_duration = self.num_phonemes * phoneme_duration
 
-        self.listener_config = Configuration.get().get("listener", {})
+        self.listener_config = Configuration.get().get("voice", {}).get("listener", {})
         self.lang = str(self.config.get("lang", lang)).lower()
 
     def found_wake_word(self, frame_data):
@@ -128,7 +129,7 @@ class PorcupineHotWord(HotWordEngine):
         self.has_found = False
         self.num_keywords = len(keyword_file_paths)
 
-        LOG.info(
+        LOG.debug(
             "loading porcupine using library path {} and keyword paths {}".format(
                 library_path, keyword_file_paths
             )
@@ -245,7 +246,7 @@ class HotWordFactory:
         cls, hotword="hey mycroft", config=None, lang="en-us", loop=None
     ):
         if not config:
-            config = Configuration.get()["hotwords"]
+            config = Configuration.get()["voice"]["hotwords"]
         config = config.get(hotword) or config["hey mycroft"]
 
         module = config.get("module", "precise")

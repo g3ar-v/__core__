@@ -12,7 +12,7 @@ from .tts import TTS, TTSValidator
 class ElevenLabsTTS(TTS):
     def __init__(self, lang, config):
         super(ElevenLabsTTS, self).__init__(lang, config, ElevenLabsTTSValidator(self))
-        self.config = Configuration.get().get("tts", {}).get("elevenlabs", {})
+        self.config = Configuration.get().get("audio").get("tts", {}).get("elevenlabs", {})
         self.voice_name: str = self.config.get("voice_name")
         self.api_key = self.config.get("api_key")
         self.stability = self.config.get(self.voice_name, "Antoni").get(
@@ -43,7 +43,7 @@ class ElevenLabsTTS(TTS):
         Path(wav_file).write_bytes(audio)
         # LOG.info(os.path.dirname(os.path.realpath(__file__)))
         # save(audio, "audio.wav")
-        LOG.info(wav_file)
+        # LOG.info(wav_file)
         # stream(audio)
         return (wav_file, None)
 

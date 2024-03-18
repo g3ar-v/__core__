@@ -30,7 +30,7 @@ def reset_sigint_handler():
     """Reset the sigint handler to the default.
 
     This fixes KeyboardInterrupt not getting raised when started via
-    start-mycroft.sh
+    start-core.sh
     """
     sig.signal(sig.SIGINT, sig.default_int_handler)
 

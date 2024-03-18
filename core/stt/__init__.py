@@ -29,7 +29,7 @@ class STTFactory:
     @staticmethod
     def create():
         try:
-            config = Configuration.get().get("stt", {})
+            config = Configuration.get().get("voice", {}).get("stt", {})
             module = config.get("module", {})
             if module in STTFactory.CLASSES:
                 clazz = STTFactory.CLASSES[module]

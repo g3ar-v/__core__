@@ -14,13 +14,8 @@ from warnings import warn
 from core.api import SystemApi
 from core.configuration import Configuration
 from core.messagebus.message import Message
-from core.util import (
-    check_for_signal,
-    create_signal,
-    play_mp3,
-    play_wav,
-    resolve_resource_file,
-)
+from core.util import (check_for_signal, create_signal, play_mp3, play_wav,
+                       resolve_resource_file)
 from core.util.file_utils import get_temp_path
 from core.util.log import LOG
 from core.util.metrics import Stopwatch
@@ -76,19 +71,12 @@ class PlaybackThread(Thread):
         else:
             self.pulse_env = None
 
-    def init(self, tts):
-        """DEPRECATED! Init the TTS Playback thread.
-
-        TODO: 22.02 Remove this
-        """
-        self.attach_tts(tts)
-        self.set_bus(tts.bus)
 
     def set_bus(self, bus):
         """Provide bus instance to the TTS Playback thread.
 
         Args:
-            bus (MycroftBusClient): bus client
+            bus (BusClient): bus client
         """
         self.bus = bus
 
@@ -598,16 +586,16 @@ class TTSFactory:
     def create():
         """Factory method to create a TTS engine based on configuration.
 
-        The configuration file ``mycroft.conf`` contains a ``tts`` section with
+        The configuration file ``core.conf`` contains a ``tts`` section with
         the name of a TTS module to be read by this method.
 
         "tts": {
             "module": <engine_name>
         }
         """
-        config = Configuration.get()
+        config = Configuration.get().get("audio")
         lang = config.get("lang", "en-us")
-        tts_module = config.get("tts", {}).get("module", "mimic3")
+        tts_module = config.get("tts").get("module")
         tts_config = config.get("tts", {}).get(tts_module, {})
         tts_lang = tts_config.get("lang", lang)
         try:

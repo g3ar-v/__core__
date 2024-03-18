@@ -236,7 +236,7 @@
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
-                          class="fill-blue-950 w-5 h-5 translate-y-[0.5px]"
+                          class="fill-blue-800 w-5 h-5 translate-y-[0.5px]"
                         >
                           <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
                           <path
