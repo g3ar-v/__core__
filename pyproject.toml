@@ -1,8 +1,8 @@
 [tool.commitizen]
 # name = "cz_customize"
-version = "4.0.0"
+version = "5.0.0"
 version_files = [
-    "setup.py","core/version/__init__.py"
+    "pyproject.toml","core/version/__init__.py"
 ]
 
 [tool.ruff]
@@ -18,7 +18,7 @@ max-line-length = 88
 
 [tool.poetry]
 name = "core"
-version = "4.0.0"
+version = "5.0.0"
 description = "ai assistant"
 authors = ["victor <vfranktor@gmail.com>"]
 readme = "README.md"
@@ -29,7 +29,7 @@ mycroft-mimic3-tts = "^0.2.4"
 mycroft-messagebus-client = "^0.10.1"
 pyxdg = "0.27"
 psutil = "^5.9.8"
-watchdog = "^4.0.0"
+watchdog = "^5.0.0"
 # lingua-franca = "^0.4.3"
 uvicorn = "^0.27.1"
 openai-whisper = {git = "https://github.com/openai/whisper.git"}
