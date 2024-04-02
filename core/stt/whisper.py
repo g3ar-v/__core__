@@ -33,7 +33,7 @@ class WhisperSTT(STT):
         assert model in self.MODELS  # TODO - better error handling
 
         self.engine = whisper.load_model(model)
-        self.transcription = [""]
+        self.transcription = ""
 
     @staticmethod
     def audiodata2array(audio_data):
@@ -51,9 +51,7 @@ class WhisperSTT(STT):
             self.audiodata2array(audio.get_raw_data()),
         )
         text = result["text"].strip()
-        self.transcription.append(text)
-        self.transcription[-1] = text
-        return self.transcription
+        return text
 
     def stream_start(self):
         self.streaming = True

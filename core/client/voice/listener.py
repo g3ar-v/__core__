@@ -135,7 +135,7 @@ class AudioProducer(Thread):
                         time.sleep(1)  # Wait a bit before restarting
                     else:
                         LOG.error("Restarting AudioProducer doesn't seem to work. " "Stopping...")
-                        self.state.running = False 
+                        self.state.running = False
                 else:
                     # Reset restart attempt counter on successful audio read
                     restart_attempts = 0
@@ -255,13 +255,9 @@ class AudioConsumer(Thread):
             stopwatch = Stopwatch()
             with stopwatch:
                 text = self.stt.execute(audio)
-                # for t in text:
-                #     LOG.info("text: %s", t)
             LOG.info("TIME TO TRANSCRIBE SPEECH: " + str(stopwatch))
             if text is not None:
-                text = text[-1]
-                text = text.lower().strip()
-                LOG.debug("STT: " + text)
+                LOG.info("STT: " + text)
             else:
                 self.send_unknown_intent()
                 LOG.info("no words were transcribed")
