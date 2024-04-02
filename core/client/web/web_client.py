@@ -12,9 +12,9 @@ queue = asyncio.Queue()
 
 
 # TODO: generate a decorator that converts sync to async
-def async_wrapper(coroutine, payload):
-    async def wrapper(*args, **kwargs):
-        await ws.send(json.dumps(payload))
+# def async_wrapper(coroutine, payload):
+#     async def wrapper(*args, **kwargs):
+#         await ws.send(json.dumps(payload))
 
 
 async def handle_websocket(websocket, path):
@@ -35,7 +35,7 @@ async def handle_websocket(websocket, path):
             if message is None:
                 continue
 
-            LOG.info(f"message: {message}")
+            # LOG.info(f"message: {message}")
             await ws.send(json.dumps(message))
             # LOG.info(f"websocket: {ws} and {websocket}")
 
@@ -125,8 +125,21 @@ def handle_record_end(event):
 
 
 def handle_utterance(event):
+    """
+    Handle the utterance event by sending it to the websocket client.
+
+    If the source of the event is not 'ui_backend', this function extracts the
+    first utterance from the event data and sends it as a JSON payload through
+    the websocket connection. The payload consists of a role 'user' and the
+    content of the utterance.
+
+    Args:
+        event: An object containing the event data with 'utterances' and 'context'.
+    """
     async def handle_utt(event):
         if event.data.get("context", {}).get("source", {}) != "ui_backend":
+            # LOG.info("sending utterance: " + str(event.data))
+
             utterance = event.data.get("utterances", [])[0]
             payload: Dict = {"role": "user", "content": utterance}
             await ws.send(json.dumps(payload))
@@ -135,5 +148,15 @@ def handle_utterance(event):
 
 
 def handle_utterance_response(event):
+    """
+    Enqueue the utterance response payload into the asyncio queue.
+
+    The function takes an event object, extracts the 'content' from the event's data,
+    and puts it into the asyncio queue for later processing. This payload will
+    eventually be sent to the websocket client.
+
+    Args:
+        event: An object containing the event data with the 'content' field.
+    """
     payload: Dict = event.data.get("content", {})
     queue.put_nowait(payload)

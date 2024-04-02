@@ -6,6 +6,7 @@ from core.llm import LLM, main_persona_prompt
 from core.messagebus.message import Message
 from core.skills import Skill
 from core.util import LOG
+from core.audio import wait_while_speaking
 
 config = Configuration.get()
 
@@ -22,10 +23,6 @@ class QAService:
         self.bus = bus
         self.capabilities = Skill()
         self.skill_id = "persona"
-        self.lock = Lock()
-        self.answered = False
-        self.interrupted = False
-        self._vocabs = {}
 
     def match(self, utterances, lang, message):
         """Send common query request and select best response
@@ -38,21 +35,13 @@ class QAService:
         Returns:
             IntentMatch or None
         """
-        # we call flatten in case someone is sending the old style list of tuples
-        # LOG.info("utterances: {}".format(utterances))
-        # utterances = flatten_list(utterances)
         match = None
-        # LOG.info("utterances after flattening: {}".format(utterances))
-        # for utterance in utterances:
         if self.is_question_like(utterances, lang):
             message.data["lang"] = lang  # only used for speak
             message.data["utterance"] = utterances
-            # LOG.info(f"message passed to the persona's matching func: {message}")
             answered = self.handle_query_response(utterances, message)
             if answered:
-                # NOTE: imported in format to prevent circular import error
                 match = core.intent_services.IntentMatch("persona", None, None, None)
-            # break
 
         return match
 
@@ -84,7 +73,7 @@ class QAService:
                 for chunk in LLM.chat_with_system(
                     query=utterance, prompt=main_persona_prompt
                 ):
-                    LOG.info(f"chunk in qa service: {chunk}")
+                    LOG.debug(f"chunk in qa service: {chunk}")
                     if "start" in chunk:
                         self.bus.emit(
                             Message(
@@ -150,14 +139,8 @@ class QAService:
                                 {"content": chunk, "done": True},
                             )
                         )
-                        # if sentence:
-                        #     LLM._speak(
-                        #         sentence,
-                        #         "?" in sentence,
-                        #     )
 
-                        #     sentence = ""
-
+                wait_while_speaking()
                 if "?" in system_message:
                     self.bus.emit(Message("core.mic.listen"))
 

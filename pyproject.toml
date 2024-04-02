@@ -1,9 +1,7 @@
 [tool.commitizen]
 # name = "cz_customize"
 version = "5.0.0"
-version_files = [
-    "pyproject.toml","core/version/__init__.py"
-]
+version_files = ["pyproject.toml", "core/version/__init__.py"]
 
 [tool.ruff]
 line-length = 88
@@ -13,8 +11,8 @@ ignore = ["F401"]
 indent-style = "space"
 line-ending = "auto"
 
-[pycodestyle]
-max-line-length = 88
+# [pycodestyle]
+# max-line-length = 88
 
 [tool.poetry]
 name = "core"
@@ -32,7 +30,7 @@ psutil = "^5.9.8"
 watchdog = "^5.0.0"
 # lingua-franca = "^0.4.3"
 uvicorn = "^0.27.1"
-openai-whisper = {git = "https://github.com/openai/whisper.git"}
+openai-whisper = { git = "https://github.com/openai/whisper.git" }
 fastapi = "0.110.0"
 pvporcupine = "3.0.0"
 fann2 = "1.0.7"
@@ -50,12 +48,12 @@ python-dotenv = "^1.0.1"
 open-interpreter = { path = "../open-interpreter" }
 
 [tool.poetry.scripts]
-core-voice-client="core.client.voice.__main__:main"
-core-messagebus="core.messagebus.service.__main__:main"  # MESSAGEBUS
-core-skills="core.skills.__main__:main"  # SKILLS
-core-cli-client="core.client.text.__main__:main"# CORE contact with MB
-core-audio="core.audio.__main__:main"  # AUDIO OUTPUT
-core-web-client="core.web.client.__main__:main"
+core-voice-client = "core.client.voice.__main__:main"
+core-messagebus = "core.messagebus.service.__main__:main" # MESSAGEBUS
+core-skills = "core.skills.__main__:main"                 # SKILLS
+core-cli-client = "core.client.text.__main__:main"        # CORE contact with MB
+core-audio = "core.audio.__main__:main"                   # AUDIO OUTPUT
+core-web-client = "core.web.client.__main__:main"
 
 
 [build-system]

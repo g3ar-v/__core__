@@ -1,20 +1,15 @@
-import sys
-import signal
+import curses
 import io
 import os.path
-import curses
-from core.util import get_ipc_directory
-from core.client.text.text_client import (
-    load_settings,
-    save_settings,
-    simple_cli,
-    gui_main,
-    start_log_monitor,
-    start_mic_monitor,
-    connect_to_core,
-    ctrl_c_handler,
-)
+import signal
+import sys
+
+from core.client.text.text_client import (connect_to_core, ctrl_c_handler,
+                                          gui_main, load_settings,
+                                          save_settings, simple_cli,
+                                          start_log_monitor, start_mic_monitor)
 from core.configuration import Configuration
+from core.util import get_ipc_directory
 
 sys.stdout = io.StringIO()
 sys.stderr = io.StringIO()
@@ -41,7 +36,8 @@ def main():
     else:
         start_log_monitor("/var/log/core/skills.log")
         start_log_monitor("/var/log/core/voice.log")
-        start_log_monitor("/var/log/core/audio.log")
+        start_log_monitor("/var/log/core/web.log")
+        # start_log_monitor("/var/log/core/audio.log")
 
     # Monitor IPC file containing microphone level info
     start_mic_monitor(os.path.join(get_ipc_directory(), "mic_level"))

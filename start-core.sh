@@ -94,9 +94,9 @@ name_to_script_path() {
 source_venv() {
 	# Enter CONDA virtual environment
 	# TODO: dynmaically get miniconda path
-  CONDA_BIN=$(dirname "$CONDA_EXE")
+	CONDA_BIN=$(dirname "$CONDA_EXE")
 	# $CONDA_EXE activate $CONDA_ENV_NAME
-  source "$CONDA_BIN/activate" $CONDA_ENV_NAME
+	source "$CONDA_BIN/activate" $CONDA_ENV_NAME
 	exit_status=$?
 	if [[ $exit_status -eq "0" ]]; then
 		echo $BLUE "Entering virtual environment ${CONDA_DEFAULT_ENV} $RESET"
@@ -170,6 +170,7 @@ launch_all() {
 	sleep 2 # Add a delay of 5 seconds
 	launch_background voice
 	launch_background skills
+	# FIX: issue with websocket being none-type at startup
 	launch_background web
 	# launch_background enclosure
 	# cd "${UI_DIR}" || exit
@@ -253,8 +254,9 @@ case ${_opt} in
 	launch_background "${_opt}"
 	;;
 "debug")
+	# launch_process cli
 	launch_all
-  # launch_process web
+	# launch_process web
 	launch_process cli
 	;;
 
