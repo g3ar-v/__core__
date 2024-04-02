@@ -58,15 +58,11 @@ def handle_wakeword():
 
 
 def handle_utterance(event):
-    LOG.info("UTTERANCE: " + str(event["utterances"]))
     context = {
         "client_name": "core_listener",
         "source": "audio",
         "destination": ["skills"],
     }
-    if "ident" in event:
-        ident = event.pop("ident")
-        context["ident"] = ident
     bus.emit(Message("recognizer_loop:utterance", event, context))
 
 
