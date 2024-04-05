@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
-
 import glob
 import os
-from os.path import join, expanduser, abspath
+from os.path import abspath, expanduser, join
+from test.integrationtests.skills.skill_tester import (MockSkillsLoader,
+                                                       SkillTest)
 
-from core.configuration import Configuration
-from test.integrationtests.skills.skill_tester import MockSkillsLoader
-from test.integrationtests.skills.skill_tester import SkillTest
+import pytest
+
+from source.configuration import Configuration
 
 from .runner import load_test_environment
 

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import unittest
 import sys
+import unittest
 from io import StringIO
 from threading import Thread
-from core.util.log import LOG
+
+from source.util.log import LOG
 
 
 class CaptureLogs(list):

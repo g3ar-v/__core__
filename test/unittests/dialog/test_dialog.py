@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import unittest
-import pathlib
 import json
+import pathlib
+import unittest
 
-from core.dialog import MustacheDialogRenderer, load_dialogs, get
-from core.util import resolve_resource_file
+from source.dialog import MustacheDialogRenderer, get, load_dialogs
+from source.util import resolve_resource_file
 
 
 class DialogTest(unittest.TestCase):

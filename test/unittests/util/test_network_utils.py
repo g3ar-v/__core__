@@ -1,6 +1,6 @@
 from unittest import TestCase, mock
 
-from core.util.network_utils import connected
+from source.util.network_utils import connected
 
 
 class TestNetworkConnected(TestCase):

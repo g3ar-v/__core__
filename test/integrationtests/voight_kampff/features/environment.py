@@ -14,15 +14,16 @@
 #
 import logging
 from threading import Event, Lock
-from time import sleep, monotonic
-from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
+from time import monotonic, sleep
 
+from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
 from msm import MycroftSkillsManager
-from core.audio import wait_while_speaking
-from core.configuration import Configuration
-from core.messagebus.client import MessageBusClient
-from core.messagebus import Message
-from core.util import create_daemon
+
+from source.audio import wait_while_speaking
+from source.configuration import Configuration
+from source.messagebus import Message
+from source.messagebus.client import MessageBusClient
+from source.util import create_daemon
 
 
 def create_voight_kampff_logger():

@@ -13,9 +13,9 @@
 # limitations under the License.
 #
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
-from core.messagebus.client import MessageBusClient, MessageWaiter
+from source.messagebus.client import MessageBusClient, MessageWaiter
 
 WS_CONF = {
     'websocket': {

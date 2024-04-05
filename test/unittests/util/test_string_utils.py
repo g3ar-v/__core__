@@ -1,5 +1,6 @@
 from unittest import TestCase
-from core.util import camel_case_split
+
+from source.util import camel_case_split
 
 
 class TestStringFunctions(TestCase):

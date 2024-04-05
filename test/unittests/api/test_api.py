@@ -1,12 +1,10 @@
 import unittest
 from copy import copy
-
+from test.util import base_config
 from unittest.mock import MagicMock, patch
 
-import core.api
-import core.configuration
-
-from test.util import base_config
+import source.api
+import source.configuration
 
 CONFIG = base_config()
 CONFIG.merge(
@@ -22,7 +20,7 @@ CONFIG.merge(
 )
 
 
-core.api.requests.post = MagicMock()
+source.api.requests.post = MagicMock()
 
 
 def create_identity(uuid, expired=False):
@@ -51,7 +49,7 @@ class TestApi(unittest.TestCase):
     @patch("core.api.IdentityManager.get")
     def test_init(self, mock_identity_get):
         mock_identity_get.return_value = create_identity("1234")
-        a = core.api.BaseApi("test-path")
+        a = source.api.BaseApi("test-path")
         self.assertEqual(a.url, "http://192.168.100.147:8086")
         self.assertEqual(a.version, "v1")
         self.assertEqual(a.identity.uuid, "1234")
@@ -66,7 +64,7 @@ class TestApi(unittest.TestCase):
         mock_response_refresh = create_response(401, {}, "")
 
         mock_request.return_value = mock_response_ok
-        a = core.api.BaseApi("test-path")
+        a = source.api.BaseApi("test-path")
         req = {"path": "something", "headers": {}}
 
         # Check successful
@@ -74,13 +72,13 @@ class TestApi(unittest.TestCase):
 
         # check that a 300+ status code generates Exception
         mock_request.return_value = mock_response_301
-        with self.assertRaises(core.api.HTTPError):
+        with self.assertRaises(source.api.HTTPError):
             a.send(req)
 
         # Check 401
         mock_request.return_value = mock_response_401
         req = {"path": "", "headers": {}}
-        with self.assertRaises(core.api.HTTPError):
+        with self.assertRaises(source.api.HTTPError):
             a.send(req)
 
         # Check refresh token
@@ -92,7 +90,7 @@ class TestApi(unittest.TestCase):
         ]
         req = {"path": "something", "headers": {}}
         a.send(req)
-        self.assertTrue(core.api.IdentityManager.save.called)
+        self.assertTrue(source.api.IdentityManager.save.called)
 
 
 class TestDeviceApi(unittest.TestCase):
@@ -108,7 +106,7 @@ class TestDeviceApi(unittest.TestCase):
         mock_request.return_value = create_response(200)
         mock_identity_get.return_value = create_identity("1234")
 
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         self.assertEqual(device.identity.uuid, "1234")
         self.assertEqual(device.path, "device")
 
@@ -118,7 +116,7 @@ class TestDeviceApi(unittest.TestCase):
         mock_request.return_value = create_response(200)
         mock_identity_get.return_value = create_identity("1234")
         # Test activate
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.activate("state", "token")
         json = mock_request.call_args[1]["json"]
         self.assertEqual(json["state"], "state")
@@ -130,7 +128,7 @@ class TestDeviceApi(unittest.TestCase):
         mock_request.return_value = create_response(200)
         mock_identity_get.return_value = create_identity("1234")
         # Test get
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get()
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/device/1234")
@@ -143,7 +141,7 @@ class TestDeviceApi(unittest.TestCase):
     ):
         mock_request.return_value = create_response(200, "123ABC")
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         ret = device.get_code("state")
         self.assertEqual(ret, "123ABC")
         url = mock_request.call_args[0][1]
@@ -154,7 +152,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_settings(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_settings()
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/device/1234/setting")
@@ -164,7 +162,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_report_metric(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.report_metric("mymetric", {"data": "mydata"})
         url = mock_request.call_args[0][1]
         params = mock_request.call_args[1]
@@ -181,7 +179,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_send_email(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.send_email("title", "body", "sender")
         url = mock_request.call_args[0][1]
         params = mock_request.call_args[1]
@@ -197,7 +195,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_oauth_token(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_oauth_token(1)
         url = mock_request.call_args[0][1]
 
@@ -209,7 +207,7 @@ class TestDeviceApi(unittest.TestCase):
     ):
         mock_request.return_value = create_response(200, "123ABC")
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         ret = device.get_code("state")
         self.assertEqual(ret, "123ABC")
         url = mock_request.call_args[0][1]
@@ -220,7 +218,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_settings(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_settings()
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/device/1234/setting")
@@ -230,7 +228,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_oauth_token(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_oauth_token(1)
         url = mock_request.call_args[0][1]
 
@@ -241,7 +239,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_location(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_location()
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/device/1234/location")
@@ -251,7 +249,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_get_subscription(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_subscription()
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/device/1234/subscription")
@@ -270,7 +268,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_device_upload_skills_data(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200)
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.upload_skills_data({})
         url = mock_request.call_args[0][1]
         data = mock_request.call_args[1]["json"]
@@ -290,7 +288,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_stt(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        stt = core.api.STTApi("stt")
+        stt = source.api.STTApi("stt")
         self.assertEqual(stt.path, "stt")
 
     @patch("core.api.IdentityManager.get")
@@ -298,7 +296,7 @@ class TestDeviceApi(unittest.TestCase):
     def test_stt_stt(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        stt = core.api.STTApi("stt")
+        stt = source.api.STTApi("stt")
         stt.stt("La la la", "en-US", 1)
         url = mock_request.call_args[0][1]
         self.assertEqual(url, "https://api-test.mycroft.ai/v1/stt")
@@ -314,13 +312,13 @@ class TestDeviceApi(unittest.TestCase):
         mock_identity_load.return_value = mock_identity
         # Test None
         mock_identity.uuid = None
-        self.assertFalse(core.api.has_been_paired())
+        self.assertFalse(source.api.has_been_paired())
         # Test empty string
         mock_identity.uuid = ""
-        self.assertFalse(core.api.has_been_paired())
+        self.assertFalse(source.api.has_been_paired())
         # Test actual id number
         mock_identity.uuid = "1234"
-        self.assertTrue(core.api.has_been_paired())
+        self.assertTrue(source.api.has_been_paired())
 
 
 @patch("core.api.IdentityManager.get")
@@ -335,7 +333,7 @@ class TestSettingsMeta(unittest.TestCase):
     def test_upload_meta(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
 
         settings_meta = {
             "name": "TestMeta",
@@ -363,7 +361,7 @@ class TestSettingsMeta(unittest.TestCase):
     def test_get_skill_settings(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(200, {})
         mock_identity_get.return_value = create_identity("1234")
-        device = core.api.DeviceApi()
+        device = source.api.DeviceApi()
         device.get_skill_settings()
         method = mock_request.call_args[0][0]
         url = mock_request.call_args[0][1]
@@ -394,7 +392,7 @@ class TestIsPaired(unittest.TestCase):
         num_calls = mock_identity_get.num_calls
         # reset paired cache
 
-        self.assertTrue(core.api.is_paired())
+        self.assertTrue(source.api.is_paired())
 
         self.assertEqual(num_calls, mock_identity_get.num_calls)
         url = mock_request.call_args[0][1]
@@ -407,9 +405,9 @@ class TestIsPaired(unittest.TestCase):
         mock_identity.uuid = ""
         mock_identity_get.return_value = mock_identity
 
-        self.assertFalse(core.api.is_paired())
+        self.assertFalse(source.api.is_paired())
         mock_identity.uuid = None
-        self.assertFalse(core.api.is_paired())
+        self.assertFalse(source.api.is_paired())
 
     def test_is_paired_false_remote(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(401)
@@ -418,7 +416,7 @@ class TestIsPaired(unittest.TestCase):
         mock_identity.uuid = "1234"
         mock_identity_get.return_value = mock_identity
 
-        self.assertFalse(core.api.is_paired())
+        self.assertFalse(source.api.is_paired())
 
     def test_is_paired_error_remote(self, mock_request, mock_identity_get):
         mock_request.return_value = create_response(500)
@@ -427,7 +425,7 @@ class TestIsPaired(unittest.TestCase):
         mock_identity.uuid = "1234"
         mock_identity_get.return_value = mock_identity
 
-        self.assertFalse(core.api.is_paired())
+        self.assertFalse(source.api.is_paired())
 
-        with self.assertRaises(core.api.BackendDown):
-            core.api.is_paired(ignore_errors=False)
+        with self.assertRaises(source.api.BackendDown):
+            source.api.is_paired(ignore_errors=False)

@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
 import time
 import wave
 from glob import glob
-
-import os
-import pyee
 from os.path import dirname, join
+
+import pyee
 from speech_recognition import AudioSource
 
-from core.client.speech.listener import RecognizerLoop
-from core.client.speech.mic import ResponsiveRecognizer
+from source.client.speech.listener import RecognizerLoop
+from source.client.speech.mic import ResponsiveRecognizer
 
 """Tests for determining the accuracy of the selected wake word engine."""
 

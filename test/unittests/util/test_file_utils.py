@@ -1,20 +1,13 @@
-from os import makedirs
-from os.path import (abspath, dirname, expanduser, join, normpath, isdir,
-                     exists)
 import shutil
 import tempfile
+from os import makedirs
+from os.path import abspath, dirname, exists, expanduser, isdir, join, normpath
 from unittest import TestCase, mock
 
-from core import CORE_ROOT_PATH
-from core.util import (
-    resolve_resource_file,
-    curate_cache,
-    create_file,
-    get_temp_path,
-    get_cache_directory,
-    read_stripped_lines,
-    read_dict)
-
+from source import CORE_ROOT_PATH
+from source.util import (create_file, curate_cache, get_cache_directory,
+                         get_temp_path, read_dict, read_stripped_lines,
+                         resolve_resource_file)
 
 test_config = {
     'data_dir': join(dirname(__file__), 'datadir'),

@@ -1,9 +1,10 @@
 from datetime import datetime
-from dateutil.tz import tzfile, tzlocal, gettz
 from unittest import TestCase, mock
 
-from core.util.time import (default_timezone, now_local, now_utc, to_utc,
-                               to_local, to_system)
+from dateutil.tz import gettz, tzfile, tzlocal
+
+from source.util.time import (default_timezone, now_local, now_utc, to_local,
+                              to_system, to_utc)
 
 test_config = {
     'location': {

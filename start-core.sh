@@ -38,12 +38,12 @@ help() {
 	echo "usage: ${script} [COMMAND] [restart] [params]"
 	echo
 	echo "Services COMMANDs:"
-	echo "  all                      runs core services: bus, audio, skills, voice"
+	echo "  all                      runs core services: bus, audio, core, listener"
 	echo "  debug                    runs core services, then starts the CLI"
 	echo "  audio                    the audio playback service"
 	echo "  bus                      the messagebus service"
-	echo "  skills                   the skill service"
-	echo "  voice                    voice capture service"
+	echo "  core                     the core service"
+	echo "  listener                    listener capture service"
 	# echo "  enclosure                enclosure service"
 	echo
 	echo "Tool COMMANDs:"
@@ -73,12 +73,12 @@ help() {
 _module=""
 name_to_script_path() {
 	case ${1} in
-	"bus") _module="core.messagebus.service" ;;
-	"skills") _module="core.skills" ;;
-	"audio") _module="core.audio" ;;
-	"voice") _module="core.client.voice" ;;
-	"cli") _module="core.client.text" ;;
-	"web") _module="core.client.web" ;;
+	"bus") _module="source.messagebus.service" ;;
+	"core") _module="source.core" ;;
+	"audio") _module="source.audio" ;;
+	"listener") _module="source.client.listener" ;;
+	"cli") _module="source.client.text" ;;
+	"web") _module="source.client.web" ;;
 	# "audiotest")         _module="core.util.audio_test" ;;
 	# "wakewordtest")      _module="test.wake_word" ;;
 	# "enclosure")         _module="core.client.enclosure" ;;
@@ -166,10 +166,10 @@ launch_all() {
 	echo "Starting all core services"
 	launch_background bus
 	launch_background audio
-	# NOTE: provide the opportunity for online voice component to load
+	# NOTE: provide the opportunity for online listener component to load
 	sleep 2 # Add a delay of 5 seconds
-	launch_background voice
-	launch_background skills
+	launch_background listener
+	launch_background core
 	# FIX: issue with websocket being none-type at startup
 	launch_background web
 	# launch_background enclosure
@@ -244,10 +244,10 @@ case ${_opt} in
 "audio")
 	launch_background "${_opt}"
 	;;
-"skills")
+"core")
 	launch_background "${_opt}"
 	;;
-"voice")
+"listener")
 	launch_background "${_opt}"
 	;;
 "web")
@@ -263,7 +263,7 @@ case ${_opt} in
 "cli")
 	require_process bus
 	# require_process web
-	require_process skills
+	require_process core
 	launch_process "${_opt}"
 	;;
 

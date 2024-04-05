@@ -13,15 +13,15 @@
 # limitations under the License.
 #
 import unittest
+from os.path import dirname, join
+from queue import Queue
 
 import speech_recognition
-from os.path import dirname, join
-from speech_recognition import WavFile, AudioData
+from speech_recognition import AudioData, WavFile
 
-from core.client.voice.listener import (AudioConsumer, RecognizerLoop,
-                                        AUDIO_DATA)
-from core.stt import MycroftSTT
-from queue import Queue
+from source.client.listener.listener import (AUDIO_DATA, AudioConsumer,
+                                             ListenerLoop)
+from source.stt import MycroftSTT
 
 
 class MockRecognizer(object):
@@ -45,7 +45,7 @@ class AudioConsumerTest(unittest.TestCase):
     """
 
     def setUp(self):
-        self.loop = RecognizerLoop()
+        self.loop = ListenerLoop()
         self.queue = Queue()
         self.recognizer = MockRecognizer()
         self.consumer = AudioConsumer(

@@ -14,29 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import ast
+import datetime
 import json
 import unittest
-import datetime
-import ast
-import pytest
 from pathlib import Path
 
+import pytest
 from lingua_franca import load_language
 from lingua_franca.internal import UnsupportedLanguageError
 
-from core.util.format import (
-    TimeResolution,
-    nice_number,
-    nice_time,
-    nice_date,
-    nice_date_time,
-    nice_year,
-    nice_duration,
-    nice_duration_dt,
-    pronounce_number,
-    date_time_format,
-    join_list
-)
+from source.util.format import (TimeResolution, date_time_format, join_list,
+                                nice_date, nice_date_time, nice_duration,
+                                nice_duration_dt, nice_number, nice_time,
+                                nice_year, pronounce_number)
 
 # The majority of these tests are explicitly written for English.
 # Changes to the default language are tested below.

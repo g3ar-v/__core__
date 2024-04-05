@@ -14,7 +14,7 @@
 #
 import unittest
 
-from core.client.voice.hotword_factory import HotWordFactory
+from source.client.listener.hotword_factory import HotWordFactory
 
 
 class PocketSphinxTest(unittest.TestCase):

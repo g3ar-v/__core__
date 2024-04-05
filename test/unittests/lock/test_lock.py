@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
 import signal
 import unittest
-from shutil import rmtree
-
-from unittest.mock import patch
-import os
 from os.path import exists, isfile
+from shutil import rmtree
+from unittest.mock import patch
 
-from core.lock import Lock
-from core.util.file_utils import get_temp_path
+from source.lock import Lock
+from source.util.file_utils import get_temp_path
 
 
 class TestLock(unittest.TestCase):

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from test.util import base_config
 from unittest import TestCase, mock
 
 from adapt.intent import IntentBuilder
 
-from core.configuration import Configuration
-from core.messagebus import Message
-from core.intent_services import IntentService, _get_message_lang
-from core.intent_services.adapt_service import (ContextManager,
-                                                          AdaptIntent)
-
-from test.util import base_config
+from source.configuration import Configuration
+from source.intent_services import IntentService, _get_message_lang
+from source.intent_services.adapt_service import AdaptIntent, ContextManager
+from source.messagebus import Message
 
 # Setup configurations to use with default language tests
 BASE_CONF = base_config()

@@ -16,8 +16,9 @@ from os import path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from core.skills.skill_loader import SkillLoader
-from core.skills.skill_manager import SkillManager, UploadQueue
+from source.core.skill_loader import SkillLoader
+from source.core.skill_manager import SkillManager, UploadQueue
+
 from ..base import CoreUnitTestBase
 from ..mocks import mock_msm
 

@@ -13,12 +13,11 @@
 # limitations under the License.
 #
 import unittest
-from shutil import rmtree
-
 from os.path import exists, isfile, join
+from shutil import rmtree
 from tempfile import gettempdir
 
-from core.util import create_signal, check_for_signal
+from source.util import check_for_signal, create_signal
 
 
 class TestSignals(unittest.TestCase):

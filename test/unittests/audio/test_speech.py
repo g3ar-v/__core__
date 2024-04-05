@@ -14,17 +14,15 @@
 #
 import unittest
 import unittest.mock as mock
-
+from os.path import exists
 from shutil import rmtree
 from threading import Thread
 from time import sleep
 
-from os.path import exists
-
-import core.audio.speech as speech
-from core.messagebus import Message
-from core.tts.tts import default_preprocess_utterance
-from core.tts.remote_tts import RemoteTTSTimeoutException
+import source.audio.speech as speech
+from source.messagebus import Message
+from source.tts.remote_tts import RemoteTTSTimeoutException
+from source.tts.tts import default_preprocess_utterance
 
 """Tests for speech dispatch service."""
 

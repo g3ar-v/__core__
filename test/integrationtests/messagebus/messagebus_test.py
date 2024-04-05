@@ -23,8 +23,8 @@ import unittest
 from subprocess import Popen, call
 from threading import Thread
 
-from core.messagebus.client import MessageBusClient
-from core.messagebus.message import Message
+from source.messagebus.client import MessageBusClient
+from source.messagebus.message import Message
 
 
 class TestMessagebusMethods(unittest.TestCase):

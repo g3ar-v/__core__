@@ -18,7 +18,7 @@ from unittest.mock import Mock
 from msm import MycroftSkillsManager
 from msm.skill_repo import SkillRepo
 
-from core.configuration.config import LocalConf, DEFAULT_CONFIG
+from source.configuration.config import DEFAULT_CONFIG, LocalConf
 
 __CONFIG = LocalConf(DEFAULT_CONFIG)
 

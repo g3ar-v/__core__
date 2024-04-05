@@ -2,7 +2,7 @@ from threading import Thread
 from time import sleep
 from unittest import TestCase, mock
 
-from core.util.monotonic_event import MonotonicEvent
+from source.util.monotonic_event import MonotonicEvent
 
 
 class MonotonicEventTest(TestCase):

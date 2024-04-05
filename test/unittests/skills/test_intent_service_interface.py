@@ -1,6 +1,6 @@
 import unittest
 
-from core.skills.intent_service_interface import IntentServiceInterface
+from source.core.intent_service_interface import IntentServiceInterface
 
 
 class MockEmitter:

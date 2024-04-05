@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
 import unittest
+from test.util import base_config
 from unittest.mock import patch
 
-import os
 from speech_recognition import WavFile
 
-from core.client.voice.listener import RecognizerLoop
-from core.configuration import Configuration
-from test.util import base_config
+from source.client.listener.listener import ListenerLoop
+from source.configuration import Configuration
 
 DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data")
 
@@ -32,8 +32,8 @@ class PocketSphinxRecognizerTest(unittest.TestCase):
             conf = base_config()
             conf['hotwords']['hey mycroft']['module'] = 'pocketsphinx'
             mock_config_get.return_value = conf
-            rl = RecognizerLoop()
-            self.recognizer = RecognizerLoop.create_wake_word_recognizer(rl)
+            rl = ListenerLoop()
+            self.recognizer = ListenerLoop.create_wake_word_recognizer(rl)
 
     def testRecognizerWrapper(self):
         source = WavFile(os.path.join(DATA_DIR, "hey_mycroft.wav"))
@@ -61,8 +61,8 @@ class PocketSphinxRecognizerTest(unittest.TestCase):
         conf['lang'] = 'DOES NOT EXIST'
         mock_config_get.return_value = conf
 
-        rl = RecognizerLoop()
-        ps_hotword = RecognizerLoop.create_wake_word_recognizer(rl)
+        rl = ListenerLoop()
+        ps_hotword = ListenerLoop.create_wake_word_recognizer(rl)
 
         expected = 'en-us'
         res = ps_hotword.decoder.get_config().get_string('-hmm')
@@ -80,20 +80,20 @@ class LocalRecognizerInitTest(unittest.TestCase):
         mock_config_get.return_value = test_config
 
         # Test "Hey Mycroft"
-        rl = RecognizerLoop()
+        rl = ListenerLoop()
         self.assertEqual(rl.wakeword_recognizer.key_phrase, "hey mycroft")
 
         # Test "Hey Victoria"
         test_config['listener']['wake_word'] = 'hey victoria'
         test_config['listener']['phonemes'] = 'HH EY . V IH K T AO R IY AH'
         test_config['listener']['threshold'] = 1e-90
-        rl = RecognizerLoop()
+        rl = ListenerLoop()
         self.assertEqual(rl.wakeword_recognizer.key_phrase, "hey victoria")
 
         # Test Invalid"
         test_config['listener']['wake_word'] = 'hey victoria'
         test_config['listener']['phonemes'] = 'ZZZZZZZZZZZZ'
-        rl = RecognizerLoop()
+        rl = ListenerLoop()
         self.assertEqual(rl.wakeword_recognizer.key_phrase, "hey mycroft")
 
     @patch.object(Configuration, 'get')
@@ -117,7 +117,7 @@ class LocalRecognizerInitTest(unittest.TestCase):
         test_config['hotwords']['steve'] = steve_conf
         test_config['listener']['wake_word'] = 'steve'
 
-        rl = RecognizerLoop()
+        rl = ListenerLoop()
         self.assertEqual(rl.wakeword_recognizer.key_phrase, 'steve')
 
         # Ensure phonemes and threshold are poulated from listener config
@@ -133,6 +133,6 @@ class LocalRecognizerInitTest(unittest.TestCase):
 
         test_config['hotwords']['steve'] = steve_conf
         test_config['listener']['wake_word'] = 'steve'
-        rl = RecognizerLoop()
+        rl = ListenerLoop()
         self.assertEqual(rl.wakeword_recognizer.key_phrase, 'steve')
         self.assertEqual(rl.wakeword_recognizer.phonemes, 'S T IY V .')

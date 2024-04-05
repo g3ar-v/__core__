@@ -2,9 +2,9 @@
 from threading import Event
 from unittest import TestCase, mock
 
-from core.util.download import (download, _running_downloads,
-                                   _get_download_tmp)
-from core.util.file_utils import get_temp_path
+from source.util.download import (_get_download_tmp, _running_downloads,
+                                  download)
+from source.util.file_utils import get_temp_path
 
 TEST_URL = 'http://example.com/mycroft-test.tar.gz'
 TEST_DEST = get_temp_path('file.tar.gz')

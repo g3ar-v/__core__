@@ -14,7 +14,7 @@
 #
 from unittest import TestCase, mock
 
-import core.util.plugins as core_plugins
+import source.util.plugins as core_plugins
 
 
 def get_plug_mock(name):

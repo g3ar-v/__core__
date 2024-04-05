@@ -1,10 +1,9 @@
 
+from test.util import Anything
 from unittest import TestCase, mock
 
-from test.util import Anything
-from core.util import (play_ogg, play_mp3, play_wav, play_audio_file,
-                          record)
-from core.util.file_utils import get_temp_path
+from source.util import play_audio_file, play_mp3, play_ogg, play_wav, record
+from source.util.file_utils import get_temp_path
 
 test_config = {
     'play_wav_cmdline': 'mock_wav %1',

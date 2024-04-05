@@ -1,11 +1,10 @@
+import time
+import unittest
 from pathlib import Path
 from queue import Queue
-import time
-
-import unittest
 from unittest import mock
 
-import core.tts
+import source.tts
 
 mock_phoneme = mock.Mock(name='phoneme')
 mock_audio = "/tmp/mock_path"
@@ -20,7 +19,7 @@ class MsgTypeCheck:
         return self.msg_type == other.msg_type
 
 
-class MockTTS(core.tts.TTS):
+class MockTTS(source.tts.TTS):
     def __init__(self, lang, config, validator, audio_ext='wav',
                  phonetic_spelling=True, ssml_tags=None):
         super().__init__(lang, config, validator, audio_ext)
@@ -30,7 +29,7 @@ class MockTTS(core.tts.TTS):
         self.viseme.return_value = mock_viseme
 
 
-class MockTTSValidator(core.tts.TTSValidator):
+class MockTTSValidator(source.tts.TTSValidator):
     def validate(self):
         pass
 
@@ -46,7 +45,7 @@ class MockTTSValidator(core.tts.TTSValidator):
 
 class TestPlaybackThread(unittest.TestCase):
     def test_lifecycle(self):
-        playback = core.tts.PlaybackThread(Queue())
+        playback = source.tts.PlaybackThread(Queue())
         playback.init(mock.Mock())
         playback.start()
         playback.stop()
@@ -57,7 +56,7 @@ class TestPlaybackThread(unittest.TestCase):
     @mock.patch('core.tts.tts.play_mp3')
     def test_process_queue(self, mock_play_mp3, mock_play_wav, mock_time):
         queue = Queue()
-        playback = core.tts.PlaybackThread(queue)
+        playback = source.tts.PlaybackThread(queue)
         mock_tts = mock.Mock()
         playback.init(mock_tts)
         playback.enclosure = mock.Mock()
@@ -103,7 +102,7 @@ class TestTTS(unittest.TestCase):
         tts.init(bus_mock)
         self.assertTrue(tts.bus is bus_mock)
 
-        core.tts.TTS.queue = mock.Mock()
+        source.tts.TTS.queue = mock.Mock()
         with mock.patch('core.tts.tts.open'):
             tts.cache.temporary_cache_dir = Path('/tmp/dummy')
             tts.execute('Oh no, not again', 42)
@@ -111,7 +110,7 @@ class TestTTS(unittest.TestCase):
             'Oh no, not again',
             '/tmp/dummy/8da7f22aeb16bc3846ad07b644d59359.wav'
         )
-        core.tts.TTS.queue.put.assert_called_with(
+        source.tts.TTS.queue.put.assert_called_with(
             (
                 'wav',
                 mock_audio,
@@ -128,7 +127,7 @@ class TestTTS(unittest.TestCase):
         tts.init(bus_mock)
         self.assertTrue(tts.bus is bus_mock)
 
-        core.tts.TTS.queue = mock.Mock()
+        source.tts.TTS.queue = mock.Mock()
         with mock.patch('core.tts.tts.open'):
             tts.cache.temporary_cache_dir = Path('/tmp/dummy')
             tts.execute('Oh no, not again', 42)
@@ -136,7 +135,7 @@ class TestTTS(unittest.TestCase):
             'Oh no, not again',
             '/tmp/dummy/8da7f22aeb16bc3846ad07b644d59359.wav'
         )
-        core.tts.TTS.queue.put.assert_called_with(
+        source.tts.TTS.queue.put.assert_called_with(
             (
                 'wav',
                 mock_audio,
@@ -219,7 +218,7 @@ class TestTTS(unittest.TestCase):
         self.assertEqual(tts.validate_ssml(sentence_bad_ssml),
                          sentence_no_ssml)
 
-        self.assertEqual(core.tts.TTS.remove_ssml(sentence),
+        self.assertEqual(source.tts.TTS.remove_ssml(sentence),
                          sentence_no_ssml)
 
     def test_load_spellings(self, _):
@@ -252,11 +251,11 @@ class TestTTSFactory(unittest.TestCase):
         mock_tts_instance = mock.Mock()
         mock_tts_class.return_value = mock_tts_instance
 
-        core.tts.TTSFactory.CLASSES['mimic'] = mock_mimic
-        core.tts.TTSFactory.CLASSES['mock'] = mock_tts_class
+        source.tts.TTSFactory.CLASSES['mimic'] = mock_mimic
+        source.tts.TTSFactory.CLASSES['mock'] = mock_tts_class
 
         # Check that correct module is selected
-        tts_instance = core.tts.TTSFactory.create()
+        tts_instance = source.tts.TTSFactory.create()
         self.assertEqual(tts_instance, mock_tts_instance)
 
         # Assert falling back to mimic if load fails
@@ -264,7 +263,7 @@ class TestTTSFactory(unittest.TestCase):
             raise Exception
 
         mock_tts_class.side_effect = side_effect
-        tts_instance = core.tts.TTSFactory.create()
+        tts_instance = source.tts.TTSFactory.create()
         self.assertEqual(tts_instance, mock_mimic_instance)
 
         # Check that mimic get's the proper config
@@ -275,4 +274,4 @@ class TestTTSFactory(unittest.TestCase):
         mock_mimic.side_effect = side_effect
         config['tts']['module'] = 'mimic'
         with self.assertRaises(Exception):
-            tts_instance = core.tts.TTSFactory.create()
+            tts_instance = source.tts.TTSFactory.create()

@@ -14,12 +14,12 @@
 #
 """Common tools to use when creating step files for behave tests."""
 
+import time
 from threading import Event
 from typing import Any, Callable, List, Tuple
-import time
 
-from core.audio.utils import wait_while_speaking
-from core.messagebus import Message
+from source.audio.utils import wait_while_speaking
+from source.messagebus import Message
 
 DEFAULT_TIMEOUT = 10
 

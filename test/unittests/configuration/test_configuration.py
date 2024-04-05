@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
 from unittest import TestCase
-import core.configuration
+from unittest.mock import MagicMock, patch
+
+import source.configuration
 
 
 class TestConfiguration(TestCase):
@@ -9,12 +10,12 @@ class TestConfiguration(TestCase):
             Clear cached configuration
         """
         super(TestConfiguration, self).setUp()
-        core.configuration.Configuration.load_config_stack([{}], True)
+        source.configuration.Configuration.load_config_stack([{}], True)
 
     def test_get(self):
         d1 = {'a': 1, 'b': {'c': 1, 'd': 2}}
         d2 = {'b': {'d': 'changed'}}
-        d = core.configuration.Configuration.get([d1, d2])
+        d = source.configuration.Configuration.get([d1, d2])
         self.assertEqual(d['a'], d1['a'])
         self.assertEqual(d['b']['d'], d2['b']['d'])
         self.assertEqual(d['b']['c'], d1['b']['c'])
@@ -28,7 +29,7 @@ class TestConfiguration(TestCase):
         dev_api.get_location.return_value = remote_location
         mock_api.return_value = dev_api
 
-        rc = core.configuration.RemoteConf()
+        rc = source.configuration.RemoteConf()
         self.assertTrue(rc['test_config'])
         self.assertEqual(rc['location']['city']['name'], 'Stockholm')
 
@@ -37,15 +38,15 @@ class TestConfiguration(TestCase):
     def test_update(self, mock_remote, mock_local):
         mock_remote.return_value = {}
         mock_local.return_value = {'a': 1}
-        c = core.configuration.Configuration.get()
+        c = source.configuration.Configuration.get()
         self.assertEqual(c, {'a': 1})
 
         mock_local.return_value = {'a': 2}
-        core.configuration.Configuration.updated('message')
+        source.configuration.Configuration.updated('message')
         self.assertEqual(c, {'a': 2})
 
     def tearDown(self):
-        core.configuration.Configuration.load_config_stack([{}], True)
+        source.configuration.Configuration.load_config_stack([{}], True)
 
 
 @patch('core.configuration.config.exists')
@@ -59,7 +60,7 @@ class TestLocalConf(TestCase):
         mock_exists.return_value = True
         mock_isfile.return_value = True
         mock_json_loader.return_value = local_conf
-        lc = core.configuration.LocalConf('test')
+        lc = source.configuration.LocalConf('test')
         self.assertEqual(lc, local_conf)
 
     def test_merge(self, mock_json_loader, mock_isfile, mock_exists):
@@ -68,7 +69,7 @@ class TestLocalConf(TestCase):
         mock_exists.return_value = True
         mock_isfile.return_value = True
         mock_json_loader.return_value = local_conf
-        lc = core.configuration.LocalConf('test')
+        lc = source.configuration.LocalConf('test')
 
         merge_conf = {'falling_objects': None, 'has_towel': True}
 
@@ -84,18 +85,18 @@ class TestLocalConf(TestCase):
         mock_exists.return_value = True
         mock_isfile.return_value = True
         mock_json_loader.return_value = local_conf
-        lc = core.configuration.LocalConf('test')
+        lc = source.configuration.LocalConf('test')
 
         lc.store('test_conf.json')
         self.assertEqual(mock_json_dump.call_args[0][0], lc)
         # exists but is not file
         mock_isfile.return_value = False
-        lc = core.configuration.LocalConf('test')
+        lc = source.configuration.LocalConf('test')
         self.assertEqual(lc, {})
 
         # does not exist
         mock_exists.return_value = False
-        lc = core.configuration.LocalConf('test')
+        lc = source.configuration.LocalConf('test')
         self.assertEqual(lc, {})
 
     @patch('json.dump')
@@ -110,7 +111,7 @@ class TestLocalConf(TestCase):
 
         mock_json_loader.side_effect = raise_error
 
-        lc = core.configuration.LocalConf('invalid')
+        lc = source.configuration.LocalConf('invalid')
         self.assertFalse(lc.is_valid)
         self.assertFalse(lc.store())
         mock_json_dump.assert_not_called()

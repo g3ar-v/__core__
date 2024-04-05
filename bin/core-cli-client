@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 SOURCE="${BASH_SOURCE[0]}"
-DIR="$( dirname "$SOURCE" )"
+DIR="$(dirname "$SOURCE")"
 
-source "$DIR/../venv-activate.sh" -q
+# source "$DIR/../venv-activate.sh" -q
 
 # Invoke the Command Line Interface
-python -m core.client.text "$@"
+python -m source.client.text "$@"

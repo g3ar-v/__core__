@@ -14,12 +14,13 @@
 #
 """Unit tests for the SkillUpdater class."""
 import os
-from time import sleep
-from xdg import BaseDirectory
-from unittest.mock import Mock, patch, PropertyMock
-
-from core.skills.skill_updater import SkillUpdater
 from test.unittests.base import MycroftUnitTestBase
+from time import sleep
+from unittest.mock import Mock, PropertyMock, patch
+
+from xdg import BaseDirectory
+
+from source.core.skill_updater import SkillUpdater
 
 
 class TestSkillUpdater(MycroftUnitTestBase):

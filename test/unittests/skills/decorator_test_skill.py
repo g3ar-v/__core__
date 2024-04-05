@@ -14,8 +14,7 @@
 #
 from adapt.intent import IntentBuilder
 
-from core.skills import Skill
-from core.skills import intent_handler, intent_file_handler
+from source.core import Skill, intent_file_handler, intent_handler
 
 
 class TestSkill(Skill):

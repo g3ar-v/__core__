@@ -17,7 +17,7 @@ from unittest import TestCase, mock
 
 from speech_recognition import AudioSource
 
-from core.client.voice.mic import ResponsiveRecognizer
+from source.client.listener.mic import ResponsiveRecognizer
 
 
 class MockStream:

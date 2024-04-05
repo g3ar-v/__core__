@@ -1,6 +1,6 @@
 from unittest import TestCase, mock
 
-from core.util import get_arch
+from source.util import get_arch
 
 
 class TestPlatform(TestCase):

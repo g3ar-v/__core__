@@ -19,18 +19,10 @@ from datetime import datetime, timedelta
 from lingua_franca import load_language
 from lingua_franca.internal import FunctionNotLocalizedError
 
-from core.util.parse import (
-    extract_datetime,
-    extract_duration,
-    extract_number,
-    extract_numbers,
-    fuzzy_match,
-    get_gender,
-    match_one,
-    normalize
-)
-from core.util.time import default_timezone
-
+from source.util.parse import (extract_datetime, extract_duration,
+                               extract_number, extract_numbers, fuzzy_match,
+                               get_gender, match_one, normalize)
+from source.util.time import default_timezone
 
 load_language("en-us")
 

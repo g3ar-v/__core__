@@ -14,10 +14,9 @@
 #
 import json
 import unittest
-
 from os.path import dirname, join
 
-from core.util.json_helper import load_commented_json
+from source.util.json_helper import load_commented_json
 
 
 class TestFileLoad(unittest.TestCase):

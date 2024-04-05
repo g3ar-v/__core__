@@ -31,30 +31,31 @@ To set up a test the test runner can
     for a very long time
 
 """
-from queue import Queue, Empty
-from copy import copy
+import ast
 import json
-import time
 import os
 import re
-import ast
-from os.path import join, isdir, basename
-from pyee import EventEmitter
-from numbers import Number
-from core.messagebus.message import Message
-from core.skills import Skill, FallbackSkill
-from core.skills.skill_loader import SkillLoader
-from core.configuration import Configuration
-from core.util.log import LOG
-
-from logging import StreamHandler
-from io import StringIO
+import time
 from contextlib import contextmanager
+from copy import copy
+from io import StringIO
+from logging import StreamHandler
+from numbers import Number
+from os.path import basename, isdir, join
+from queue import Empty, Queue
+
+from pyee import EventEmitter
+
+from source.configuration import Configuration
+from source.core import FallbackSkill, Skill
+from source.core.skill_loader import SkillLoader
+from source.messagebus.message import Message
+from source.util.log import LOG
 
 from .colors import color
-from .rules import (intent_type_check, play_query_check, question_check,
-                    expected_data_check, expected_dialog_check,
-                    changed_context_check)
+from .rules import (changed_context_check, expected_data_check,
+                    expected_dialog_check, intent_type_check, play_query_check,
+                    question_check)
 
 MainModule = '__init__'
 
@@ -137,7 +138,7 @@ def load_skills(emitter, skills_root):
         skill_id = 'test-' + basename(path)
 
         # Catch the logs during skill loading
-        from core.util.log import LOG as skills_log
+        from source.util.log import LOG as skills_log
         buf = StringIO()
         with temporary_handler(skills_log, StreamHandler(buf)):
             skill_loader = SkillLoader(emitter, path)
@@ -213,11 +214,11 @@ class MockSkillsLoader(object):
 
         self.skills_root = skills_root
         self.emitter = InterceptEmitter()
-        from core.intent_service import IntentService
+        from source.intent_service import IntentService
         self.ih = IntentService(self.emitter)
         self.skills = None
         self.emitter.on(
-            'core.skills.fallback',
+            'source.core.fallback',
             FallbackSkill.make_intent_failure_handler(self.emitter))
 
         def make_response(message):

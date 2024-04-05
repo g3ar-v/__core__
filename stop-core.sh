@@ -12,12 +12,12 @@ help() {
 	echo "usage: ${script} [service]"
 	echo
 	echo "Service:"
-	echo "  all       ends core services: bus, audio, skills, voice"
+	echo "  all       ends core services: bus, audio, core, listener"
 	echo "  (none)    same as \"all\""
 	echo "  bus       stop the System messagebus service"
 	echo "  audio     stop the audio playback service"
-	echo "  skills    stop the skill service"
-	echo "  voice     stop voice capture service"
+	echo "  core    stop the skill service"sk
+	echo "  listener     stop listener capture service"
 	# echo "  enclosure stop enclosure (hardware/gui interface) service"
 	echo "  ui        stop ui service"
 	echo "  backend   stop ui backend service"
@@ -82,49 +82,49 @@ fi
 case ${OPT} in
 "" | "all")
 	echo "Stopping all core services"
-	end_process "(python3|python|Python) (.*)-m core.*skills"
-	end_process "(python3|python|Python) (.*)-m core.*voice"
-	end_process "(python3|python|Python) (.*)-m core.*enclosure"
-	end_process "(python3|python|Python) (.*)-m core.*messagebus.service"
-	end_process "(python3|python|Python) (.*)-m core.*client"
-	end_process "(python3|python|Python) (.*)-m core.*audio"
-	end_process "uvicorn core.ui.backend.__main__:app"
+	end_process "(python3|python|Python) (.*)-m source.*core"
+	end_process "(python3|python|Python) (.*)-m source.*listener"
+	end_process "(python3|python|Python) (.*)-m source.*enclosure"
+	end_process "(python3|python|Python) (.*)-m source.*messagebus.service"
+	end_process "(python3|python|Python) (.*)-m source.*client"
+	end_process "(python3|python|Python) (.*)-m source.*audio"
+	end_process "uvicorn source.ui.backend.__main__:app"
 	end_process "npm run dev"
-	end_process "entr -s core-start restart skills"
-	end_process "entr -s core-start restart voice"
+	end_process "entr -s core-start restart core"
+	end_process "entr -s core-start restart listener"
 	end_process "entr -s core-start restart audio"
-	
+
 	;;
 "bus")
-	end_process "(python3|python|Python) (.*)-m core.*messagebus.service"
+	end_process "(python3|python|Python) (.*)-m source.*messagebus.service"
 	;;
 "audio")
-	end_process "(python3|python|Python) (.*)-m core.*audio"
+	end_process "(python3|python|Python) (.*)-m source.*audio"
 	;;
-"skills")
-	end_process "(python3|python|Python) (.*)-m core.*skills"
+"core")
+	end_process "(python3|python|Python) (.*)-m source.*core"
 	;;
-"voice")
-	end_process "(python3|python|Python) (.*)-m core.*voice"
+"listener")
+	end_process "(python3|python|Python) (.*)-m source.*listener"
 	;;
 "enclosure")
-	end_process "(python3|python|Python) (.*)-m core.*enclosure"
+	end_process "(python3|python|Python) (.*)-m source.*enclosure"
 	;;
 "client")
-	end_process "(python3|python|Python) (.*)-m core.*client"
+	end_process "(python3|python|Python) (.*)-m source.*client"
 	;;
 "backend")
-	end_process "uvicorn core.ui.backend.__main__:app"
+	end_process "uvicorn source.ui.backend.__main__:app"
 	;;
 "ui")
 	end_process "npm run dev"
 	;;
 "web")
-	end_process "(python3|python|Python) (.*)-m core.*web"
-  ;;
+	end_process "(python3|python|Python) (.*)-m source.*web"
+	;;
 "dev")
-	end_process "entr -s core-start restart skills"
-	end_process "entr -s core-start restart voice"
+	end_process "entr -s core-start restart core"
+	end_process "entr -s core-start restart listener"
 	end_process "entr -s core-start restart audio"
 	;;
 *)

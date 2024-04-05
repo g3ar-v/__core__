@@ -15,7 +15,7 @@
 """A collection of rules for the skill tester."""
 import re
 
-from core.util.format import expand_options
+from source.util.format import expand_options
 
 from .colors import color
 

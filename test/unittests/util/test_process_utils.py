@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 
-from core.util.process_utils import (_update_log_level, bus_logging_status,
-                                        create_daemon, ProcessStatus,
-                                        StatusCallbackMap)
+from source.util.process_utils import (ProcessStatus, StatusCallbackMap,
+                                       _update_log_level, bus_logging_status,
+                                       create_daemon)
 
 
 class TestCreateDaemon(TestCase):
