@@ -26,10 +26,6 @@ from source.messagebus.client import MessageBusClient
 from source.util.file_utils import FileWatcher
 from source.util.log import LOG
 
-# from ovos_config.config import Configuration
-from .msm_wrapper import build_msm_config
-from .msm_wrapper import create_msm as msm_creator
-# from ovos_utils.process_utils import ProcessStatus, StatusCallbackMap, ProcessState
 from .skill_loader import SkillLoader
 
 SKILL_MAIN_MODULE = "__init__.py"
@@ -126,7 +122,6 @@ class SkillManager(Thread):
         """
         super(SkillManager, self).__init__()
         self.bus = bus
-        # self.llm = LLM()
         self._settings_watchdog = None
         # Set watchdog to argument or function returning None
         self._watchdog = watchdog or (lambda: None)
@@ -144,9 +139,9 @@ class SkillManager(Thread):
 
         self.config = Configuration.get()
 
+        self.skills_dir_path = self.config.get("skills").get("directory")
         self.skill_loaders = {}
         self.plugin_skills = {}
-        # self.enclosure = EnclosureAPI(bus)
         self.initial_load_complete = False
         self.num_install_retries = 0
         self.empty_skill_dirs = set()  # Save a record of empty skill dirs.
@@ -236,25 +231,6 @@ class SkillManager(Thread):
     def skills_config(self):
         return self.config["skills"]
 
-    @property
-    def msm(self):
-        if self._msm is None:
-            msm_config = build_msm_config(self.config)
-            self._msm = msm_creator(msm_config)
-
-        return self._msm
-
-    #    @staticmethod
-    #     def create_msm():
-    #         LOG.debug("instantiating msm via static method...")
-    #         msm_config = build_msm_config(Configuration.get())
-    #         msm_instance = msm_creator(msm_config)
-
-    #         return msm_instance
-
-    # def schedule_now(self, _):
-    #     self.skill_updater.next_download = time() - 1
-
     def _get_internal_skill_bus(self):
         if not self.config["websocket"].get("shared_connection", True):
             # see BusBricker skill to understand why this matters
@@ -305,7 +281,8 @@ class SkillManager(Thread):
 
     def _remove_git_locks(self):
         """If git gets killed from an abrupt shutdown it leaves lock files."""
-        lock_path = os.path.join(self.msm.skills_dir, "*/.git/index.lock")
+
+        lock_path = os.path.join(self.skills_dir_path, "/.git/index.lock")
         for i in glob(lock_path):
             LOG.warning("Found and removed git lock file: " + i)
             os.remove(i)
@@ -327,9 +304,8 @@ class SkillManager(Thread):
                         self.upload_queue.put(skill_loader)
             except Exception:
                 LOG.exception(
-                    "Unhandled exception occured while " "reloading {}".format(
-                        skill_dir
-                    )
+                    "Unhandled exception occured while "
+                    "reloading {}".format(skill_dir)
                 )
 
     def _load_new_skills(self):
@@ -370,7 +346,7 @@ class SkillManager(Thread):
             del self.skill_loaders[skill_dir]
 
     def _get_skill_directories(self):
-        skill_glob = glob(os.path.join(self.msm.skills_dir, "*/"))
+        skill_glob = glob(os.path.join(self.skills_dir_path, "*/"))
 
         skill_directories = []
         for skill_dir in skill_glob:
@@ -425,7 +401,6 @@ class SkillManager(Thread):
     def deactivate_skill(self, message):
         """Deactivate a skill."""
         try:
-            # TODO handle external skills, OVOSAbstractApp/Hivemind skills are not accounted for
             skills = {**self.skill_loaders, **self.plugin_skills}
             for skill_loader in skills.values():
                 if message.data["skill"] == skill_loader.skill_id:

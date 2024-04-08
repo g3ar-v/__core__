@@ -41,6 +41,7 @@ SkillSettings Usage Example:
         s.skill_settings['flower pot sayings'] = 'Not again...'
         s.save_settings()  # This happens automagically in a MycroftSkill
 """
+
 import json
 import re
 from os.path import dirname
@@ -59,7 +60,6 @@ def get_local_settings(skill_dir, skill_name) -> dict:
     """Build a dictionary using the JSON string stored in settings.json."""
     skill_settings = {}
     settings_path = Path(skill_dir).joinpath("settings.json")
-    LOG.info(settings_path)
     if settings_path.exists():
         with open(str(settings_path)) as settings_file:
             settings_file_content = settings_file.read()

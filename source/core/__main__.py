@@ -12,7 +12,6 @@ import time
 
 import source.lock
 from source.audio import wait_while_speaking
-from source.configuration import Configuration
 from source.core.api import SkillApi
 from source.core.event_scheduler import EventScheduler
 from source.core.fallback_skill import FallbackSkill
@@ -52,6 +51,7 @@ def on_error(e="Unknown"):
 
 def on_stopping():
     LOG.info("CORE SERVICE IS SHUTTING DOWN...")
+    _speak("CORE component is shutting down...")
 
 
 def main(
@@ -176,7 +176,6 @@ def _speak_dialog(dialog_id, wait=False):
 
 
 def shutdown(skill_manager, event_scheduler):
-    LOG.info("Shutting down Skills service")
 
     if event_scheduler is not None:
         event_scheduler.shutdown()
@@ -184,8 +183,7 @@ def shutdown(skill_manager, event_scheduler):
     if skill_manager is not None:
         skill_manager.stop()
         skill_manager.join()
-    LOG.info("Skills service shutdown complete!")
-    _speak("skills component is shutting down...")
+    LOG.info("CORE service shutdown complete!")
 
 
 if __name__ == "__main__":

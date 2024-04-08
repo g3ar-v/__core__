@@ -473,7 +473,7 @@ class Skill:
                 send_to_ui=send_to_ui,
             )
         else:
-            self.bus.emit(Message("core.mic.listen"))
+            self.bus.emit(Message("recognizer_loop.listen"))
         return self._wait_response(is_cancel, validator, on_fail_fn, num_retries)
 
     def _wait_response(self, is_cancel, validator, on_fail, num_retries):
@@ -511,7 +511,7 @@ class Skill:
             if line:
                 self.speak(line, expect_response=True)
             else:
-                self.bus.emit(Message("core.mic.listen"))
+                self.bus.emit(Message("recognizer_loop.listen"))
 
     def ask_yesno(self, prompt, data=None):
         """Read prompt and wait for a yes/no answer
